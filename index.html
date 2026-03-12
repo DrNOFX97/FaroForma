@@ -12,6 +12,24 @@
     <title>FaroForma | Formação, apoio e explicações</title>
   </head>
   <body>
+    <!-- Netlify Forms detection -->
+    <form name="inscricao-formadores" netlify netlify-honeypot="bot-field" hidden>
+      <input type="text" name="bot-field" />
+      <input type="text" name="nome" />
+      <input type="email" name="email" />
+      <input type="tel" name="telefone" />
+      <input type="text" name="dataNascimento" />
+      <input type="text" name="nif" />
+      <input type="text" name="areas" />
+      <input type="text" name="habilitacoes" />
+      <input type="text" name="capCcp" />
+      <input type="text" name="experiencia" />
+      <input type="text" name="linkedin" />
+      <input type="text" name="dias" />
+      <input type="text" name="periodos" />
+      <input type="text" name="modalidade" />
+      <textarea name="motivacao"></textarea>
+    </form>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

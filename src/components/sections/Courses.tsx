@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import { motion, useInView } from 'framer-motion';
+import { MessageCircle, Users, Award, Target } from 'lucide-react';
 import AnimatedSection from '../ui/AnimatedSection';
 import { COURSE_INFO } from '../../data/courses';
+import type { CourseHighlight } from '../../data/courses';
 
 export default function Courses() {
   const ref = useRef<HTMLDivElement>(null);
@@ -48,30 +50,22 @@ export default function Courses() {
 
         <div className="courses__grid">
           <AnimatedSection direction="left" delay={0.15}>
-            <div className="courses__highlights">
-              {COURSE_INFO.highlights.map(item => (
-                <div key={item} className="courses__highlight">
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
-            <div className="courses__contact">
-              <p>Contactos para Inscrição</p>
-              <div className="courses__contact-line">
-                Telefones: {' '}
-                {COURSE_INFO.contact.phones.map((phone, idx) => (
-                  <span key={phone}>
-                    <a href={`tel:${phone.replace(/\s/g, '')}`}>{phone}</a>
-                    {idx < COURSE_INFO.contact.phones.length - 1 && ' · '}
-                  </span>
+              <div className="courses__highlights">
+                {COURSE_INFO.highlights.map((item: CourseHighlight) => (
+                  <div key={item.text} className="courses__highlight">
+                    <span className="courses__highlight-icon">
+                      {{
+                        MessageCircle: <MessageCircle size={16} />,
+                        Users: <Users size={16} />,
+                        Award: <Award size={16} />,
+                        Bullseye: <Target size={16} />,
+                      }[item.icon]}
+                    </span>
+                    <span>{item.text}</span>
+                  </div>
                 ))}
               </div>
-              <div className="courses__contact-line">
-                E-mail: <a href={`mailto:${COURSE_INFO.contact.email}`}>{COURSE_INFO.contact.email}</a>
-              </div>
-              <div className="courses__contact-line">
-                Website: <a href={`https://${COURSE_INFO.contact.website}`} target="_blank" rel="noreferrer">{COURSE_INFO.contact.website}</a>
-              </div>
+            <div className="courses__contact">
               <div className="courses__cta">
                 <button
                   type="button"

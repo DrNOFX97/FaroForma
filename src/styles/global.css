@@ -1172,6 +1172,7 @@ main {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  row-gap: 0.85rem;
 }
 
 .courses__highlight {
@@ -1182,6 +1183,16 @@ main {
   font-size: 0.95rem;
   line-height: 1.5;
   color: var(--text);
+  display: flex;
+  align-items: center;
+}
+
+.courses__highlight-icon {
+  margin-right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
 }
 
 .courses__highlight strong {
@@ -1189,13 +1200,14 @@ main {
 }
 
 .courses__contact {
-  margin-top: 1.5rem;
-  padding: 1.25rem;
-  border: 1px dashed var(--border);
+  margin-top: 0.5rem;
+  padding: 0.5rem 0;
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.02);
   font-size: 0.95rem;
   color: var(--text);
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
 }
 
 .courses__contact-line {
@@ -1252,7 +1264,10 @@ main {
 }
 
 .courses__cta {
-  margin-top: 1.25rem;
+  margin-top: 0;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .modal-overlay {
@@ -1324,6 +1339,321 @@ main {
   gap: 1rem;
   margin-top: 1rem;
   color: var(--text);
+}
+
+/* ─── Student Registration ───────────────────────────────────────────── */
+.registration {
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.75), rgba(10, 22, 40, 0.95));
+}
+.registration__intro {
+  max-width: 640px;
+}
+.registration__intro h2 {
+  font-size: clamp(2.4rem, 5vw, 3.5rem);
+  margin-bottom: 1rem;
+}
+.registration__impact {
+  margin-top: 0.5rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+.registration__form {
+  margin-top: 2rem;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  backdrop-filter: blur(40px);
+}
+.registration__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.registration__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.registration__field input,
+.registration__field select,
+.registration__field textarea {
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(2, 6, 23, 0.6);
+  padding: 0.75rem 0.9rem;
+  font-size: 1rem;
+  color: var(--text);
+  transition: border 0.25s;
+}
+.registration__field input:focus,
+.registration__field select:focus,
+.registration__field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+.registration__field--full {
+  grid-column: 1 / -1;
+}
+.registration__actions {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.registration__hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.registration__board {
+  margin-top: 2.5rem;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.registration__board h3 {
+  margin-bottom: 1rem;
+}
+.registration__card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.02);
+  margin-bottom: 0.75rem;
+}
+.registration__card:last-child {
+  margin-bottom: 0;
+}
+.registration__card strong {
+  font-size: 1rem;
+  color: var(--accent);
+}
+.registration__card span,
+.registration__card p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* ─── Trainers Wizard ───────────────────────────────────────────────── */
+.trainers {
+  background: var(--bg);
+  padding-top: 1.25rem;
+  padding-bottom: 3rem;
+  margin-top: -1rem;
+}
+.trainers__intro {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: center;
+}
+.trainers__intro h2 {
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  margin-bottom: 1rem;
+}
+body main {
+  margin-top: 2rem;
+}
+.wizard {
+  margin-top: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.97));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  max-width: min(920px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+  box-shadow: var(--shadow-lg);
+}
+.wizard__indicator {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 1rem;
+}
+.wizard__step {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.wizard__step span {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.wizard__step strong {
+  font-size: 0.85rem;
+}
+.wizard__step.is-active span {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #010617;
+}
+.wizard__step.is-active {
+  color: var(--accent);
+}
+.wizard__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.wizard__progress {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.wizard__progress-value {
+  height: 100%;
+  background: linear-gradient(135deg, var(--accent), var(--gold));
+  transition: width 0.35s ease;
+}
+.wizard__summary {
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.wizard__steps {
+  margin-top: 1.25rem;
+  min-height: auto;
+}
+.wizard__panel {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  pointer-events: none;
+}
+.wizard__panel.is-active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.wizard__panel h3 {
+  font-size: 1.4rem;
+  margin-bottom: 1.25rem;
+}
+.wizard__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.wizard__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.wizard__field input,
+.wizard__field select,
+.wizard__field textarea {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  background: rgba(10, 18, 34, 0.6);
+  color: var(--text);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.95rem;
+  transition: border 0.25s ease;
+}
+.wizard__field input:focus,
+.wizard__field select:focus,
+.wizard__field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  outline: none;
+}
+.wizard__error {
+  font-size: 0.75rem;
+  color: #f87171;
+}
+.wizard__actions {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.wizard__actions .btn {
+  flex: 1;
+}
+.wizard__actions .btn--outline {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--text);
+}
+.wizard__actions .btn--primary {
+  min-width: 180px;
+}
+
+@media (max-width: 900px) {
+  .trainers__intro {
+    text-align: left;
+  }
+  .wizard {
+    padding: 1.5rem;
+    max-width: 100%;
+  }
+  .wizard__indicator {
+    flex-wrap: wrap;
+  }
+  .wizard__step span {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+@media (max-width: 640px) {
+  main {
+    margin-top: 0 !important;
+  }
+  .wizard {
+    padding: 1rem;
+  }
+  .wizard__fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .wizard__fields {
+    grid-template-columns: 1fr;
+  }
+  .wizard__actions {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 900px) {
+  .registration__grid {
+    grid-template-columns: 1fr;
+  }
+  .registration__board {
+    margin-top: 1.5rem;
+  }
 }
 
 /* ─── Footer ─────────────────────────────────────────────────────────── */
@@ -1578,5 +1908,388 @@ main {
 
   .tutoring__levels {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORMADORES INSCRIPTION PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.formadores-page {
+  min-height: 100vh;
+  padding-top: var(--navbar-height);
+  background: var(--bg);
+}
+
+.formadores-hero {
+  padding: 3.5rem 0 2rem;
+  text-align: center;
+}
+
+.formadores-hero__title {
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  margin: 0.85rem 0 0.75rem;
+  line-height: 1.15;
+}
+
+.formadores-hero__sub {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* ── Wizard container ─────────────────────────────────────────────────── */
+
+.wizard {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 0 5rem;
+}
+
+/* ── Step indicators ──────────────────────────────────────────────────── */
+
+.wizard__steps {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.wizard__step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wizard__step-circle {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  transition: all 0.3s var(--ease-smooth);
+}
+
+.wizard__step-circle--active {
+  border-color: var(--accent);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+.wizard__step-circle--done {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.wizard__step-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.wizard__step-label--active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.wizard__step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  margin: 0 0.5rem;
+  margin-bottom: 1.6rem; /* align with circles */
+  transition: background 0.4s var(--ease-smooth);
+  min-width: 3rem;
+}
+
+.wizard__step-line--done {
+  background: var(--accent);
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────── */
+
+.wizard__card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ── Step content ─────────────────────────────────────────────────────── */
+
+.wizard__step-title {
+  font-family: var(--font-heading);
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+
+.wizard__step-sub {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 1.75rem;
+}
+
+.wizard__section-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 0.7rem;
+}
+
+/* ── Checkbox grid ────────────────────────────────────────────────────── */
+
+.wizard__check-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.wizard__check-grid--3col {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.wizard__check-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-smooth);
+  font-size: 0.845rem;
+  font-weight: 500;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  width: 100%;
+}
+
+.wizard__check-item:hover {
+  border-color: var(--border-accent);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.wizard__check-item--selected {
+  border-color: var(--accent);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent);
+}
+
+.wizard__check-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wizard__check-box {
+  display: block;
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  border: 1.5px solid var(--border);
+}
+
+/* ── Inline checks (for CAP/CCP, periods) ─────────────────────────────── */
+
+.wizard__inline-checks {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.wizard__inline-checks .wizard__check-item {
+  flex: 1;
+  justify-content: center;
+}
+
+/* ── Radio grid (modality) ────────────────────────────────────────────── */
+
+.wizard__radio-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.wizard__radio-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 1rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-smooth);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+  background: transparent;
+  text-align: center;
+}
+
+.wizard__radio-item:hover {
+  border-color: var(--border-accent);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.wizard__radio-item--selected {
+  border-color: var(--accent);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent);
+}
+
+/* ── Navigation bar ───────────────────────────────────────────────────── */
+
+.wizard__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.wizard__step-counter {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+/* ── Error messages ───────────────────────────────────────────────────── */
+
+.wizard__error {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: #f87171;
+  margin-top: 0.35rem;
+}
+
+/* ── Form label icon helper ───────────────────────────────────────────── */
+
+.form__label-icon {
+  display: inline;
+  vertical-align: middle;
+  margin-right: 5px;
+  opacity: 0.7;
+}
+
+/* ── Select wrapper ───────────────────────────────────────────────────── */
+
+.form__select-wrap {
+  position: relative;
+}
+
+.form__select-wrap::after {
+  content: '▾';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.form__select-wrap select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.5rem;
+}
+
+/* ── Loading spinner ──────────────────────────────────────────────────── */
+
+.btn-spinner {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  animation: wizard-spin 0.7s linear infinite;
+}
+
+@keyframes wizard-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Success state ────────────────────────────────────────────────────── */
+
+.wizard__success {
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.wizard__success-icon {
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.1);
+  border: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  color: var(--accent);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .wizard__card {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .wizard__check-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wizard__check-grid--3col {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .wizard__radio-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wizard__inline-checks {
+    flex-direction: column;
+  }
+
+  .wizard__inline-checks .wizard__check-item {
+    justify-content: flex-start;
+  }
+
+  .wizard__step-line {
+    min-width: 1.5rem;
+  }
+
+  .formadores-hero__title {
+    font-size: 2rem;
   }
 }

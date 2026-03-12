@@ -1,5 +1,12 @@
 import { PHONE_NUMBERS } from './contactInfo';
 
+export type CourseHighlightIcon = 'MessageCircle' | 'Users' | 'Award' | 'Bullseye';
+
+export interface CourseHighlight {
+  text: string;
+  icon: CourseHighlightIcon;
+}
+
 export const COURSE_INFO = {
   title: 'Cursos de Português (PLA) para Estrangeiros',
   subtitle: 'Centro de Formação de Faro - FaroForma',
@@ -7,11 +14,11 @@ export const COURSE_INFO = {
   description:
     'Formação PLA acreditada com foco na comunicação prática para o dia a dia, trabalho e integração em Portugal.',
   highlights: [
-    'Foco: Comunicação prática para o dia a dia, trabalho e integração em Portugal.',
-    'Vagas: Limitadas.',
-    'Certificação: Inclui certificado de frequência.',
-    'Objetivo: Melhora a tua integração.',
-  ],
+    { text: 'Foco: Comunicação prática para o dia a dia, trabalho e integração em Portugal.', icon: 'MessageCircle' },
+    { text: 'Vagas: Limitadas.', icon: 'Users' },
+    { text: 'Certificação: Inclui certificado de frequência.', icon: 'Award' },
+    { text: 'Objetivo: Melhora a tua integração.', icon: 'Bullseye' },
+  ] as CourseHighlight[],
   schedule: [
     { turma: 'Turma A', período: 'Manhã', horário: '09:00 – 12:00', dias: '2ª a 6ª feira' },
     { turma: 'Turma B', período: 'Tarde', horário: '14:00 – 17:00', dias: '2ª a 6ª feira' },
