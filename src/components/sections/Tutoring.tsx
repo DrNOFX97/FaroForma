@@ -1,7 +1,23 @@
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import AnimatedSection from '../ui/AnimatedSection';
 import { TUTORING_SUBJECTS, TUTORING_LEVELS } from '../../data/tutoring';
 
+import img1 from '../../assets/images/explicacoes1.png';
+import img2 from '../../assets/images/explicacoes2.png';
+
+const IMAGES = [img1, img2];
+
 export default function Tutoring() {
+  const [currentIdx, setCurrentIdx] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIdx(prev => (prev + 1) % IMAGES.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <section className="section section--alt" id="explicacoes">
       <div className="container">
@@ -50,12 +66,21 @@ export default function Tutoring() {
           {/* Image */}
           <AnimatedSection direction="right" delay={0.25}>
             <div className="tutoring__image-wrap">
-              <img
-                className="tutoring__image"
-                src="https://images.unsplash.com/photo-1434030216411-0b793f4b6174?w=800&q=80&auto=format&fit=crop"
-                alt="Sessão de explicações personalizada"
-                loading="lazy"
-              />
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={currentIdx}
+                    src={IMAGES[currentIdx]}
+                    alt="Sessão de explicações personalizada"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="tutoring__image"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </AnimatePresence>
+              </div>
               <div className="tutoring__card-float">
                 <div className="tutoring__card-float-icon">🎓</div>
                 <div className="tutoring__card-float-title">Taxa de Aprovação</div>
