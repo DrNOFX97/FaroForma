@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { HERO_STATS } from '../../data/hero';
 
 const ease = [0.4, 0, 0.2, 1] as const;
