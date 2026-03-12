@@ -930,8 +930,8 @@ main {
 
 .tutoring__card-float {
   position: absolute;
-  bottom: 2rem;
-  left: -2rem;
+  bottom: -1rem;
+  left: -1rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -939,6 +939,7 @@ main {
   backdrop-filter: blur(16px);
   box-shadow: var(--shadow-lg);
   max-width: 220px;
+  z-index: 10;
 }
 
 .tutoring__card-float-icon {
