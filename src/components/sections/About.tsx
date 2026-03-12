@@ -6,7 +6,7 @@ import sala1 from '../../assets/images/Sala1.jpg';
 import sala2 from '../../assets/images/Sala2.jpg';
 
 const ROOM_IMAGES = [sala1, sala2];
-const IMAGE_ROTATION_INTERVAL = 3000;
+const IMAGE_ROTATION_INTERVAL = 7000;
 
 export default function About() {
   const [activeRoom, setActiveRoom] = useState(0);

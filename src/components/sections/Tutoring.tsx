@@ -14,7 +14,7 @@ export default function Tutoring() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentIdx(prev => (prev + 1) % IMAGES.length);
-    }, 3000);
+    }, 7000);
     return () => clearInterval(timer);
   }, []);
 
