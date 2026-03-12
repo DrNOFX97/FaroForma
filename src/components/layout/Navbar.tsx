@@ -58,7 +58,7 @@ export default function Navbar({ isDark, onThemeToggle, currentPage, onNavigate 
                 Inscrição Formadores
               </button>
               <button className="btn btn--primary btn--sm" onClick={() => scrollTo('#contactos')}>
-                Contactar
+                Contacte-nos
               </button>
             </>
           ) : (
@@ -111,7 +111,7 @@ export default function Navbar({ isDark, onThemeToggle, currentPage, onNavigate 
                     <UserCheck size={16} /> Inscrição Formadores
                   </button>
                   <button className="btn btn--primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => scrollTo('#contactos')}>
-                    Contactar agora
+                    Contacte-nos
                   </button>
                 </div>
               </>

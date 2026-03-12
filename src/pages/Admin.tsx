@@ -1,0 +1,498 @@
+import { useState, useEffect } from 'react';
+import { 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged, 
+  type User 
+} from 'firebase/auth';
+import { auth, googleProvider } from '../config/firebase';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  LayoutDashboard, 
+  Users, 
+  GraduationCap, 
+  MessageSquare, 
+  Settings, 
+  LogOut, 
+  Lock,
+  AlertCircle,
+  Pencil,
+  X,
+  Save
+} from 'lucide-react';
+
+const ADMIN_EMAIL = 'faroforma@gmail.com';
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface RawData {
+  formadores: any[][];
+  alunos: any[];
+  contactos: any[];
+}
+
+// ── Admin Component ────────────────────────────────────────────────────────────
+
+export default function Admin() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [data, setData] = useState<RawData | null>(null);
+  const [fetching, setFetching] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      if (u && u.email === ADMIN_EMAIL) {
+        setUser(u);
+        setError('');
+        fetchData(u);
+      } else if (u) {
+        setError('Acesso negado. Apenas o administrador tem permissão.');
+        signOut(auth);
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const fetchData = async (u: User) => {
+    setFetching(true);
+    setError('');
+    try {
+      const token = await u.getIdToken();
+      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/data', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+      } else {
+        const errText = await res.text();
+        setError(`Erro ${res.status}: ${errText || res.statusText}`);
+      }
+    } catch (err: any) {
+      setError('Erro de rede: ' + err.message);
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const login = async () => {
+    setError('');
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result.user.email !== ADMIN_EMAIL) {
+        setError('Acesso negado. Apenas o administrador tem permissão.');
+        await signOut(auth);
+      } else {
+        fetchData(result.user);
+      }
+    } catch (err: any) {
+      setError('Erro ao fazer login: ' + err.message);
+    }
+  };
+
+  const logout = () => signOut(auth);
+
+  if (loading) {
+    return <div className="admin-loading"><div className="spinner"></div></div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="admin-login-page">
+        <motion.div className="admin-login-card glass" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="admin-login-header">
+            <div className="admin-icon-box"><Lock className="w-8 h-8 text-accent" /></div>
+            <h1>Backoffice <span className="gradient-text">FaroForma</span></h1>
+            <p>Área restrita para gestão de candidaturas e configurações.</p>
+          </div>
+          {error && <div className="admin-error"><AlertCircle className="w-4 h-4" /> {error}</div>}
+          <button className="btn btn--primary btn--full" onClick={login}>Entrar com Google</button>
+        </motion.div>
+        <style>{ADMIN_STYLES}</style>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-layout">
+      <aside className="admin-sidebar glass">
+        <div className="admin-logo"><span className="gradient-text">FaroForma</span><span className="admin-badge">Admin</span></div>
+        <nav className="admin-nav">
+          <NavItem active={activeTab === 'dashboard'} icon={<LayoutDashboard size={18} />} label="Dashboard" onClick={() => setActiveTab('dashboard')} />
+          <NavItem active={activeTab === 'formadores'} icon={<Users size={18} />} label="Formadores" onClick={() => setActiveTab('formadores')} />
+          <NavItem active={activeTab === 'alunos'} icon={<GraduationCap size={18} />} label="Alunos" onClick={() => setActiveTab('alunos')} />
+          <NavItem active={activeTab === 'contactos'} icon={<MessageSquare size={18} />} label="Contactos" onClick={() => setActiveTab('contactos')} />
+          <NavItem active={activeTab === 'config'} icon={<Settings size={18} />} label="Configurações" onClick={() => setActiveTab('config')} />
+        </nav>
+        <div className="admin-sidebar-footer"><button className="admin-logout-btn" onClick={logout}><LogOut size={16} /> Sair</button></div>
+      </aside>
+
+      <main className="admin-main">
+        <header className="admin-header">
+          <div className="admin-header-left"><h2>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2></div>
+          <div className="admin-user-pill"><img src={user.photoURL || ''} alt="" className="admin-avatar" /><span>{user.displayName}</span></div>
+        </header>
+
+        <div className="admin-content">
+          <AnimatePresence mode="wait">
+            <motion.div key={activeTab} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}>
+              {activeTab === 'dashboard' && <DashboardView data={data} error={error} />}
+              {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={() => fetchData(user)} />}
+              {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} />}
+              {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} />}
+              {activeTab === 'config' && <ConfigView />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </main>
+      <style>{ADMIN_STYLES}</style>
+    </div>
+  );
+}
+
+// ── Components ─────────────────────────────────────────────────────────────────
+
+function NavItem({ active, icon, label, onClick }: any) {
+  return (
+    <button className={`admin-nav-item ${active ? 'is-active' : ''}`} onClick={onClick}>
+      {icon}<span>{label}</span>
+    </button>
+  );
+}
+
+function DashboardView({ data, error }: { data: RawData | null, error: string }) {
+  const stats = {
+    formadores: Math.max(0, (data?.formadores?.length || 1) - 1),
+    alunos: Math.max(0, (data?.alunos?.length || 1) - 1),
+    contactos: Math.max(0, (data?.contactos?.length || 1) - 1),
+  };
+
+  return (
+    <div className="admin-dashboard">
+      <div className="admin-stats-grid">
+        <StatCard label="Formadores" val={stats.formadores} icon={<Users size={20} />} desc="Total de candidaturas" />
+        <StatCard label="Alunos" val={stats.alunos} icon={<GraduationCap size={20} />} desc="Novas inscrições" />
+        <StatCard label="Contactos" val={stats.contactos} icon={<MessageSquare size={20} />} desc="Mensagens recebidas" />
+      </div>
+      
+      <div className="glass" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
+        <h3 style={{ marginBottom: '1.5rem' }}>Estado do Sistema</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {!data && !error && <div className="spinner spinner--small"></div>}
+          <p style={{ color: 'var(--text-muted)' }}>
+            {data ? 'Ligação às Google Sheets ativa.' : (error ? `Erro: ${error}` : 'A sincronizar com Google Sheets...')}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, val, icon, desc }: any) {
+  return (
+    <div className="stat-card">
+      <div className="stat-card__header"><span>{label}</span>{icon}</div>
+      <div className="stat-card__val">{val}</div>
+      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{desc}</p>
+    </div>
+  );
+}
+
+function FormadoresTable({ data, fetching, onRefresh }: { data: any[][], fetching: boolean, onRefresh: () => void }) {
+  const [editingRow, setEditingRow] = useState<any | null>(null);
+
+  if (fetching) return <div className="glass" style={{ padding: '2rem' }}>A carregar dados...</div>;
+  if (!data || data.length <= 1) return <div className="glass" style={{ padding: '2rem' }}>Sem candidaturas para mostrar.</div>;
+
+  // Newest first, keeping original index for updates
+  const indexedRows = data.slice(1).map((row, idx) => ({ 
+    originalIndex: idx + 1, // +1 because we skipped header
+    cells: row 
+  })).reverse();
+
+  return (
+    <div className="admin-table-container glass">
+      <div className="admin-table-scroll">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nome</th>
+              <th>Email</th>
+              <th>Telefone</th>
+              <th>Áreas</th>
+              <th>Dias</th>
+              <th>Períodos</th>
+              <th>Modalidade</th>
+              <th>Data Registo</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {indexedRows.map((item, i) => (
+              <tr key={i}>
+                <td style={{ fontWeight: 700 }}>#{item.originalIndex}</td>
+                <td style={{ color: 'var(--text)', fontWeight: 600 }}>{item.cells[1]}</td>
+                <td>{item.cells[2]}</td>
+                <td>{item.cells[3]}</td>
+                <td title={item.cells[6]}>{item.cells[6]}</td>
+                <td>{item.cells[11]}</td>
+                <td>{item.cells[12]}</td>
+                <td>{item.cells[13]}</td>
+                <td>{new Date(item.cells[0]).toLocaleDateString()}</td>
+                <td>
+                  <button className="admin-action-btn" onClick={() => setEditingRow(item)}>
+                    <Pencil size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <AnimatePresence>
+        {editingRow && (
+          <EditFormadorModal 
+            row={editingRow} 
+            onClose={() => setEditingRow(null)} 
+            onSuccess={() => { setEditingRow(null); onRefresh(); }}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function EditFormadorModal({ row, onClose, onSuccess }: any) {
+  const [values, setValues] = useState([...row.cells]);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/update-formador', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          rowIndex: row.originalIndex,
+          values: values
+        })
+      });
+      if (res.ok) {
+        onSuccess();
+      } else {
+        alert('Erro ao guardar alterações.');
+      }
+    } catch (err) {
+      alert('Erro de rede.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="admin-modal glass" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+        <div className="admin-modal-header">
+          <h3>Editar Formador #{row.originalIndex}</h3>
+          <button onClick={onClose}><X size={20} /></button>
+        </div>
+        <div className="admin-modal-body">
+          <div className="form__grid">
+            <div className="form__group">
+              <label className="form__label">Nome</label>
+              <input className="form__input" value={values[1]} onChange={e => { const v = [...values]; v[1] = e.target.value; setValues(v); }} />
+            </div>
+            <div className="form__group">
+              <label className="form__label">Email</label>
+              <input className="form__input" value={values[2]} onChange={e => { const v = [...values]; v[2] = e.target.value; setValues(v); }} />
+            </div>
+            <div className="form__group">
+              <label className="form__label">Telefone</label>
+              <input className="form__input" value={values[3]} onChange={e => { const v = [...values]; v[3] = e.target.value; setValues(v); }} />
+            </div>
+            <div className="form__group">
+              <label className="form__label">Áreas</label>
+              <input className="form__input" value={values[6]} onChange={e => { const v = [...values]; v[6] = e.target.value; setValues(v); }} />
+            </div>
+            <div className="form__group">
+              <label className="form__label">Dias</label>
+              <input className="form__input" value={values[11]} onChange={e => { const v = [...values]; v[11] = e.target.value; setValues(v); }} />
+            </div>
+            <div className="form__group">
+              <label className="form__label">Períodos</label>
+              <input className="form__input" value={values[12]} onChange={e => { const v = [...values]; v[12] = e.target.value; setValues(v); }} />
+            </div>
+            <div className="form__group">
+              <label className="form__label">Modalidade</label>
+              <input className="form__input" value={values[13]} onChange={e => { const v = [...values]; v[13] = e.target.value; setValues(v); }} />
+            </div>
+          </div>
+        </div>
+        <div className="admin-modal-footer">
+          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn btn--primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'A guardar...' : <><Save size={18} /> Guardar Alterações</>}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function TableView({ type, data, fetching }: { type: string, data: any[][], fetching: boolean }) {
+  if (fetching) return <div className="glass" style={{ padding: '2rem' }}>A carregar dados...</div>;
+  if (!data || data.length <= 1) return <div className="glass" style={{ padding: '2rem' }}>Sem dados em <strong>{type}</strong>.</div>;
+
+  const headers = data[0];
+  const rows = data.slice(1).reverse();
+
+  return (
+    <div className="admin-table-container glass">
+      <div className="admin-table-scroll">
+        <table className="admin-table">
+          <thead><tr>{headers.map((h, i) => <th key={i}>{h}</th>)}</tr></thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i}>{row.map((cell, j) => <td key={j}>{cell}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ConfigView() {
+  const [config, setConfig] = useState<any>({ title: '', description: '', keywords: '', contactEmail: '' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    fetchConfig();
+  }, []);
+
+  const fetchConfig = async () => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/config', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setConfig(json);
+      }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setMsg('');
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/config', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+      if (res.ok) {
+        setMsg('Configurações guardadas!');
+        setTimeout(() => setMsg(''), 3000);
+      } else { setMsg('Erro ao guardar.'); }
+    } catch (err) { setMsg('Erro de rede.'); } finally { setSaving(false); }
+  };
+
+  if (loading) return <div className="glass" style={{ padding: '2rem' }}>A carregar configurações...</div>;
+
+  return (
+    <div className="admin-config-view">
+      <div className="glass" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
+        <h3 style={{ marginBottom: '2rem' }}>Definições do Site</h3>
+        <div className="form__grid" style={{ maxWidth: 600 }}>
+          <div className="form__group form__group--full">
+            <label className="form__label">Título do Site</label>
+            <input type="text" className="form__input" value={config.title} onChange={e => setConfig({...config, title: e.target.value})} />
+          </div>
+          <div className="form__group form__group--full">
+            <label className="form__label">Descrição (SEO)</label>
+            <textarea className="form__textarea" value={config.description} onChange={e => setConfig({...config, description: e.target.value})} rows={3} />
+          </div>
+          <div className="form__group">
+            <label className="form__label">Keywords</label>
+            <input type="text" className="form__input" value={config.keywords} onChange={e => setConfig({...config, keywords: e.target.value})} />
+          </div>
+          <div className="form__group">
+            <label className="form__label">Email de Contacto</label>
+            <input type="email" className="form__input" value={config.contactEmail} onChange={e => setConfig({...config, contactEmail: e.target.value})} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+            <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'A Guardar...' : 'Guardar Alterações'}</button>
+            {msg && <span style={{ fontSize: '0.85rem', color: msg.includes('sucesso') ? 'var(--accent)' : '#ef4444' }}>{msg}</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
+const ADMIN_STYLES = `
+  .admin-layout { display: flex; min-height: 100vh; background: var(--bg); }
+  .admin-sidebar { width: 280px; border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 2rem 1.5rem; position: fixed; height: 100vh; z-index: 100; }
+  .admin-logo { font-weight: 800; font-size: 1.25rem; display: flex; align-items: center; gap: 0.75rem; margin-bottom: 3rem; }
+  .admin-badge { font-size: 0.65rem; background: var(--accent); color: white; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+  .admin-nav { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+  .admin-nav-item { display: flex; align-items: center; gap: 1rem; padding: 0.85rem 1rem; border-radius: var(--radius); color: var(--text-muted); font-weight: 500; transition: all 0.2s; cursor: pointer; border: none; background: transparent; width: 100%; text-align: left; }
+  .admin-nav-item:hover { background: var(--bg-1); color: var(--text); }
+  .admin-nav-item.is-active { background: rgba(16, 185, 129, 0.1); color: var(--accent); }
+  .admin-main { flex: 1; margin-left: 280px; padding: 2rem 3rem; }
+  .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; }
+  .admin-header h2 { font-size: 1.5rem; font-weight: 700; }
+  .admin-user-pill { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 1rem; background: var(--bg-1); border: 1px solid var(--border); border-radius: 100px; font-size: 0.85rem; font-weight: 600; }
+  .admin-avatar { width: 24px; height: 24px; border-radius: 50%; }
+  .admin-logout-btn { display: flex; align-items: center; gap: 0.5rem; color: #ef4444; font-size: 0.85rem; font-weight: 600; background: none; border: none; cursor: pointer; }
+  .admin-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 3rem; }
+  .stat-card { padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--border); background: var(--bg-1); }
+  .stat-card__header { display: flex; justify-content: space-between; color: var(--text-muted); margin-bottom: 1rem; }
+  .stat-card__val { font-size: 2rem; font-weight: 800; }
+  .admin-loading { height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  .spinner--small { width: 20px; height: 20px; border-width: 2px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .admin-table-container { border-radius: var(--radius-lg); overflow: hidden; }
+  .admin-table-scroll { overflow-x: auto; max-width: calc(100vw - 360px); }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
+  .admin-table th { background: var(--bg-1); padding: 1rem; font-weight: 700; color: var(--text); border-bottom: 2px solid var(--border); white-space: nowrap; }
+  .admin-table td { padding: 1rem; border-bottom: 1px solid var(--border); color: var(--text-muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .admin-table tr:hover td { background: rgba(16, 185, 129, 0.05); color: var(--text); }
+  
+  .admin-action-btn { padding: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+  .admin-action-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  .admin-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+  .admin-modal { background: var(--bg); width: 100%; max-width: 800px; border-radius: var(--radius-xl); border: 1px solid var(--border); display: flex; flex-direction: column; max-height: 90vh; }
+  .admin-modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .admin-modal-body { padding: 2rem; overflow-y: auto; }
+  .admin-modal-footer { padding: 1.5rem 2rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 1rem; }
+
+  .admin-login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 0% 0%, var(--bg-1) 0%, var(--bg) 50%); padding: 2rem; }
+  .admin-login-card { max-width: 400px; width: 100%; padding: 3rem; text-align: center; border-radius: var(--radius-xl); }
+  .admin-login-header h1 { font-size: 1.75rem; margin: 1.5rem 0 0.5rem; font-weight: 800; }
+  .admin-login-header p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+  .admin-icon-box { width: 64px; height: 64px; background: rgba(16, 185, 129, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+  .admin-error { background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 0.75rem; border-radius: var(--radius); font-size: 0.85rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; justify-content: center; }
+  .btn--full { width: 100%; justify-content: center; }
+`;

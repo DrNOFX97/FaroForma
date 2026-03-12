@@ -51,9 +51,11 @@ export default function Hero() {
 
           {/* CTAs */}
           <motion.div className="hero__actions" {...fadeUp(0.36)}>
+            <button className="btn btn--gold btn--lg" onClick={() => scrollTo('#cursos')}>
+              Ver Cursos
+            </button>
             <button className="btn btn--primary btn--lg" onClick={() => scrollTo('#servicos')}>
               Ver Serviços
-              <ArrowRight size={18} />
             </button>
             <button className="btn btn--outline btn--lg" onClick={() => scrollTo('#contactos')}>
               Falar Connosco

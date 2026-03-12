@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 temp/
+
+# Environment variables
+.env
+.env.local
+
+# Service account key (never commit)
+*-sa-key.json

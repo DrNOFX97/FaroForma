@@ -49,6 +49,7 @@ export default function Contact() {
   const [errors, setErrors]   = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [submitErr, setSubmitErr] = useState('');
 
   const ref    = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
@@ -76,11 +77,25 @@ export default function Contact() {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    // Simulate async submission — replace with real endpoint
-    await new Promise(r => setTimeout(r, 1500));
-    setLoading(false);
-    setSuccess(true);
-    setForm(INITIAL);
+    setSubmitErr('');
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (response.ok) {
+        setSuccess(true);
+        setForm(INITIAL);
+      } else {
+        const body = await response.json().catch(() => ({}));
+        setSubmitErr((body as { error?: string }).error ?? 'Ocorreu um erro técnico. Tente novamente.');
+      }
+    } catch {
+      setSubmitErr('Ocorreu um erro técnico. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -299,6 +314,11 @@ export default function Contact() {
                       )}
                     </button>
 
+                    {submitErr && (
+                      <p className="form__error" style={{ marginTop: '1rem', textAlign: 'center' }}>
+                        {submitErr}
+                      </p>
+                    )}
                     <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                   </form>
                 </>
