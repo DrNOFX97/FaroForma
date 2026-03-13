@@ -164,7 +164,7 @@ export default function Admin() {
                 {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={() => fetchData(user)} onEdit={setEditingRow} />}
                 {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} />}
                 {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} />}
-                {activeTab === 'agenda' && <AgendaView />}
+                {activeTab === 'agenda' && <AgendaView data={data} />}
                 {activeTab === 'config' && <ConfigView />}
               </motion.div>
             </AnimatePresence>
@@ -425,12 +425,14 @@ function ConfigView() {
 // ── Agenda View ────────────────────────────────────────────────────────────────
 
 const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-const SLOTS = ['Manhã (09h-13h)', 'Tarde (13h-18h)'];
+const SLOTS = ['Manhã (09h-13h)', 'Tarde (13h-18h)', 'Noite (18h-21h)'];
 
-function AgendaView() {
+function AgendaView({ data }: { data: RawData | null }) {
   const [agenda, setAgenda] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const formadores = data?.formadores?.slice(1) || [];
 
   useEffect(() => {
     fetchAgenda();
@@ -459,8 +461,37 @@ function AgendaView() {
     } catch (err) { alert('Erro ao guardar.'); } finally { setSaving(false); }
   };
 
-  const updateSlot = (day: string, slot: string, val: string) => {
-    setAgenda({ ...agenda, [`${day}-${slot}`]: val });
+  const updateSlot = (day: string, slot: string, field: 'trainer' | 'course', val: string) => {
+    const key = `${day}-${slot}`;
+    setAgenda({ 
+      ...agenda, 
+      [key]: { 
+        ...(agenda[key] || { trainer: '', course: '' }), 
+        [field]: val 
+      } 
+    });
+  };
+
+  // Filter trainers by availability
+  const getAvailableTrainers = (day: string, slot: string) => {
+    return formadores.filter(f => {
+      const availableDays = f[11]?.split(',').map((d: string) => d.trim()) || [];
+      const availableSlots = f[12]?.split(',').map((s: string) => s.trim()) || [];
+      
+      // For Saturday, we check if they are available on Saturday and any shift
+      if (day === 'Sábado') {
+        return availableDays.includes('Sábado');
+      }
+
+      const slotName = slot.split(' ')[0]; // "Manhã", "Tarde", "Noite"
+      return availableDays.includes(day) && availableSlots.some((s: string) => s.includes(slotName));
+    });
+  };
+
+  const getTrainerCourses = (trainerName: string) => {
+    const trainer = formadores.find(f => f[1] === trainerName);
+    if (!trainer) return [];
+    return trainer[6]?.split(',').map((c: string) => c.trim()) || [];
   };
 
   if (loading) return <div className="glass" style={{ padding: '2rem' }}>A carregar agenda...</div>;
@@ -482,20 +513,26 @@ function AgendaView() {
               {day === 'Sábado' ? (
                 <div className="agenda-slot agenda-slot--full">
                   <label>Dia Inteiro (09h-18h)</label>
-                  <input 
-                    placeholder="Nome do curso/reserva" 
-                    value={agenda[`${day}-full`] || ''} 
-                    onChange={e => updateSlot(day, 'full', e.target.value)}
+                  <AgendaSlotInputs 
+                    day={day} 
+                    slot="full" 
+                    agenda={agenda} 
+                    trainers={getAvailableTrainers(day, 'full')} 
+                    onUpdate={updateSlot}
+                    getCourses={getTrainerCourses}
                   />
                 </div>
               ) : (
                 SLOTS.map(slot => (
                   <div key={slot} className="agenda-slot">
-                    <label>{slot.split(' ')[0]}</label>
-                    <input 
-                      placeholder="Reservado por..." 
-                      value={agenda[`${day}-${slot}`] || ''} 
-                      onChange={e => updateSlot(day, slot, e.target.value)}
+                    <label>{slot}</label>
+                    <AgendaSlotInputs 
+                      day={day} 
+                      slot={slot} 
+                      agenda={agenda} 
+                      trainers={getAvailableTrainers(day, slot)} 
+                      onUpdate={updateSlot}
+                      getCourses={getTrainerCourses}
                     />
                   </div>
                 ))
@@ -504,6 +541,40 @@ function AgendaView() {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function AgendaSlotInputs({ day, slot, agenda, trainers, onUpdate, getCourses }: any) {
+  const key = `${day}-${slot}`;
+  const currentTrainer = agenda[key]?.trainer || '';
+  const currentCourse = agenda[key]?.course || '';
+  const availableCourses = getCourses(currentTrainer);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <select 
+        className="agenda-select"
+        value={currentTrainer}
+        onChange={e => onUpdate(day, slot, 'trainer', e.target.value)}
+      >
+        <option value="">— Formador —</option>
+        {trainers.map((f: any) => (
+          <option key={f[1]} value={f[1]}>{f[1]}</option>
+        ))}
+      </select>
+      
+      <select 
+        className="agenda-select"
+        value={currentCourse}
+        onChange={e => onUpdate(day, slot, 'course', e.target.value)}
+        disabled={!currentTrainer}
+      >
+        <option value="">— Curso —</option>
+        {availableCourses.map((c: string) => (
+          <option key={c} value={c}>{c}</option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -576,5 +647,8 @@ const ADMIN_STYLES = `
   .agenda-slot label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
   .agenda-slot input { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; color: var(--text); width: 100%; }
   .agenda-slot input:focus { border-color: var(--accent); outline: none; }
+  .agenda-select { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem; font-size: 0.8rem; color: var(--text); width: 100%; cursor: pointer; }
+  .agenda-select:focus { border-color: var(--accent); outline: none; }
+  .agenda-select:disabled { opacity: 0.5; cursor: not-allowed; }
   .agenda-slot--full { flex: 1; display: flex; flex-direction: column; justify-content: center; }
 `;
