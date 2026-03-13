@@ -1,73 +1,97 @@
-# React + TypeScript + Vite
+# FaroForma — Centro de Formação e Explicações
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A **FaroForma** é uma plataforma moderna e integrada para a gestão de inscrições de formadores, alunos e serviços administrativos. O projeto combina uma interface de utilizador (UI) de alta performance com um sistema de backoffice robusto, automatizando a sincronização de dados com o ecossistema Google Workspace.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Funcionalidades Principais
 
-## React Compiler
+### Website Público
+*   **Landing Page Dinâmica:** Seções otimizadas para conversão (Hero, Serviços, Explicações).
+*   **Gestão de Imagens:** Carrosséis automáticos com transições suaves (intervalos de 7s).
+*   **Formulários Inteligentes:** Inscrição de Alunos, Candidaturas de Formadores e Contactos com validação em tempo real.
+*   **SEO Dinâmico:** Meta tags controladas remotamente via Backoffice.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Backoffice (Área Administrativa)
+*   **Acesso Restrito:** Autenticação via Google Login restrita ao administrador oficial.
+*   **Dashboard de Controlo:** Resumo estatístico de todas as entradas no sistema.
+*   **Gestão de Inscrições:** Visualização em tempo real e edição manual de candidaturas diretamente na base de dados.
+*   **Agenda Sala 1:** Mapa de ocupação semanal (Segunda a Sábado) com seleção inteligente de formadores e cursos.
+*   **Exportação Documental:** Geração de PDFs e impressão formatada do mapa de ocupação.
+*   **Configurações de Site:** Edição de títulos, descrições e contactos sem necessidade de novo deploy.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🛠️ Stack Tecnológica
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Frontend
+- **Framework:** [React 19](https://react.dev/) com **TypeScript**.
+- **Build Tool:** [Vite](https://vitejs.dev/).
+- **Animações:** [Framer Motion](https://www.framer.com/motion/).
+- **Ícones:** [Lucide React](https://lucide.dev/).
+- **Routing:** React Router 7.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Backend & Infraestrutura
+- **Runtime:** [Node.js 22](https://nodejs.org/).
+- **Hosting:** [Firebase Hosting](https://firebase.google.com/docs/hosting).
+- **Serverless:** [Firebase Functions (2nd Gen)](https://firebase.google.com/docs/functions) baseadas em Cloud Run.
+- **Base de Dados:** [Cloud Firestore](https://firebase.google.com/docs/firestore) para estado da app e [Google Sheets](https://www.google.com/sheets/about/) para registos permanentes.
+- **Segurança:** [Google Secret Manager](https://cloud.google.com/secret-manager).
+- **Email:** Nodemailer com Gmail SMTP.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+---
+
+## 💻 Configuração e Desenvolvimento
+
+### Pré-requisitos
+*   Node.js v22 ou superior.
+*   Firebase CLI instalado (`npm install -g firebase-tools`).
+*   Arquivo `.env` configurado na raiz.
+
+### Instalação Local
+```bash
+# Instalar dependências do frontend
+npm install
+
+# Instalar dependências das funções
+cd functions && npm install && cd ..
+
+# Iniciar servidor de desenvolvimento
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Build e Deploy
+```bash
+# Build de produção
+npm run build
+cd functions && npm run build && cd ..
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Enviar para produção (Firebase)
+firebase deploy --project faroformapt
 ```
+
+---
+
+## 🔒 Configuração de Ambiente
+
+O projeto utiliza **Secrets** para proteger dados sensíveis. Certifique-se de que os seguintes valores estão configurados no Secret Manager do Google Cloud:
+
+1.  `GOOGLE_SERVICE_ACCOUNT_JSON`: Chave da conta de serviço para acesso ao Sheets/Firestore.
+2.  `SPREADSHEET_ID`: ID da Google Sheet onde os dados são guardados.
+3.  `GMAIL_USER`: Email de envio (`faroforma@gmail.com`).
+4.  `GMAIL_APP_PASSWORD`: Senha de aplicação de 16 caracteres gerada no Google.
+
+---
+
+## 📐 Arquitetura de Dados
+
+O sistema opera com um fluxo de **Sincronização Dupla**:
+1.  **Google Sheets:** Atua como o repositório de longa duração e interface amigável para consulta externa.
+2.  **Firestore:** Atua como a base de dados de alta velocidade para o Backoffice e configurações dinâmicas do site.
+
+---
+
+## 📄 Licença e Créditos
+
+© 2026 **FaroForma**. Todos os direitos reservados.
+Desenvolvido com foco em performance, segurança e automatização.
