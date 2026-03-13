@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import AnimatedSection from '../ui/AnimatedSection';
 import { ABOUT_FEATURES } from '../../data/about';
 import sala1 from '../../assets/images/Sala1.jpg';
@@ -29,12 +30,21 @@ export default function About() {
           <AnimatedSection direction="left" delay={0.1}>
             <div className="about__image-wrap">
               <div className="about__image-deco" />
-              <img
-                className="about__image"
-                src={ROOM_IMAGES[activeRoom]}
-                alt="Sala de formação moderna FaroForma"
-                loading="lazy"
-              />
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
+                <AnimatePresence>
+                  <motion.img
+                    key={activeRoom}
+                    className="about__image"
+                    src={ROOM_IMAGES[activeRoom]}
+                    alt="Sala de formação moderna FaroForma"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 1.2, ease: "easeInOut" }}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </AnimatePresence>
+              </div>
             </div>
           </AnimatedSection>
 
