@@ -178,20 +178,29 @@ async function updateSheetRow(tabName, rowIndex, values) {
     });
 }
 async function sendMail(options) {
+    console.log(`[Mail] Attempting to send email to: ${options.to} | Subject: ${options.subject}`);
     const user = GMAIL_USER.value();
     const pass = GMAIL_APP_PASSWORD.value();
     if (!user || !pass) {
-        console.warn('Mail credentials missing, skipping email.');
+        console.warn('[Mail] Credentials missing, skipping email.');
         return;
     }
     const transporter = nodemailer_1.default.createTransport({
         service: 'gmail',
         auth: { user, pass },
     });
-    await transporter.sendMail({
-        from: `"FaroForma" <${user}>`,
-        ...options
-    });
+    try {
+        const info = await transporter.sendMail({
+            from: `"FaroForma" <${user}>`,
+            ...options
+        });
+        console.log(`[Mail] Email sent successfully: ${info.messageId}`);
+        return info;
+    }
+    catch (err) {
+        console.error(`[Mail] Send failed:`, err.message);
+        throw err;
+    }
 }
 app.use((req, res, next) => {
     console.log(`[Express] Incoming Request - Method: ${req.method}, URL: ${req.url}, OriginalURL: ${req.originalUrl}, Path: ${req.path}`);
@@ -232,7 +241,24 @@ app.post('/api/inscricao-formadores', async (req, res) => {
         <p>Obrigado pelo interesse!</p>
         <p>— Equipa FaroForma</p>
       `,
-        }).catch(err => console.error('Mail failed:', err));
+        }).catch(err => console.error('Formador mail failed:', err));
+        const adminEmail = GMAIL_USER.value();
+        if (adminEmail) {
+            await sendMail({
+                to: adminEmail,
+                subject: `[ADMIN] Nova Candidatura de Formador: ${d.nome}`,
+                html: `
+          <h3>Nova Inscrição de Formador</h3>
+          <p><strong>Nome:</strong> ${d.nome}</p>
+          <p><strong>Email:</strong> ${d.email}</p>
+          <p><strong>Telefone:</strong> ${d.telefone}</p>
+          <p><strong>Áreas:</strong> ${d.areas.join(', ')}</p>
+          <p><strong>Modalidade:</strong> ${d.modalidade}</p>
+          <hr/>
+          <p>Ver todos os detalhes no <a href="https://faroformapt.web.app/admin">Backoffice</a>.</p>
+        `,
+            }).catch(err => console.error('Admin notification mail failed:', err));
+        }
         res.status(201).json({ message: 'Sucesso' });
     }
     catch (err) {
@@ -297,16 +323,43 @@ app.post('/api/student', async (req, res) => {
             d.contactPreference,
             d.notes || '',
         ]);
-        await sendMail({
-            to: d.email,
-            subject: 'FaroForma — Inscrição recebida',
-            html: `
-        <p>Olá <strong>${d.fullName}</strong>,</p>
-        <p>Recebemos a sua inscrição para <strong>${d.program}</strong>. Entraremos em contacto em até 24h úteis.</p>
-        <p>Obrigado!</p>
-        <p>— Equipa FaroForma</p>
-      `,
-        }).catch(err => console.error('Student mail failed:', err));
+        try {
+            await sendMail({
+                to: d.email,
+                subject: 'FaroForma — Inscrição recebida',
+                html: `
+          <p>Olá <strong>${d.fullName}</strong>,</p>
+          <p>Recebemos a sua inscrição para <strong>${d.program}</strong>. Entraremos em contacto em até 24h úteis.</p>
+          <p>Obrigado!</p>
+          <p>— Equipa FaroForma</p>
+        `,
+            });
+        }
+        catch (err) {
+            console.error('[Student Route] Aluno mail failed:', err.message);
+        }
+        try {
+            const adminEmail = GMAIL_USER.value();
+            if (adminEmail) {
+                await sendMail({
+                    to: adminEmail,
+                    subject: `[ADMIN] Nova Inscrição de Aluno: ${d.fullName}`,
+                    html: `
+            <h3>Nova Inscrição de Aluno</h3>
+            <p><strong>Nome:</strong> ${d.fullName}</p>
+            <p><strong>Email:</strong> ${d.email}</p>
+            <p><strong>Telefone:</strong> ${d.phone}</p>
+            <p><strong>Programa:</strong> ${d.program}</p>
+            <p><strong>Previsão de Início:</strong> ${d.startDate}</p>
+            <hr/>
+            <p>Ver todos os detalhes no <a href="https://faroformapt.web.app/admin">Backoffice</a>.</p>
+          `,
+                });
+            }
+        }
+        catch (err) {
+            console.error('[Student Route] Admin notification mail failed:', err.message);
+        }
         res.status(201).json({ message: 'Sucesso' });
     }
     catch (err) {

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { MapPin, Phone, Globe, Mail } from 'lucide-react';
+import { MapPin, Phone, Mail } from 'lucide-react';
 
 export const PHONE_NUMBERS = ['289 820 831', '91 781 23 79', '96 240 95 70'];
 
@@ -30,12 +30,5 @@ export const CONTACT_CARDS: ContactCard[] = [
     value: 'faroforma@gmail.com',
     isLink: true,
     href: 'mailto:faroforma@gmail.com',
-  },
-  {
-    icon: <Globe size={18} />,
-    label: 'Website',
-    value: 'www.formafaro.online',
-    isLink: true,
-    href: 'https://www.formafaro.online',
   },
 ];

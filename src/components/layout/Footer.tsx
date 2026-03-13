@@ -1,4 +1,4 @@
-import { MapPin, Phone, Globe, Mail } from 'lucide-react';
+import { MapPin, Phone, Mail } from 'lucide-react';
 import { PHONE_NUMBERS } from '../../data/contactInfo';
 import logo from '../../assets/images/logo.png';
 
@@ -67,17 +67,6 @@ export default function Footer() {
             <div className="footer__contact-item">
               <Mail size={14} />
               <a href="mailto:faroforma@gmail.com" style={{ color: 'inherit' }}>faroforma@gmail.com</a>
-            </div>
-            <div className="footer__contact-item">
-              <Globe size={14} />
-              <a
-                href="https://www.formafaro.online"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: 'var(--accent)' }}
-              >
-                www.formafaro.online
-              </a>
             </div>
           </div>
         </div>
