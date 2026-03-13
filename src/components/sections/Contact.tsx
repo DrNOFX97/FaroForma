@@ -3,6 +3,7 @@ import { motion, useInView } from 'framer-motion';
 import { Send, CheckCircle, Navigation } from 'lucide-react';
 import AnimatedSection from '../ui/AnimatedSection';
 import { CONTACT_CARDS } from '../../data/contactInfo';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface FormData {
   name: string;
@@ -22,6 +23,7 @@ interface FormErrors {
 const INITIAL: FormData = { name: '', email: '', phone: '', subject: '', message: '' };
 
 export default function Contact() {
+  const { language, t } = useLanguage();
   const DEST = 'Rua Conselheiro Sebasti\u00e3o Teles 2A, 8000 Faro, Portugal';
 
   const openDirections = () => {
@@ -56,11 +58,11 @@ export default function Contact() {
 
   const validate = (): boolean => {
     const e: FormErrors = {};
-    if (!form.name.trim())    e.name    = 'O nome é obrigatório.';
-    if (!form.email.trim())   e.email   = 'O email é obrigatório.';
+    if (!form.name.trim())    e.name    = language === 'pt' ? 'O nome é obrigatório.' : 'Name is required.';
+    if (!form.email.trim())   e.email   = language === 'pt' ? 'O email é obrigatório.' : 'Email is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-                              e.email   = 'Email inválido.';
-    if (!form.message.trim()) e.message = 'A mensagem é obrigatória.';
+                              e.email   = language === 'pt' ? 'Email inválido.' : 'Invalid email.';
+    if (!form.message.trim()) e.message = language === 'pt' ? 'A mensagem é obrigatória.' : 'Message is required.';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -89,10 +91,10 @@ export default function Contact() {
         setForm(INITIAL);
       } else {
         const body = await response.json().catch(() => ({}));
-        setSubmitErr((body as { error?: string }).error ?? 'Ocorreu um erro técnico. Tente novamente.');
+        setSubmitErr((body as { error?: string }).error ?? t('contact.form.error'));
       }
     } catch {
-      setSubmitErr('Ocorreu um erro técnico. Tente novamente.');
+      setSubmitErr(t('contact.form.error'));
     } finally {
       setLoading(false);
     }
@@ -108,31 +110,32 @@ export default function Contact() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
         >
-          <span className="tag">Contactos</span>
+          <span className="tag">{language === 'pt' ? 'Contactos' : 'Contacts'}</span>
           <h2>
-            Estamos aqui<br />
-            <span className="gradient-text">para o ajudar</span>
+            {language === 'pt' ? (
+              <>Estamos aqui<br /><span className="gradient-text">para o ajudar</span></>
+            ) : (
+              <>We are here<br /><span className="gradient-text">to help you</span></>
+            )}
           </h2>
-          <p>
-            Entre em contacto connosco para saber mais sobre os nossos serviços
-            ou para agendar uma sessão. Respondemos em menos de 24 horas.
-          </p>
+          <p>{t('contact.subtitle')}</p>
         </motion.div>
 
         <div className="contact__grid">
           {/* Info */}
           <AnimatedSection direction="left" delay={0.15}>
-            <h3 className="contact__info-title">Informação de Contacto</h3>
+            <h3 className="contact__info-title">{language === 'pt' ? 'Informação de Contacto' : 'Contact Information'}</h3>
             <p className="contact__info-sub">
-              Visite-nos presencialmente, ligue-nos ou envie uma mensagem.
-              A nossa equipa está disponível para o receber.
+              {language === 'pt' 
+                ? 'Visite-nos presencialmente, ligue-nos ou envie uma mensagem. A nossa equipa está disponível para o receber.'
+                : 'Visit us in person, call us, or send a message. Our team is available to welcome you.'}
             </p>
             <div className="contact__info-cards">
               {CONTACT_CARDS.map((c, i) => (
                 <div key={i} className="contact__info-card">
                   <div className="contact__info-card-icon">{c.icon}</div>
                   <div>
-                    <div className="contact__info-card-label">{c.label}</div>
+                    <div className="contact__info-card-label">{(c.label as any)[language] || c.label}</div>
                     <div className="contact__info-card-value">
                       {c.isLink ? (
                         <a href={c.href} target="_blank" rel="noopener noreferrer">
@@ -183,7 +186,7 @@ export default function Contact() {
                 }}
               >
                 <Navigation size={14} />
-                Como chegar
+                {language === 'pt' ? 'Como chegar' : 'Directions'}
               </button>
             </div>
           </AnimatedSection>
@@ -196,28 +199,28 @@ export default function Contact() {
                   <div className="form__success-icon">
                     <CheckCircle size={32} />
                   </div>
-                  <h3 className="form__success-title">Mensagem enviada!</h3>
+                  <h3 className="form__success-title">{language === 'pt' ? 'Mensagem enviada!' : 'Message sent!'}</h3>
                   <p className="form__success-sub">
-                    Obrigado pelo contacto. Responderemos brevemente.
+                    {language === 'pt' ? 'Obrigado pelo contacto. Responderemos brevemente.' : 'Thank you for contacting us. We will reply soon.'}
                   </p>
                   <button className="btn btn--outline btn--sm" onClick={() => setSuccess(false)}>
-                    Enviar outra mensagem
+                    {language === 'pt' ? 'Enviar outra mensagem' : 'Send another message'}
                   </button>
                 </div>
               ) : (
                 <>
-                  <h3 className="contact__form-title">Envie-nos uma mensagem</h3>
+                  <h3 className="contact__form-title">{language === 'pt' ? 'Envie-nos uma mensagem' : 'Send us a message'}</h3>
                   <form onSubmit={handleSubmit} noValidate>
                     <div className="form__grid">
                       {/* Name */}
                       <div className="form__group">
                         <label className="form__label" htmlFor="name">
-                          Nome <span>*</span>
+                          {t('contact.form.name')} <span>*</span>
                         </label>
                         <input
                           id="name" name="name" type="text"
                           className={`form__input${errors.name ? ' error' : ''}`}
-                          placeholder="O seu nome"
+                          placeholder={language === 'pt' ? 'O seu nome' : 'Your name'}
                           value={form.name}
                           onChange={handleChange}
                           autoComplete="name"
@@ -228,12 +231,12 @@ export default function Contact() {
                       {/* Email */}
                       <div className="form__group">
                         <label className="form__label" htmlFor="email">
-                          Email <span>*</span>
+                          {t('contact.form.email')} <span>*</span>
                         </label>
                         <input
                           id="email" name="email" type="email"
                           className={`form__input${errors.email ? ' error' : ''}`}
-                          placeholder="email@exemplo.com"
+                          placeholder="email@example.com"
                           value={form.email}
                           onChange={handleChange}
                           autoComplete="email"
@@ -243,7 +246,7 @@ export default function Contact() {
 
                       {/* Phone */}
                       <div className="form__group">
-                        <label className="form__label" htmlFor="phone">Telefone</label>
+                        <label className="form__label" htmlFor="phone">{t('contact.form.phone')}</label>
                         <input
                           id="phone" name="phone" type="tel"
                           className="form__input"
@@ -256,7 +259,7 @@ export default function Contact() {
 
                       {/* Subject */}
                       <div className="form__group">
-                        <label className="form__label" htmlFor="subject">Assunto</label>
+                        <label className="form__label" htmlFor="subject">{t('contact.form.subject')}</label>
                         <select
                           id="subject" name="subject"
                           className="form__input"
@@ -264,25 +267,25 @@ export default function Contact() {
                           onChange={handleChange}
                           style={{ appearance: 'none' }}
                         >
-                          <option value="">Selecionar assunto…</option>
-                          <option value="formacao">Formações Personalizadas</option>
-                          <option value="sala-reunioes">Aluguer Sala Reuniões</option>
-                          <option value="sala-formacao">Aluguer Sala Formação</option>
-                          <option value="administracao">Administração de Empresas</option>
-                          <option value="explicacoes">Explicações</option>
-                          <option value="outro">Outro</option>
+                          <option value="">{language === 'pt' ? 'Selecionar assunto…' : 'Select subject…'}</option>
+                          <option value="formacao">{language === 'pt' ? 'Formações Personalizadas' : 'Customised Training'}</option>
+                          <option value="sala-reunioes">{language === 'pt' ? 'Aluguer Sala Reuniões' : 'Meeting Room Hire'}</option>
+                          <option value="sala-formacao">{language === 'pt' ? 'Aluguer Sala Formação' : 'Training Room Hire'}</option>
+                          <option value="administracao">{language === 'pt' ? 'Administração de Empresas' : 'Business Administration'}</option>
+                          <option value="explicacoes">{language === 'pt' ? 'Explicações' : 'Tutoring'}</option>
+                          <option value="outro">{language === 'pt' ? 'Outro' : 'Other'}</option>
                         </select>
                       </div>
 
                       {/* Message */}
                       <div className="form__group form__group--full">
                         <label className="form__label" htmlFor="message">
-                          Mensagem <span>*</span>
+                          {t('contact.form.message')} <span>*</span>
                         </label>
                         <textarea
                           id="message" name="message"
                           className={`form__textarea${errors.message ? ' error' : ''}`}
-                          placeholder="Descreva como podemos ajudar…"
+                          placeholder={language === 'pt' ? 'Descreva como podemos ajudar…' : 'Describe how we can help…'}
                           value={form.message}
                           onChange={handleChange}
                         />
@@ -304,12 +307,12 @@ export default function Contact() {
                             animation: 'spin 0.7s linear infinite',
                             display: 'inline-block',
                           }} />
-                          A enviar…
+                          {t('contact.form.sending')}
                         </>
                       ) : (
                         <>
                           <Send size={18} />
-                          Enviar Mensagem
+                          {t('contact.form.send')}
                         </>
                       )}
                     </button>

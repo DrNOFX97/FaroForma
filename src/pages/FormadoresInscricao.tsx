@@ -7,6 +7,7 @@ import {
   ChevronRight, ChevronLeft, Send, CheckCircle, Check,
   X, ShieldCheck
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -40,26 +41,42 @@ const EMPTY: WizardData = {
   dias: [], periodos: [], modalidade: '', motivacao: '', termos: false,
 };
 
-const AREAS = [
-  'Formações Empresariais', 'Línguas Estrangeiras',
-  'TI e Informática', 'Saúde e Bem-Estar',
-  'Artes e Criatividade', 'Ciências e Tecnologia',
-  'Explicações (secundário)', 'Explicações (universitário)',
+const AREAS_LIST = [
+  { pt: 'Formações Empresariais', en: 'Business Training' },
+  { pt: 'Línguas Estrangeiras', en: 'Foreign Languages' },
+  { pt: 'TI e Informática', en: 'IT and Informatics' },
+  { pt: 'Saúde e Bem-Estar', en: 'Health and Wellbeing' },
+  { pt: 'Artes e Criatividade', en: 'Arts and Creativity' },
+  { pt: 'Ciências e Tecnologia', en: 'Science and Technology' },
+  { pt: 'Explicações (secundário)', en: 'Tutoring (Secondary)' },
+  { pt: 'Explicações (universitário)', en: 'Tutoring (University)' },
 ];
 
-const DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-const PERIODOS = ['Manhã (09h–13h)', 'Tarde (13h–18h)', 'Noite (18h–21h)'];
-
-const MODALIDADES = [
-  { value: 'presencial', label: 'Presencial', icon: <CalendarDays className="w-5 h-5" /> },
-  { value: 'online',     label: 'Online',     icon: <Monitor className="w-5 h-5" />      },
-  { value: 'hibrida',    label: 'Híbrida',    icon: <Shuffle className="w-5 h-5" />      },
+const DIAS_LIST = [
+  { pt: 'Segunda', en: 'Monday' },
+  { pt: 'Terça', en: 'Tuesday' },
+  { pt: 'Quarta', en: 'Wednesday' },
+  { pt: 'Quinta', en: 'Thursday' },
+  { pt: 'Sexta', en: 'Friday' },
+  { pt: 'Sábado', en: 'Saturday' },
 ];
 
-const STEPS = [
-  { number: 1, label: 'Perfil', icon: <User className="w-4 h-4" /> },
-  { number: 2, label: 'Expertise', icon: <Briefcase className="w-4 h-4" /> },
-  { number: 3, label: 'Agenda', icon: <Calendar className="w-4 h-4" /> },
+const PERIODOS_LIST = [
+  { pt: 'Manhã (09h–13h)', en: 'Morning (09h–13h)' },
+  { pt: 'Tarde (13h–18h)', en: 'Afternoon (13h–18h)' },
+  { pt: 'Noite (18h–21h)', en: 'Evening (18h–21h)' },
+];
+
+const MODALIDADES_LIST = [
+  { value: 'presencial', label: { pt: 'Presencial', en: 'In-person' }, icon: <CalendarDays className="w-5 h-5" /> },
+  { value: 'online',     label: { pt: 'Online', en: 'Online' },     icon: <Monitor className="w-5 h-5" />      },
+  { value: 'hibrida',    label: { pt: 'Híbrida', en: 'Hybrid' },    icon: <Shuffle className="w-5 h-5" />      },
+];
+
+const STEPS_LABELS = [
+  { number: 1, label: { pt: 'Perfil', en: 'Profile' }, icon: <User className="w-4 h-4" /> },
+  { number: 2, label: { pt: 'Expertise', en: 'Expertise' }, icon: <Briefcase className="w-4 h-4" /> },
+  { number: 3, label: { pt: 'Agenda', en: 'Schedule' }, icon: <Calendar className="w-4 h-4" /> },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -85,6 +102,7 @@ const itemVariants = {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function FormadoresInscricao({ onNavigateHome }: Props) {
+  const { language, t } = useLanguage();
   const [step, setStep]         = useState(1);
   const [dir, setDir]           = useState(1);
   const [data, setData]         = useState<WizardData>(EMPTY);
@@ -114,22 +132,22 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
   const validate = (s: number): boolean => {
     const e: WizardErrors = {};
     if (s === 1) {
-      if (!data.nome.trim())    e.nome    = 'Nome é necessário';
-      if (!data.email.trim())   e.email   = 'Email é necessário';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) e.email = 'Email inválido';
-      if (!data.telefone.trim()) e.telefone = 'Telefone é necessário';
+      if (!data.nome.trim())    e.nome    = language === 'pt' ? 'Nome é necessário' : 'Name is required';
+      if (!data.email.trim())   e.email   = language === 'pt' ? 'Email é necessário' : 'Email is required';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) e.email = language === 'pt' ? 'Email inválido' : 'Invalid email';
+      if (!data.telefone.trim()) e.telefone = language === 'pt' ? 'Telefone é necessário' : 'Phone is required';
     }
     if (s === 2) {
-      if (data.areas.length === 0) e.areas = 'Selecione pelo menos uma área';
-      if (!data.habilitacoes)  e.habilitacoes = 'Selecione as habilitações';
-      if (!data.capCcp)        e.capCcp = 'Indique se possui CAP/CCP';
+      if (data.areas.length === 0) e.areas = language === 'pt' ? 'Selecione pelo menos uma área' : 'Select at least one area';
+      if (!data.habilitacoes)  e.habilitacoes = language === 'pt' ? 'Selecione as habilitações' : 'Select qualifications';
+      if (!data.capCcp)        e.capCcp = language === 'pt' ? 'Indique se possui CAP/CCP' : 'Indicate if you have CAP/CCP';
     }
     if (s === 3) {
-      if (data.dias.length === 0)    e.dias    = 'Selecione a disponibilidade';
-      if (data.periodos.length === 0) e.periodos = 'Selecione o período';
-      if (!data.modalidade)          e.modalidade = 'Escolha a modalidade';
-      if (!data.motivacao.trim())    e.motivacao  = 'Escreva brevemente a sua motivação';
-      if (!data.termos)              e.termos     = 'Aceitação obrigatória';
+      if (data.dias.length === 0)    e.dias    = language === 'pt' ? 'Selecione a disponibilidade' : 'Select availability';
+      if (data.periodos.length === 0) e.periodos = language === 'pt' ? 'Selecione o período' : 'Select period';
+      if (!data.modalidade)          e.modalidade = language === 'pt' ? 'Escolha a modalidade' : 'Choose modality';
+      if (!data.motivacao.trim())    e.motivacao  = language === 'pt' ? 'Escreva brevemente a sua motivação' : 'Briefly write your motivation';
+      if (!data.termos)              e.termos     = language === 'pt' ? 'Aceitação obrigatória' : 'Mandatory acceptance';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -152,10 +170,10 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
         setSuccess(true);
       } else {
         const body = await response.json().catch(() => ({}));
-        setSubmitErr((body as { error?: string }).error ?? 'Ocorreu um erro técnico. Tente novamente.');
+        setSubmitErr((body as { error?: string }).error ?? (language === 'pt' ? 'Ocorreu um erro técnico. Tente novamente.' : 'A technical error occurred. Please try again.'));
       }
     } catch {
-      setSubmitErr('Ocorreu um erro técnico. Tente novamente.');
+      setSubmitErr(language === 'pt' ? 'Ocorreu um erro técnico. Tente novamente.' : 'A technical error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -181,13 +199,16 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
                 <CheckCircle className="w-12 h-12 text-accent" />
               </motion.div>
             </div>
-            <h2 className="gradient-text">Candidatura Enviada!</h2>
+            <h2 className="gradient-text">{language === 'pt' ? 'Candidatura Enviada!' : 'Application Sent!'}</h2>
             <p>
-              Obrigado, <strong>{data.nome.split(' ')[0]}</strong>. <br />
-              Recebemos os seus dados e entraremos em contacto muito em breve para agendar uma conversa.
+              {language === 'pt' ? (
+                <>Obrigado, <strong>{data.nome.split(' ')[0]}</strong>. <br />Recebemos os seus dados e entraremos em contacto muito em breve para agendar uma conversa.</>
+              ) : (
+                <>Thank you, <strong>{data.nome.split(' ')[0]}</strong>. <br />We have received your details and will be in touch very soon to schedule a chat.</>
+              )}
             </p>
             <button className="btn btn--primary" onClick={onNavigateHome}>
-              Voltar à Página Principal
+              {t('trainer.nav.back')}
             </button>
           </motion.div>
         </div>
@@ -205,13 +226,18 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
           animate="visible"
           variants={containerVariants}
         >
-          <motion.span variants={itemVariants} className="tag">Recrutamento Especializado</motion.span>
+          <motion.span variants={itemVariants} className="tag">{language === 'pt' ? 'Recrutamento Especializado' : 'Specialised Recruitment'}</motion.span>
           <motion.h1 variants={itemVariants} className="formadores-hero__title">
-            Faça parte da nossa rede de <span className="gradient-text">Formadores</span>
+            {language === 'pt' ? (
+              <>Faça parte da nossa rede de <span className="gradient-text">Formadores</span></>
+            ) : (
+              <>Join our network of <span className="gradient-text">Trainers</span></>
+            )}
           </motion.h1>
           <motion.p variants={itemVariants} className="formadores-hero__sub">
-            Valorizamos a expertise e o compromisso com a excelência. 
-            Preencha o formulário em 3 minutos.
+            {language === 'pt' 
+              ? 'Valorizamos a expertise e o compromisso com a excelência. Preencha o formulário em 3 minutos.'
+              : 'We value expertise and commitment to excellence. Complete the form in 3 minutes.'}
           </motion.p>
         </motion.div>
 
@@ -222,17 +248,17 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
             <div className="wizard-progress__track">
               <motion.div 
                 className="wizard-progress__fill"
-                animate={{ width: `${(step / STEPS.length) * 100}%` }}
+                animate={{ width: `${(step / STEPS_LABELS.length) * 100}%` }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}
               />
             </div>
             <div className="wizard-progress__steps">
-              {STEPS.map((s) => (
+              {STEPS_LABELS.map((s) => (
                 <div key={s.number} className={`wizard-progress__step ${step >= s.number ? 'is-active' : ''}`}>
                   <div className="wizard-progress__step-dot">
                     {step > s.number ? <Check className="w-3 h-3" /> : s.icon}
                   </div>
-                  <span className="wizard-progress__step-label">{s.label}</span>
+                  <span className="wizard-progress__step-label">{(s.label as any)[language]}</span>
                 </div>
               ))}
             </div>
@@ -255,9 +281,9 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
                   exit={{ opacity: 0, x: dir > 0 ? -20 : 20 }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                 >
-                  {step === 1 && <Step1 data={data} errors={errors} onChange={set} />}
-                  {step === 2 && <Step2 data={data} errors={errors} onChange={set} onToggle={toggle} />}
-                  {step === 3 && <Step3 data={data} errors={errors} onChange={set} onToggle={toggle} />}
+                  {step === 1 && <Step1 data={data} errors={errors} onChange={set} language={language} />}
+                  {step === 2 && <Step2 data={data} errors={errors} onChange={set} onToggle={toggle} language={language} />}
+                  {step === 3 && <Step3 data={data} errors={errors} onChange={set} onToggle={toggle} language={language} />}
                 </motion.div>
               </AnimatePresence>
 
@@ -270,18 +296,18 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
                   disabled={loading}
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  {step === 1 ? 'Cancelar' : 'Anterior'}
+                  {step === 1 ? (language === 'pt' ? 'Cancelar' : 'Cancel') : (language === 'pt' ? 'Anterior' : 'Previous')}
                 </button>
 
                 <div className="wizard-nav__dots">
-                  {STEPS.map((s) => (
+                  {STEPS_LABELS.map((s) => (
                     <div key={s.number} className={`wizard-nav__dot ${step === s.number ? 'is-active' : ''}`} />
                   ))}
                 </div>
 
                 {step < 3 ? (
                   <button type="button" className="btn btn--primary" onClick={next}>
-                    Próximo <ChevronRight className="w-4 h-4" />
+                    {language === 'pt' ? 'Próximo' : 'Next'} <ChevronRight className="w-4 h-4" />
                   </button>
                 ) : (
                   <button 
@@ -290,7 +316,7 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
                     onClick={handleSubmit} 
                     disabled={loading}
                   >
-                    {loading ? 'A Enviar...' : 'Finalizar Inscrição'} 
+                    {loading ? (language === 'pt' ? 'A Enviar...' : 'Sending...') : (language === 'pt' ? 'Finalizar Inscrição' : 'Complete Registration')} 
                     {loading ? null : <Send className="w-4 h-4" />}
                   </button>
                 )}
@@ -310,341 +336,7 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
         </div>
       </div>
 
-      <style>{`
-        .formadores-page {
-          padding: 8rem 0 6rem;
-          background: radial-gradient(circle at 0% 0%, var(--bg-1) 0%, var(--bg) 50%);
-          min-height: 100vh;
-        }
-
-        .formadores-hero {
-          text-align: center;
-          max-width: 800px;
-          margin: 0 auto 4rem;
-        }
-
-        .formadores-hero__title {
-          font-size: clamp(2.5rem, 6vw, 4rem);
-          font-weight: 900;
-          letter-spacing: -0.04em;
-          margin: 1.5rem 0;
-          line-height: 1.1;
-        }
-
-        .formadores-hero__sub {
-          font-size: 1.15rem;
-          color: var(--text-muted);
-          max-width: 500px;
-          margin: 0 auto;
-        }
-
-        .wizard-container {
-          max-width: 720px;
-          margin: 0 auto;
-        }
-
-        .wizard-progress {
-          margin-bottom: 3rem;
-          position: relative;
-        }
-
-        .wizard-progress__track {
-          height: 4px;
-          background: var(--border);
-          border-radius: 2px;
-          position: absolute;
-          top: 18px;
-          left: 10%;
-          right: 10%;
-          z-index: 0;
-        }
-
-        .wizard-progress__fill {
-          height: 100%;
-          background: var(--accent);
-          border-radius: 2px;
-        }
-
-        .wizard-progress__steps {
-          display: flex;
-          justify-content: space-between;
-          position: relative;
-          z-index: 1;
-        }
-
-        .wizard-progress__step {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .wizard-progress__step-dot {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: var(--bg-2);
-          border: 2px solid var(--border);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: var(--text-dim);
-          transition: all 0.3s var(--ease-smooth);
-        }
-
-        .wizard-progress__step.is-active .wizard-progress__step-dot {
-          background: var(--accent);
-          border-color: var(--accent);
-          color: white;
-          box-shadow: 0 0 20px var(--accent-glow);
-        }
-
-        .wizard-progress__step-label {
-          font-size: 0.75rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: var(--text-dim);
-        }
-
-        .wizard-progress__step.is-active .wizard-progress__step-label {
-          color: var(--text);
-        }
-
-        .wizard-card {
-          padding: 3rem;
-          border-radius: var(--radius-xl);
-        }
-
-        .wizard-step-title {
-          font-size: 1.75rem;
-          font-weight: 800;
-          margin-bottom: 0.5rem;
-          letter-spacing: -0.02em;
-        }
-
-        .wizard-step-sub {
-          color: var(--text-muted);
-          margin-bottom: 2.5rem;
-          font-size: 0.95rem;
-        }
-
-        .wizard-nav {
-          margin-top: 3rem;
-          padding-top: 2rem;
-          border-top: 1px solid var(--border);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .wizard-nav__dots {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .wizard-nav__dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: var(--border);
-          transition: all 0.3s;
-        }
-
-        .wizard-nav__dot.is-active {
-          background: var(--accent);
-          width: 20px;
-          border-radius: 3px;
-        }
-
-        .wizard-error-msg {
-          margin-top: 1.5rem;
-          background: rgba(239, 68, 68, 0.1);
-          color: #ef4444;
-          padding: 0.75rem 1rem;
-          border-radius: var(--radius);
-          font-size: 0.85rem;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          justify-content: center;
-        }
-
-        .wizard-error {
-          color: #ef4444;
-          font-size: 0.75rem;
-          margin-top: 0.35rem;
-          font-weight: 500;
-        }
-
-        /* CheckGrid Styling */
-        .wizard-check-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-          gap: 0.75rem;
-          margin: 1.5rem 0;
-        }
-
-        .wizard-check-item {
-          padding: 0.85rem 1rem;
-          border-radius: var(--radius);
-          border: 1px solid var(--border);
-          background: var(--bg-1);
-          color: var(--text-muted);
-          font-size: 0.9rem;
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          transition: all 0.2s;
-          text-align: left;
-        }
-
-        .wizard-check-item:hover {
-          border-color: var(--accent);
-          background: var(--bg-2);
-        }
-
-        .wizard-check-item.is-selected {
-          border-color: var(--accent);
-          background: rgba(16, 185, 129, 0.1);
-          color: var(--text);
-        }
-
-        .wizard-check-box {
-          width: 18px;
-          height: 18px;
-          border-radius: 4px;
-          border: 2px solid var(--border);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s;
-        }
-
-        .is-selected .wizard-check-box {
-          background: var(--accent);
-          border-color: var(--accent);
-          color: white;
-        }
-
-        /* RadioGrid Styling */
-        .wizard-radio-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 1rem;
-          margin: 1.5rem 0;
-        }
-
-        .wizard-radio-item {
-          padding: 1.5rem 1rem;
-          border-radius: var(--radius-lg);
-          border: 1px solid var(--border);
-          background: var(--bg-1);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.75rem;
-          font-weight: 600;
-          color: var(--text-muted);
-          transition: all 0.3s;
-        }
-
-        .wizard-radio-item.is-selected {
-          border-color: var(--accent);
-          background: rgba(16, 185, 129, 0.08);
-          color: var(--accent);
-          box-shadow: 0 10px 30px rgba(16, 185, 129, 0.1);
-          transform: translateY(-2px);
-        }
-
-        .success-card {
-          text-align: center;
-          padding: 5rem 3rem;
-          border-radius: var(--radius-xl);
-        }
-
-        .success-card__icon-wrap {
-          margin-bottom: 2rem;
-          display: flex;
-          justify-content: center;
-        }
-
-        .success-card__icon {
-          width: 100px;
-          height: 100px;
-          border-radius: 50%;
-          background: rgba(16, 185, 129, 0.1);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .success-card h2 {
-          font-size: 2.5rem;
-          font-weight: 900;
-          margin-bottom: 1rem;
-        }
-
-        .success-card p {
-          color: var(--text-muted);
-          font-size: 1.1rem;
-          line-height: 1.6;
-          max-width: 440px;
-          margin: 0 auto 3rem;
-        }
-
-        .setup-checklist {
-          background: rgba(16, 185, 129, 0.05);
-          border: 1px dashed var(--accent);
-          padding: 1.25rem;
-          border-radius: var(--radius);
-          overflow: hidden;
-        }
-
-        .setup-checklist__title {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.9rem;
-          font-weight: 700;
-          color: var(--text);
-          margin-bottom: 0.75rem;
-        }
-
-        .setup-checklist__list {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 0.5rem;
-        }
-
-        .setup-checklist__list li {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.85rem;
-          color: var(--text-muted);
-        }
-
-        @media (max-width: 640px) {
-          .wizard-card {
-            padding: 1.5rem;
-          }
-          .wizard-radio-grid {
-            grid-template-columns: 1fr;
-          }
-          .wizard-progress__step-label {
-            display: none;
-          }
-          .wizard-progress__track {
-            left: 5%;
-            right: 5%;
-          }
-        }
-      `}</style>
+      <style>{FORMADORES_STYLES}</style>
     </div>
   );
 }
@@ -656,21 +348,22 @@ interface StepProps {
   errors: WizardErrors;
   onChange: (field: keyof WizardData, value: WizardData[keyof WizardData]) => void;
   onToggle?: (field: 'areas' | 'dias' | 'periodos', val: string) => void;
+  language: 'pt' | 'en';
 }
 
-function Step1({ data, errors, onChange }: StepProps) {
+function Step1({ data, errors, onChange, language }: StepProps) {
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible">
-      <h2 className="wizard-step-title">Dados Pessoais</h2>
-      <p className="wizard-step-sub">Conte-nos um pouco sobre si para podermos começar.</p>
+      <h2 className="wizard-step-title">{language === 'pt' ? 'Dados Pessoais' : 'Personal Details'}</h2>
+      <p className="wizard-step-sub">{language === 'pt' ? 'Conte-nos um pouco sobre si para podermos começar.' : 'Tell us a bit about yourself so we can get started.'}</p>
 
       <div className="form__grid">
         <div className="form__group form__group--full">
-          <label className="form__label"><User size={14} /> Nome Completo</label>
+          <label className="form__label"><User size={14} /> {language === 'pt' ? 'Nome Completo' : 'Full Name'}</label>
           <input 
             type="text" 
             className={`form__input ${errors.nome ? 'error' : ''}`}
-            placeholder="Ex: Maria Santos"
+            placeholder={language === 'pt' ? 'Ex: Maria Santos' : 'e.g. Maria Santos'}
             value={data.nome}
             onChange={(e) => onChange('nome', e.target.value)}
           />
@@ -682,7 +375,7 @@ function Step1({ data, errors, onChange }: StepProps) {
           <input 
             type="email" 
             className={`form__input ${errors.email ? 'error' : ''}`}
-            placeholder="maria@exemplo.pt"
+            placeholder="email@example.com"
             value={data.email}
             onChange={(e) => onChange('email', e.target.value)}
           />
@@ -690,11 +383,11 @@ function Step1({ data, errors, onChange }: StepProps) {
         </div>
 
         <div className="form__group">
-          <label className="form__label"><Phone size={14} /> Telefone</label>
+          <label className="form__label"><Phone size={14} /> {language === 'pt' ? 'Telefone' : 'Phone'}</label>
           <input 
             type="tel" 
             className={`form__input ${errors.telefone ? 'error' : ''}`}
-            placeholder="912 345 678"
+            placeholder="9XX XXX XXX"
             value={data.telefone}
             onChange={(e) => onChange('telefone', e.target.value)}
           />
@@ -702,7 +395,7 @@ function Step1({ data, errors, onChange }: StepProps) {
         </div>
 
         <div className="form__group">
-          <label className="form__label"><Calendar size={14} /> Nascimento</label>
+          <label className="form__label"><Calendar size={14} /> {language === 'pt' ? 'Nascimento' : 'Date of Birth'}</label>
           <input 
             type="date" 
             className="form__input"
@@ -726,26 +419,26 @@ function Step1({ data, errors, onChange }: StepProps) {
   );
 }
 
-function Step2({ data, errors, onChange, onToggle }: StepProps) {
+function Step2({ data, errors, onChange, onToggle, language }: StepProps) {
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible">
-      <h2 className="wizard-step-title">Perfil & Expertise</h2>
-      <p className="wizard-step-sub">Quais são as suas áreas de domínio e experiência?</p>
+      <h2 className="wizard-step-title">{language === 'pt' ? 'Perfil & Expertise' : 'Profile & Expertise'}</h2>
+      <p className="wizard-step-sub">{language === 'pt' ? 'Quais são as suas áreas de domínio e experiência?' : 'What are your areas of expertise and experience?'}</p>
 
       <div className="form__group">
-        <label className="form__label">Áreas de Atuação (Selecione as aplicáveis)</label>
+        <label className="form__label">{language === 'pt' ? 'Áreas de Atuação (Selecione as aplicáveis)' : 'Areas of Expertise (Select all that apply)'}</label>
         <div className="wizard-check-grid">
-          {AREAS.map(area => (
+          {AREAS_LIST.map(area => (
             <button 
-              key={area}
+              key={area.pt}
               type="button"
-              className={`wizard-check-item ${data.areas.includes(area) ? 'is-selected' : ''}`}
-              onClick={() => onToggle?.('areas', area)}
+              className={`wizard-check-item ${data.areas.includes(area[language]) ? 'is-selected' : ''}`}
+              onClick={() => onToggle?.('areas', area[language])}
             >
               <div className="wizard-check-box">
-                {data.areas.includes(area) && <Check size={12} />}
+                {data.areas.includes(area[language]) && <Check size={12} />}
               </div>
-              {area}
+              {area[language]}
             </button>
           ))}
         </div>
@@ -754,18 +447,18 @@ function Step2({ data, errors, onChange, onToggle }: StepProps) {
 
       <div className="form__grid">
         <div className="form__group">
-          <label className="form__label"><GraduationCap size={14} /> Habilitações</label>
+          <label className="form__label"><GraduationCap size={14} /> {language === 'pt' ? 'Habilitações' : 'Qualifications'}</label>
           <select 
             className={`form__input ${errors.habilitacoes ? 'error' : ''}`}
             value={data.habilitacoes}
             onChange={(e) => onChange('habilitacoes', e.target.value)}
           >
-            <option value="">Selecionar...</option>
-            <option value="12ano">12.º Ano</option>
-            <option value="licenciatura">Licenciatura</option>
-            <option value="mestrado">Mestrado</option>
-            <option value="doutoramento">Doutoramento</option>
-            <option value="outro">Outro</option>
+            <option value="">{language === 'pt' ? 'Selecionar...' : 'Select...'}</option>
+            <option value="12ano">{language === 'pt' ? '12.º Ano' : 'Secondary Education'}</option>
+            <option value="licenciatura">{language === 'pt' ? 'Licenciatura' : "Bachelor's Degree"}</option>
+            <option value="mestrado">{language === 'pt' ? 'Mestrado' : "Master's Degree"}</option>
+            <option value="doutoramento">{language === 'pt' ? 'Doutoramento' : 'PhD'}</option>
+            <option value="outro">{language === 'pt' ? 'Outro' : 'Other'}</option>
           </select>
           {errors.habilitacoes && <span className="wizard-error">{errors.habilitacoes}</span>}
         </div>
@@ -777,31 +470,31 @@ function Step2({ data, errors, onChange, onToggle }: StepProps) {
             value={data.capCcp}
             onChange={(e) => onChange('capCcp', e.target.value)}
           >
-            <option value="">Selecionar...</option>
-            <option value="sim">Possuo Certificado</option>
-            <option value="nao">Não Possuo</option>
-            <option value="processo">Em Processo</option>
+            <option value="">{language === 'pt' ? 'Selecionar...' : 'Select...'}</option>
+            <option value="sim">{language === 'pt' ? 'Possuo Certificado' : 'I have a certificate'}</option>
+            <option value="nao">{language === 'pt' ? 'Não Possuo' : 'I do not have one'}</option>
+            <option value="processo">{language === 'pt' ? 'Em Processo' : 'In process'}</option>
           </select>
           {errors.capCcp && <span className="wizard-error">{errors.capCcp}</span>}
         </div>
 
         <div className="form__group">
-          <label className="form__label"><Briefcase size={14} /> Experiência (Anos)</label>
+          <label className="form__label"><Briefcase size={14} /> {language === 'pt' ? 'Experiência (Anos)' : 'Experience (Years)'}</label>
           <input 
             type="number" 
             className="form__input"
-            placeholder="Ex: 5"
+            placeholder="e.g. 5"
             value={data.experiencia}
             onChange={(e) => onChange('experiencia', e.target.value)}
           />
         </div>
 
         <div className="form__group">
-          <label className="form__label"><Globe size={14} /> LinkedIn (Opcional)</label>
+          <label className="form__label"><Globe size={14} /> LinkedIn ({language === 'pt' ? 'Opcional' : 'Optional'})</label>
           <input 
             type="url" 
             className="form__input"
-            placeholder="linkedin.com/in/perfil"
+            placeholder="linkedin.com/in/profile"
             value={data.linkedin}
             onChange={(e) => onChange('linkedin', e.target.value)}
           />
@@ -811,26 +504,26 @@ function Step2({ data, errors, onChange, onToggle }: StepProps) {
   );
 }
 
-function Step3({ data, errors, onChange, onToggle }: StepProps) {
+function Step3({ data, errors, onChange, onToggle, language }: StepProps) {
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible">
-      <h2 className="wizard-step-title">Disponibilidade</h2>
-      <p className="wizard-step-sub">Como e quando prefere colaborar connosco?</p>
+      <h2 className="wizard-step-title">{language === 'pt' ? 'Disponibilidade' : 'Availability'}</h2>
+      <p className="wizard-step-sub">{language === 'pt' ? 'Como e quando prefere colaborar connosco?' : 'How and when do you prefer to collaborate with us?'}</p>
 
       <div className="form__group">
-        <label className="form__label">Dias de Preferência</label>
+        <label className="form__label">{language === 'pt' ? 'Dias de Preferência' : 'Preferred Days'}</label>
         <div className="wizard-check-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
-          {DIAS.map(dia => (
+          {DIAS_LIST.map(dia => (
             <button 
-              key={dia}
+              key={dia.pt}
               type="button"
-              className={`wizard-check-item ${data.dias.includes(dia) ? 'is-selected' : ''}`}
-              onClick={() => onToggle?.('dias', dia)}
+              className={`wizard-check-item ${data.dias.includes(dia[language]) ? 'is-selected' : ''}`}
+              onClick={() => onToggle?.('dias', dia[language])}
             >
               <div className="wizard-check-box">
-                {data.dias.includes(dia) && <Check size={12} />}
+                {data.dias.includes(dia[language]) && <Check size={12} />}
               </div>
-              {dia}
+              {dia[language]}
             </button>
           ))}
         </div>
@@ -838,19 +531,19 @@ function Step3({ data, errors, onChange, onToggle }: StepProps) {
       </div>
 
       <div className="form__group">
-        <label className="form__label">Períodos Disponíveis</label>
+        <label className="form__label">{language === 'pt' ? 'Períodos Disponíveis' : 'Available Periods'}</label>
         <div className="wizard-check-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
-          {PERIODOS.map(periodo => (
+          {PERIODOS_LIST.map(periodo => (
             <button
-              key={periodo}
+              key={periodo.pt}
               type="button"
-              className={`wizard-check-item ${data.periodos.includes(periodo) ? 'is-selected' : ''}`}
-              onClick={() => onToggle?.('periodos', periodo)}
+              className={`wizard-check-item ${data.periodos.includes(periodo[language]) ? 'is-selected' : ''}`}
+              onClick={() => onToggle?.('periodos', periodo[language])}
             >
               <div className="wizard-check-box">
-                {data.periodos.includes(periodo) && <Check size={12} />}
+                {data.periodos.includes(periodo[language]) && <Check size={12} />}
               </div>
-              {periodo}
+              {periodo[language]}
             </button>
           ))}
         </div>
@@ -858,9 +551,9 @@ function Step3({ data, errors, onChange, onToggle }: StepProps) {
       </div>
 
       <div className="form__group">
-        <label className="form__label">Modalidade Predileta</label>
+        <label className="form__label">{language === 'pt' ? 'Modalidade Predileta' : 'Preferred Modality'}</label>
         <div className="wizard-radio-grid">
-          {MODALIDADES.map(m => (
+          {MODALIDADES_LIST.map(m => (
             <button 
               key={m.value}
               type="button"
@@ -868,7 +561,7 @@ function Step3({ data, errors, onChange, onToggle }: StepProps) {
               onClick={() => onChange('modalidade', m.value)}
             >
               {m.icon}
-              <span>{m.label}</span>
+              <span>{m.label[language]}</span>
             </button>
           ))}
         </div>
@@ -883,13 +576,13 @@ function Step3({ data, errors, onChange, onToggle }: StepProps) {
               className="setup-checklist glass"
             >
               <h4 className="setup-checklist__title">
-                <Monitor className="w-4 h-4 text-accent" /> Checklist de Setup Necessário
+                <Monitor className="w-4 h-4 text-accent" /> {language === 'pt' ? 'Checklist de Setup Necessário' : 'Required Setup Checklist'}
               </h4>
               <ul className="setup-checklist__list">
-                <li><Check className="w-4 h-4 text-accent" /> Computador com câmara e microfone</li>
-                <li><Check className="w-4 h-4 text-accent" /> Câmara HD/4K (Preferencial)</li>
-                <li><Check className="w-4 h-4 text-accent" /> Auscultadores com microfone (Headset)</li>
-                <li><Check className="w-4 h-4 text-accent" /> Ligação estável à Internet</li>
+                <li><Check className="w-4 h-4 text-accent" /> {language === 'pt' ? 'Computador com câmara e microfone' : 'Computer with camera and microphone'}</li>
+                <li><Check className="w-4 h-4 text-accent" /> {language === 'pt' ? 'Câmara HD/4K (Preferencial)' : 'HD/4K Camera (Preferred)'}</li>
+                <li><Check className="w-4 h-4 text-accent" /> {language === 'pt' ? 'Auscultadores com microfone (Headset)' : 'Headset with microphone'}</li>
+                <li><Check className="w-4 h-4 text-accent" /> {language === 'pt' ? 'Ligação estável à Internet' : 'Stable internet connection'}</li>
               </ul>
             </motion.div>
           )}
@@ -897,10 +590,10 @@ function Step3({ data, errors, onChange, onToggle }: StepProps) {
       </div>
 
       <div className="form__group form__group--full">
-        <label className="form__label"><MessageSquare size={14} /> Motivação</label>
+        <label className="form__label"><MessageSquare size={14} /> {language === 'pt' ? 'Motivação' : 'Motivation'}</label>
         <textarea 
           className={`form__textarea ${errors.motivacao ? 'error' : ''}`}
-          placeholder="O que o motiva a ser formador na FaroForma?"
+          placeholder={language === 'pt' ? 'O que o motiva a ser formador na FaroForma?' : 'What motivates you to be a trainer at FaroForma?'}
           rows={4}
           value={data.motivacao}
           onChange={(e) => onChange('motivacao', e.target.value)}
@@ -918,9 +611,62 @@ function Step3({ data, errors, onChange, onToggle }: StepProps) {
           <div className="wizard-check-box">
             {data.termos && <Check size={12} />}
           </div>
-          <span style={{ fontSize: '0.85rem' }}>Aceito o processamento dos meus dados para fins de recrutamento.</span>
+          <span style={{ fontSize: '0.85rem' }}>
+            {language === 'pt' ? 'Aceito o processamento dos meus dados para fins de recrutamento.' : 'I accept the processing of my data for recruitment purposes.'}
+          </span>
         </button>
       </div>
     </motion.div>
   );
 }
+
+const FORMADORES_STYLES = `
+  .formadores-page { padding: 8rem 0 6rem; background: radial-gradient(circle at 0% 0%, var(--bg-1) 0%, var(--bg) 50%); min-height: 100vh; }
+  .formadores-hero { text-align: center; max-width: 800px; margin: 0 auto 4rem; }
+  .formadores-hero__title { font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 900; letter-spacing: -0.04em; margin: 1.5rem 0; line-height: 1.1; }
+  .formadores-hero__sub { font-size: 1.15rem; color: var(--text-muted); max-width: 500px; margin: 0 auto; }
+  .wizard-container { max-width: 720px; margin: 0 auto; }
+  .wizard-progress { margin-bottom: 3rem; position: relative; }
+  .wizard-progress__track { height: 4px; background: var(--border); border-radius: 2px; position: absolute; top: 18px; left: 10%; right: 10%; z-index: 0; }
+  .wizard-progress__fill { height: 100%; background: var(--accent); border-radius: 2px; }
+  .wizard-progress__steps { display: flex; justify-content: space-between; position: relative; z-index: 1; }
+  .wizard-progress__step { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+  .wizard-progress__step-dot { width: 40px; height: 40px; border-radius: 50%; background: var(--bg-2); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text-dim); transition: all 0.3s var(--ease-smooth); }
+  .wizard-progress__step.is-active .wizard-progress__step-dot { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 0 20px var(--accent-glow); }
+  .wizard-progress__step-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); }
+  .wizard-progress__step.is-active .wizard-progress__step-label { color: var(--text); }
+  .wizard-card { padding: 3rem; border-radius: var(--radius-xl); }
+  .wizard-step-title { font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  .wizard-step-sub { color: var(--text-muted); margin-bottom: 2.5rem; font-size: 0.95rem; }
+  .wizard-nav { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .wizard-nav__dots { display: flex; gap: 0.5rem; }
+  .wizard-nav__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: all 0.3s; }
+  .wizard-nav__dot.is-active { background: var(--accent); width: 20px; border-radius: 3px; }
+  .wizard-error-msg { margin-top: 1.5rem; background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 0.75rem 1rem; border-radius: var(--radius); font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; justify-content: center; }
+  .wizard-error { color: #ef4444; font-size: 0.75rem; margin-top: 0.35rem; font-weight: 500; }
+  .wizard-check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin: 1.5rem 0; }
+  .wizard-check-item { padding: 0.85rem 1rem; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-1); color: var(--text-muted); font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 0.75rem; transition: all 0.2s; text-align: left; }
+  .wizard-check-item:hover { border-color: var(--accent); background: var(--bg-2); }
+  .wizard-check-item.is-selected { border-color: var(--accent); background: rgba(16, 185, 129, 0.1); color: var(--text); }
+  .wizard-check-box { width: 18px; height: 18px; border-radius: 4px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .is-selected .wizard-check-box { background: var(--accent); border-color: var(--accent); color: white; }
+  .wizard-radio-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
+  .wizard-radio-item { padding: 1.5rem 1rem; border-radius: var(--radius-lg); border: 1px solid var(--border); background: var(--bg-1); display: flex; flex-direction: column; align-items: center; gap: 0.75rem; font-weight: 600; color: var(--text-muted); transition: all 0.3s; }
+  .wizard-radio-item.is-selected { border-color: var(--accent); background: rgba(16, 185, 129, 0.08); color: var(--accent); box-shadow: 0 10px 30px rgba(16, 185, 129, 0.1); transform: translateY(-2px); }
+  .success-card { text-align: center; padding: 5rem 3rem; border-radius: var(--radius-xl); }
+  .success-card__icon-wrap { margin-bottom: 2rem; display: flex; justify-content: center; }
+  .success-card__icon { width: 100px; height: 100px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); display: flex; align-items: center; justify-content: center; }
+  .success-card h2 { font-size: 2.5rem; font-weight: 900; margin-bottom: 1rem; }
+  .success-card p { color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; max-width: 440px; margin: 0 auto 3rem; }
+  .setup-checklist { background: rgba(16, 185, 129, 0.05); border: 1px dashed var(--accent); padding: 1.25rem; border-radius: var(--radius); overflow: hidden; }
+  .setup-checklist__title { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 0.75rem; }
+  .setup-checklist__list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; }
+  .setup-checklist__list li { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted); }
+
+  @media (max-width: 640px) {
+    .wizard-card { padding: 1.5rem; }
+    .wizard-radio-grid { grid-template-columns: 1fr; }
+    .wizard-progress__step-label { display: none; }
+    .wizard-progress__track { left: 5%; right: 5%; }
+  }
+`;

@@ -1,17 +1,20 @@
 import { MapPin, Phone, Mail } from 'lucide-react';
 import { PHONE_NUMBERS } from '../../data/contactInfo';
 import logo from '../../assets/images/logo.png';
+import { useLanguage } from '../../context/LanguageContext';
 
-const SERVICE_LINKS = [
-  'Formações Personalizadas',
-  'Aluguer de Salas',
-  'Administração de Empresas',
-  'Serviços Administrativos',
-  'Explicações',
+const SERVICE_LINKS_LIST = [
+  { pt: 'Formações Personalizadas', en: 'Customised Training' },
+  { pt: 'Aluguer de Salas', en: 'Room Hire' },
+  { pt: 'Administração de Empresas', en: 'Business Administration' },
+  { pt: 'Serviços Administrativos', en: 'Administrative Services' },
+  { pt: 'Explicações', en: 'Tutoring' },
 ];
 
 
 export default function Footer() {
+  const { language, t } = useLanguage();
+  
   const scrollTo = (href: string) => {
     document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -24,21 +27,22 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="footer__brand-logo">
-              <img src={logo} alt="FaroForma (Centro FaroForma)" className="footer__logo-img" />
+              <img src={logo} alt="FaroForma" className="footer__logo-img" />
             </div>
             <p className="footer__brand-text">
-              Formações personalizadas, apoio administrativo e explicações em Faro.
-              Qualidade e experiência ao seu serviço desde 2009.
+              {language === 'pt' 
+                ? 'Formações personalizadas, apoio administrativo e explicações em Faro. Qualidade e experiência ao seu serviço desde 2009.'
+                : 'Customised training, administrative support and tutoring in Faro. Quality and experience at your service since 2009.'}
             </p>
           </div>
 
           {/* Services */}
           <div>
-            <p className="footer__col-title">Serviços</p>
+            <p className="footer__col-title">{language === 'pt' ? 'Serviços' : 'Services'}</p>
             <div className="footer__links">
-              {SERVICE_LINKS.map(s => (
-                <button key={s} className="footer__link" onClick={() => scrollTo('#servicos')}>
-                  {s}
+              {SERVICE_LINKS_LIST.map(s => (
+                <button key={s.pt} className="footer__link" onClick={() => scrollTo('#servicos')}>
+                  {s[language]}
                 </button>
               ))}
             </div>
@@ -46,10 +50,14 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <p className="footer__col-title">Contacto</p>
+            <p className="footer__col-title">{language === 'pt' ? 'Contacto' : 'Contact'}</p>
             <div className="footer__contact-item">
               <MapPin size={14} />
-              <span>Rua Conselheiro Sebastião Teles 2A<br />8000-256 Faro</span>
+              <span>
+                {language === 'pt' 
+                  ? <>Rua Conselheiro Sebastião Teles 2A<br />8000-256 Faro</>
+                  : <>2A Rua Conselheiro Sebastião Teles<br />8000-256 Faro, Portugal</>}
+              </span>
             </div>
             <div className="footer__contact-item">
               <Phone size={14} />
@@ -73,11 +81,11 @@ export default function Footer() {
 
         <div className="footer__bar">
           <p className="footer__bar-left">
-            © 2026 FaroForma. Todos os direitos reservados.
+            © 2026 FaroForma. {t('footer.rights')}
           </p>
           <div className="footer__bar-right">
-            <button className="footer__bar-link">Política de Privacidade</button>
-            <button className="footer__bar-link">Termos de Uso</button>
+            <button className="footer__bar-link">{t('footer.privacy')}</button>
+            <button className="footer__bar-link">{t('footer.terms')}</button>
           </div>
         </div>
       </div>

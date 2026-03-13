@@ -1,6 +1,6 @@
 export const NAV_LINKS = [
-  { label: 'Início', href: '#hero' },
-  { label: 'Serviços', href: '#servicos' },
-  { label: 'Cursos', href: '#cursos' },
-  { label: 'Explicações', href: '#explicacoes' },
+  { label: { pt: 'Início', en: 'Home' }, href: '#hero' },
+  { label: { pt: 'Serviços', en: 'Services' }, href: '#servicos' },
+  { label: { pt: 'Cursos', en: 'Courses' }, href: '#cursos' },
+  { label: { pt: 'Explicações', en: 'Tutoring' }, href: '#explicacoes' },
 ];

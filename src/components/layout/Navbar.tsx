@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Sun, Moon, ArrowLeft, UserCheck } from 'lucide-react';
+import { Menu, X, Sun, Moon, ArrowLeft, UserCheck, Languages } from 'lucide-react';
 import { NAV_LINKS } from '../../data/navLinks';
 import logo from '../../assets/images/logo.png';
 import type { Page } from '../../App';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface NavbarProps {
   isDark: boolean;
@@ -15,6 +16,7 @@ interface NavbarProps {
 export default function Navbar({ isDark, onThemeToggle, currentPage, onNavigate }: NavbarProps) {
   const [scrolled, setScrolled]     = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -30,6 +32,10 @@ export default function Navbar({ isDark, onThemeToggle, currentPage, onNavigate 
 
   const goHome = () => { setMobileOpen(false); onNavigate('home'); };
   const goFormadores = () => { setMobileOpen(false); onNavigate('formadores'); };
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'pt' ? 'en' : 'pt');
+  };
 
   return (
     <motion.header
@@ -50,41 +56,49 @@ export default function Navbar({ isDark, onThemeToggle, currentPage, onNavigate 
             <>
               {NAV_LINKS.map(link => (
                 <button key={link.href} className="navbar__link" onClick={() => scrollTo(link.href)}>
-                  {link.label}
+                  {typeof link.label === 'string' ? link.label : (link.label as any)[language]}
                 </button>
               ))}
               <button className="btn btn--gold btn--sm" onClick={goFormadores} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <UserCheck size={15} />
-                Inscrição Formadores
+                {t('nav.trainers')}
               </button>
               <button className="btn btn--primary btn--sm" onClick={() => scrollTo('#contactos')}>
-                Contacte-nos
+                {t('nav.contact')}
               </button>
             </>
           ) : (
             <button className="navbar__link" onClick={goHome} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <ArrowLeft size={16} />
-              Voltar ao início
+              {t('trainer.nav.back')}
             </button>
           )}
         </nav>
 
-        {/* Theme toggle */}
-        <button className="theme-toggle" onClick={onThemeToggle} aria-label={isDark ? 'Modo claro' : 'Modo escuro'}>
-          <motion.div
-            key={isDark ? 'moon' : 'sun'}
-            initial={{ rotate: -30, opacity: 0, scale: 0.7 }}
-            animate={{ rotate: 0, opacity: 1, scale: 1 }}
-            transition={{ duration: 0.25 }}
-          >
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
-          </motion.div>
-        </button>
+        <div className="navbar__actions">
+          {/* Language toggle */}
+          <button className="lang-toggle" onClick={toggleLanguage} aria-label="Alterar idioma">
+            <Languages size={18} />
+            <span>{language.toUpperCase()}</span>
+          </button>
 
-        {/* Mobile toggle */}
-        <button className="navbar__hamburger" onClick={() => setMobileOpen(v => !v)} aria-label="Menu">
-          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
+          {/* Theme toggle */}
+          <button className="theme-toggle" onClick={onThemeToggle} aria-label={isDark ? 'Modo claro' : 'Modo escuro'}>
+            <motion.div
+              key={isDark ? 'moon' : 'sun'}
+              initial={{ rotate: -30, opacity: 0, scale: 0.7 }}
+              animate={{ rotate: 0, opacity: 1, scale: 1 }}
+              transition={{ duration: 0.25 }}
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </motion.div>
+          </button>
+
+          {/* Mobile toggle */}
+          <button className="navbar__hamburger" onClick={() => setMobileOpen(v => !v)} aria-label="Menu">
+            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer */}
@@ -103,22 +117,22 @@ export default function Navbar({ isDark, onThemeToggle, currentPage, onNavigate 
                   <motion.button key={link.href} className="navbar__mobile-link" onClick={() => scrollTo(link.href)}
                     initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 + 0.05 }}>
-                    {link.label}
+                    {typeof link.label === 'string' ? link.label : (link.label as any)[language]}
                   </motion.button>
                 ))}
                 <div style={{ padding: '0.75rem 2rem' }}>
                   <button className="btn btn--gold" style={{ width: '100%', justifyContent: 'center', marginBottom: '0.5rem' }} onClick={goFormadores}>
-                    <UserCheck size={16} /> Inscrição Formadores
+                    <UserCheck size={16} /> {t('nav.trainers')}
                   </button>
                   <button className="btn btn--primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => scrollTo('#contactos')}>
-                    Contacte-nos
+                    {t('nav.contact')}
                   </button>
                 </div>
               </>
             ) : (
               <div style={{ padding: '1rem 2rem 1.25rem' }}>
                 <button className="btn btn--outline" style={{ width: '100%', justifyContent: 'center' }} onClick={goHome}>
-                  <ArrowLeft size={16} /> Voltar ao início
+                  <ArrowLeft size={16} /> {t('trainer.nav.back')}
                 </button>
               </div>
             )}

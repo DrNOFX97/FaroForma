@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AnimatedSection from '../ui/AnimatedSection';
 import { TUTORING_SUBJECTS, TUTORING_LEVELS } from '../../data/tutoring';
+import { useLanguage } from '../../context/LanguageContext';
 
 import img1 from '../../assets/images/explicacoes1.png';
 import img2 from '../../assets/images/explicacoes2.png';
@@ -9,6 +10,7 @@ import img2 from '../../assets/images/explicacoes2.png';
 const IMAGES = [img1, img2];
 
 export default function Tutoring() {
+  const { language, t } = useLanguage();
   const [currentIdx, setCurrentIdx] = useState(0);
 
   useEffect(() => {
@@ -24,15 +26,18 @@ export default function Tutoring() {
         <div className="tutoring__grid">
           {/* Content */}
           <AnimatedSection direction="left" delay={0.1}>
-            <span className="tag tutoring__tag">Explicações</span>
+            <span className="tag tutoring__tag">{language === 'pt' ? 'Explicações' : 'Tutoring'}</span>
             <h2 className="tutoring__title">
-              Apoio académico<br />
-              <span className="gradient-text">personalizado e eficaz</span>
+              {language === 'pt' ? (
+                <>Apoio académico<br /><span className="gradient-text">personalizado e eficaz</span></>
+              ) : (
+                <>Academic support<br /><span className="gradient-text">personalised and effective</span></>
+              )}
             </h2>
             <p className="tutoring__text">
-              Oferecemos explicações desde o secundário até à universidade, com aulas
-              personalizadas e metodologias adaptadas ao nível e objetivos de cada aluno.
-              Os nossos professores são especialistas nas suas áreas.
+              {language === 'pt'
+                ? 'Oferecemos explicações desde o secundário até à universidade, com aulas personalizadas e metodologias adaptadas ao nível e objetivos de cada aluno. Os nossos professores são especialistas nas suas áreas.'
+                : 'We offer tutoring from secondary school to university, with personalised classes and methodologies adapted to the level and goals of each student. Our teachers are specialists in their fields.'}
             </p>
 
             {/* Subjects */}
@@ -40,7 +45,7 @@ export default function Tutoring() {
               {TUTORING_SUBJECTS.map((s, i) => (
                 <span key={i} className={`tutoring__subject${i === 0 ? ' tutoring__subject--active' : ''}`}>
                   <span>{s.emoji}</span>
-                  {s.label}
+                  {(s.label as any)[language]}
                 </span>
               ))}
             </div>
@@ -49,8 +54,8 @@ export default function Tutoring() {
             <div className="tutoring__levels">
               {TUTORING_LEVELS.map((l, i) => (
                 <div key={i} className="tutoring__level">
-                  <div className="tutoring__level-title">{l.title}</div>
-                  <div className="tutoring__level-desc">{l.desc}</div>
+                  <div className="tutoring__level-title">{(l.title as any)[language]}</div>
+                  <div className="tutoring__level-desc">{(l.desc as any)[language]}</div>
                 </div>
               ))}
             </div>
@@ -59,7 +64,7 @@ export default function Tutoring() {
               className="btn btn--primary"
               onClick={() => document.querySelector('#contactos')?.scrollIntoView({ behavior: 'smooth' })}
             >
-              Marcar explicação
+              {t('tutoring.mark')}
             </button>
           </AnimatedSection>
 
@@ -71,7 +76,7 @@ export default function Tutoring() {
                   <motion.img
                     key={currentIdx}
                     src={IMAGES[currentIdx]}
-                    alt="Sessão de explicações personalizada"
+                    alt={language === 'pt' ? 'Sessão de explicações personalizada' : 'Personalised tutoring session'}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -83,10 +88,12 @@ export default function Tutoring() {
               </div>
               <div className="tutoring__card-float">
                 <div className="tutoring__card-float-icon">🎓</div>
-                <div className="tutoring__card-float-title">Taxa de Aprovação</div>
+                <div className="tutoring__card-float-title">{language === 'pt' ? 'Taxa de Aprovação' : 'Pass Rate'}</div>
                 <div className="tutoring__card-float-sub" style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '1.4rem' }}>
                   98%
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}> dos alunos</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}> 
+                    {language === 'pt' ? ' dos alunos' : ' of students'}
+                  </span>
                 </div>
               </div>
             </div>

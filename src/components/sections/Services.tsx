@@ -2,8 +2,10 @@ import { useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { SERVICES } from '../../data/services';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function Services() {
+  const { language } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
 
@@ -17,14 +19,18 @@ export default function Services() {
           transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
           ref={ref}
         >
-          <span className="tag">Serviços</span>
+          <span className="tag">{language === 'pt' ? 'Serviços' : 'Services'}</span>
           <h2>
-            Tudo o que precisa<br />
-            <span className="gradient-text">num único lugar</span>
+            {language === 'pt' ? (
+              <>Tudo o que precisa<br /><span className="gradient-text">num único lugar</span></>
+            ) : (
+              <>Everything you need<br /><span className="gradient-text">in one place</span></>
+            )}
           </h2>
           <p>
-            Oferecemos uma gama completa de serviços de formação e administração,
-            adaptados às necessidades de empresas e particulares.
+            {language === 'pt'
+              ? 'Oferecemos uma gama completa de serviços de formação e administração, adaptados às necessidades de empresas e particulares.'
+              : 'We offer a complete range of training and administration services, adapted to the needs of companies and individuals.'}
           </p>
         </motion.div>
 
@@ -39,10 +45,10 @@ export default function Services() {
             >
               <div className="service-card__glow" />
               <div className="service-card__icon">{s.icon}</div>
-              <h3 className="service-card__title">{s.title}</h3>
-              <p className="service-card__desc">{s.desc}</p>
+              <h3 className="service-card__title">{s.title[language]}</h3>
+              <p className="service-card__desc">{s.desc[language]}</p>
               <div className="service-card__arrow">
-                Saber mais <ArrowRight size={14} />
+                {language === 'pt' ? 'Saber mais' : 'Learn more'} <ArrowRight size={14} />
               </div>
             </motion.div>
           ))}

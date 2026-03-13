@@ -4,8 +4,10 @@ import { MessageCircle, Users, Award, Target } from 'lucide-react';
 import AnimatedSection from '../ui/AnimatedSection';
 import { COURSE_INFO } from '../../data/courses';
 import type { CourseHighlight } from '../../data/courses';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function Courses() {
+  const { language } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
   const [modalOpen, setModalOpen] = useState(false);
@@ -13,7 +15,7 @@ export default function Courses() {
     name: '',
     email: '',
     phone: '',
-    level: COURSE_INFO.schedule[0].turma,
+    level: (COURSE_INFO.schedule[0].turma as any)[language],
   });
   const [formSuccess, setFormSuccess] = useState(false);
 
@@ -37,22 +39,22 @@ export default function Courses() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
         >
-          <span className="tag">Cursos</span>
+          <span className="tag">{language === 'pt' ? 'Cursos' : 'Courses'}</span>
           <h2>
-            {COURSE_INFO.title}<br />
-            <span className="gradient-text">{COURSE_INFO.subtitle}</span>
+            {COURSE_INFO.title[language]}<br />
+            <span className="gradient-text">{COURSE_INFO.subtitle[language]}</span>
           </h2>
           <p>
-            {COURSE_INFO.description}<br />
-            <strong>{COURSE_INFO.status}</strong>
+            {COURSE_INFO.description[language]}<br />
+            <strong>{COURSE_INFO.status[language]}</strong>
           </p>
         </motion.div>
 
         <div className="courses__grid">
           <AnimatedSection direction="left" delay={0.15}>
               <div className="courses__highlights">
-                {COURSE_INFO.highlights.map((item: CourseHighlight) => (
-                  <div key={item.text} className="courses__highlight">
+                {COURSE_INFO.highlights.map((item: CourseHighlight, i: number) => (
+                  <div key={i} className="courses__highlight">
                     <span className="courses__highlight-icon">
                       {{
                         MessageCircle: <MessageCircle size={16} />,
@@ -61,7 +63,7 @@ export default function Courses() {
                         Bullseye: <Target size={16} />,
                       }[item.icon]}
                     </span>
-                    <span>{item.text}</span>
+                    <span>{item.text[language]}</span>
                   </div>
                 ))}
               </div>
@@ -75,7 +77,7 @@ export default function Courses() {
                     setFormSuccess(false);
                   }}
                 >
-                  Inscrever-me
+                  {language === 'pt' ? 'Inscrever-me' : 'Enrol now'}
                 </button>
               </div>
             </div>
@@ -83,20 +85,20 @@ export default function Courses() {
 
           <AnimatedSection direction="right" delay={0.25}>
             <div className="courses__schedule">
-              <h3>Horários das Turmas</h3>
+              <h3>{language === 'pt' ? 'Horários das Turmas' : 'Class Schedules'}</h3>
               <div className="courses__table">
                 <div className="courses__row is-header">
-                  <span>Turma</span>
-                  <span>Período</span>
-                  <span>Horário</span>
-                  <span>Dias</span>
+                  <span>{language === 'pt' ? 'Turma' : 'Class'}</span>
+                  <span>{language === 'pt' ? 'Período' : 'Period'}</span>
+                  <span>{language === 'pt' ? 'Horário' : 'Schedule'}</span>
+                  <span>{language === 'pt' ? 'Dias' : 'Days'}</span>
                 </div>
-                {COURSE_INFO.schedule.map(slot => (
-                  <div key={slot.turma} className="courses__row">
-                    <span>{slot.turma}</span>
-                    <span>{slot.período}</span>
+                {COURSE_INFO.schedule.map((slot, i) => (
+                  <div key={i} className="courses__row">
+                    <span>{(slot.turma as any)[language]}</span>
+                    <span>{(slot.período as any)[language]}</span>
                     <span>{slot.horário}</span>
-                    <span>{slot.dias}</span>
+                    <span>{(slot.dias as any)[language]}</span>
                   </div>
                 ))}
               </div>
@@ -110,22 +112,26 @@ export default function Courses() {
                 type="button"
                 className="modal-close"
                 onClick={() => setModalOpen(false)}
-                aria-label="Fechar formulário"
+                aria-label={language === 'pt' ? 'Fechar formulário' : 'Close form'}
               >
                 ×
               </button>
-              <h3>Formulário de Inscrição</h3>
+              <h3>{language === 'pt' ? 'Formulário de Inscrição' : 'Enrolment Form'}</h3>
               {formSuccess ? (
                 <div className="modal-success">
-                  <p>Obrigado! Recebemos a sua inscrição e em breve entraremos em contacto.</p>
+                  <p>
+                    {language === 'pt' 
+                      ? 'Obrigado! Recebemos a sua inscrição e em breve entraremos em contacto.'
+                      : 'Thank you! We have received your enrolment and will be in touch soon.'}
+                  </p>
                   <button type="button" className="btn btn--primary" onClick={() => setModalOpen(false)}>
-                    Fechar
+                    {language === 'pt' ? 'Fechar' : 'Close'}
                   </button>
                 </div>
               ) : (
                 <form className="modal-form" onSubmit={handleSubmit}>
                   <label>
-                    Nome completo
+                    {language === 'pt' ? 'Nome completo' : 'Full name'}
                     <input
                       type="text"
                       name="name"
@@ -135,7 +141,7 @@ export default function Courses() {
                     />
                   </label>
                   <label>
-                    Email
+                    {language === 'pt' ? 'Email' : 'Email'}
                     <input
                       type="email"
                       name="email"
@@ -145,7 +151,7 @@ export default function Courses() {
                     />
                   </label>
                   <label>
-                    Telemóvel
+                    {language === 'pt' ? 'Telemóvel' : 'Mobile'}
                     <input
                       type="tel"
                       name="phone"
@@ -154,17 +160,17 @@ export default function Courses() {
                     />
                   </label>
                   <label>
-                    Turma
+                    {language === 'pt' ? 'Turma' : 'Class'}
                     <select name="level" value={formData.level} onChange={handleChange}>
-                      {COURSE_INFO.schedule.map(slot => (
-                        <option key={slot.turma} value={slot.turma}>
-                          {slot.turma} · {slot.período}
+                      {COURSE_INFO.schedule.map((slot, i) => (
+                        <option key={i} value={(slot.turma as any)[language]}>
+                          {(slot.turma as any)[language]} · {(slot.período as any)[language]}
                         </option>
                       ))}
                     </select>
                   </label>
                   <button type="submit" className="btn btn--primary btn--lg">
-                    Enviar inscrição
+                    {language === 'pt' ? 'Enviar inscrição' : 'Send enrolment'}
                   </button>
                 </form>
               )}

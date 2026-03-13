@@ -390,7 +390,13 @@ main {
   background: var(--surface-2);
 }
 
-.theme-toggle {
+.navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.theme-toggle, .lang-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -398,13 +404,21 @@ main {
   height: 36px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
-  transition: all 0.25s var(--ease-smooth);
-  flex-shrink: 0;
+  transition: all 0.2s var(--ease-smooth);
+  cursor: pointer;
 }
 
-.theme-toggle:hover {
+.lang-toggle {
+  width: auto;
+  padding: 0 0.6rem;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.theme-toggle:hover, .lang-toggle:hover {
   background: var(--surface-2);
-  color: var(--text);
+  color: var(--accent);
 }
 
 .navbar__mobile {
