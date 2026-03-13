@@ -40,6 +40,7 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [data, setData] = useState<RawData | null>(null);
   const [fetching, setFetching] = useState(false);
+  const [editingRow, setEditingRow] = useState<any | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -142,7 +143,7 @@ export default function Admin() {
           <AnimatePresence mode="wait">
             <motion.div key={activeTab} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}>
               {activeTab === 'dashboard' && <DashboardView data={data} error={error} />}
-              {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={() => fetchData(user)} />}
+              {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={() => fetchData(user)} onEdit={setEditingRow} />}
               {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} />}
               {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} />}
               {activeTab === 'config' && <ConfigView />}
@@ -150,6 +151,17 @@ export default function Admin() {
           </AnimatePresence>
         </div>
       </main>
+
+      <AnimatePresence>
+        {editingRow && (
+          <EditFormadorModal 
+            row={editingRow} 
+            onClose={() => setEditingRow(null)} 
+            onSuccess={() => { setEditingRow(null); fetchData(user); }}
+          />
+        )}
+      </AnimatePresence>
+
       <style>{ADMIN_STYLES}</style>
     </div>
   );
@@ -203,9 +215,7 @@ function StatCard({ label, val, icon, desc }: any) {
   );
 }
 
-function FormadoresTable({ data, fetching, onRefresh }: { data: any[][], fetching: boolean, onRefresh: () => void }) {
-  const [editingRow, setEditingRow] = useState<any | null>(null);
-
+function FormadoresTable({ data, fetching, onEdit }: { data: any[][], fetching: boolean, onRefresh: () => void, onEdit: (row: any) => void }) {
   if (fetching) return <div className="glass" style={{ padding: '2rem' }}>A carregar dados...</div>;
   if (!data || data.length <= 1) return <div className="glass" style={{ padding: '2rem' }}>Sem candidaturas para mostrar.</div>;
 
@@ -246,7 +256,7 @@ function FormadoresTable({ data, fetching, onRefresh }: { data: any[][], fetchin
                 <td>{item.cells[13]}</td>
                 <td>{new Date(item.cells[0]).toLocaleDateString()}</td>
                 <td>
-                  <button className="admin-action-btn" onClick={() => setEditingRow(item)}>
+                  <button className="admin-action-btn" onClick={() => onEdit(item)}>
                     <Pencil size={16} />
                   </button>
                 </td>
@@ -255,16 +265,6 @@ function FormadoresTable({ data, fetching, onRefresh }: { data: any[][], fetchin
           </tbody>
         </table>
       </div>
-
-      <AnimatePresence>
-        {editingRow && (
-          <EditFormadorModal 
-            row={editingRow} 
-            onClose={() => setEditingRow(null)} 
-            onSuccess={() => { setEditingRow(null); onRefresh(); }}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -326,16 +326,38 @@ function EditFormadorModal({ row, onClose, onSuccess }: any) {
               <input className="form__input" value={values[6]} onChange={e => { const v = [...values]; v[6] = e.target.value; setValues(v); }} />
             </div>
             <div className="form__group">
+              <label className="form__label">Habilitações</label>
+              <select className="form__input" value={values[7]} onChange={e => { const v = [...values]; v[7] = e.target.value; setValues(v); }}>
+                <option value="12ano">12.º Ano</option>
+                <option value="licenciatura">Licenciatura</option>
+                <option value="mestrado">Mestrado</option>
+                <option value="doutoramento">Doutoramento</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+            <div className="form__group">
+              <label className="form__label">CAP / CCP</label>
+              <select className="form__input" value={values[8]} onChange={e => { const v = [...values]; v[8] = e.target.value; setValues(v); }}>
+                <option value="sim">Possuo Certificado</option>
+                <option value="nao">Não Possuo</option>
+                <option value="processo">Em Processo</option>
+              </select>
+            </div>
+            <div className="form__group">
               <label className="form__label">Dias</label>
-              <input className="form__input" value={values[11]} onChange={e => { const v = [...values]; v[11] = e.target.value; setValues(v); }} />
+              <input className="form__input" value={values[11]} onChange={e => { const v = [...values]; v[11] = e.target.value; setValues(v); }} placeholder="Ex: Segunda, Terça" />
             </div>
             <div className="form__group">
               <label className="form__label">Períodos</label>
-              <input className="form__input" value={values[12]} onChange={e => { const v = [...values]; v[12] = e.target.value; setValues(v); }} />
+              <input className="form__input" value={values[12]} onChange={e => { const v = [...values]; v[12] = e.target.value; setValues(v); }} placeholder="Ex: Manhã, Tarde" />
             </div>
             <div className="form__group">
               <label className="form__label">Modalidade</label>
-              <input className="form__input" value={values[13]} onChange={e => { const v = [...values]; v[13] = e.target.value; setValues(v); }} />
+              <select className="form__input" value={values[13]} onChange={e => { const v = [...values]; v[13] = e.target.value; setValues(v); }}>
+                <option value="presencial">Presencial</option>
+                <option value="online">Online</option>
+                <option value="hibrida">Híbrida</option>
+              </select>
             </div>
           </div>
         </div>
