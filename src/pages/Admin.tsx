@@ -458,13 +458,18 @@ function AgendaView({ data }: { data: RawData | null }) {
     setSaving(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/agenda', {
+      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/agenda', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(agenda)
       });
-      alert('Agenda sincronizada com sucesso!');
-    } catch (err) { alert('Erro ao sincronizar.'); } finally { setSaving(false); }
+      if (res.ok) {
+        alert('Agenda guardada com sucesso no servidor!');
+      } else {
+        const txt = await res.text();
+        alert('Erro ao guardar: ' + txt);
+      }
+    } catch (err: any) { alert('Erro de rede: ' + err.message); } finally { setSaving(false); }
   };
 
   const updateSlot = (day: string, slot: string, field: 'trainer' | 'course', val: string) => {

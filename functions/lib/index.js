@@ -367,20 +367,27 @@ app.post('/api/admin/config', isAdmin, async (req, res) => {
     }
 });
 app.get('/api/admin/agenda', isAdmin, async (req, res) => {
+    console.log('[Agenda] Fetching sala1 data');
     try {
         const doc = await admin.firestore().collection('agenda').doc('sala1').get();
-        res.json(doc.exists ? doc.data() : {});
+        const data = doc.exists ? doc.data() : {};
+        console.log(`[Agenda] Success: ${Object.keys(data).length} slots found`);
+        res.json(data);
     }
     catch (err) {
+        console.error('[Agenda] Fetch error:', err.message);
         res.status(500).json({ error: 'Erro ao obter agenda' });
     }
 });
 app.post('/api/admin/agenda', isAdmin, async (req, res) => {
+    console.log('[Agenda] Saving sala1 data', JSON.stringify(req.body).substring(0, 100) + '...');
     try {
         await admin.firestore().collection('agenda').doc('sala1').set(req.body);
+        console.log('[Agenda] Save success');
         res.json({ message: 'Agenda atualizada' });
     }
     catch (err) {
+        console.error('[Agenda] Save error:', err.message);
         res.status(500).json({ error: 'Erro ao salvar agenda' });
     }
 });
