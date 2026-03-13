@@ -4,13 +4,13 @@ import { getFirestore } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyARFEzy0bCfIC73vas_r4jyyu1mwcyYOV8",
-  authDomain: "faroformapt.firebaseapp.com",
-  projectId: "faroformapt",
-  storageBucket: "faroformapt.firebasestorage.app",
-  messagingSenderId: "674979074363",
-  appId: "1:674979074363:web:bcbfe70c3cce99be4e671e",
-  measurementId: "G-63ERWT4STH"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
