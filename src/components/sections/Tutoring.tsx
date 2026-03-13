@@ -86,16 +86,6 @@ export default function Tutoring() {
                   />
                 </AnimatePresence>
               </div>
-              <div className="tutoring__card-float">
-                <div className="tutoring__card-float-icon">🎓</div>
-                <div className="tutoring__card-float-title">{language === 'pt' ? 'Taxa de Aprovação' : 'Pass Rate'}</div>
-                <div className="tutoring__card-float-sub" style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '1.4rem' }}>
-                  98%
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}> 
-                    {language === 'pt' ? ' dos alunos' : ' of students'}
-                  </span>
-                </div>
-              </div>
             </div>
           </AnimatedSection>
         </div>
