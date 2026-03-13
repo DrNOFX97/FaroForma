@@ -393,14 +393,15 @@ app.get('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response)
 });
 
 app.post('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response) => {
-  console.log('[Agenda] Saving sala1 data', JSON.stringify(req.body).substring(0, 100) + '...');
+  console.log('[Agenda] Saving sala1 data');
   try {
-    await admin.firestore().collection('agenda').doc('sala1').set(req.body);
+    const db = admin.firestore();
+    await db.collection('agenda').doc('sala1').set(req.body);
     console.log('[Agenda] Save success');
     res.json({ message: 'Agenda atualizada' });
   } catch (err: any) {
-    console.error('[Agenda] Save error:', err.message);
-    res.status(500).json({ error: 'Erro ao salvar agenda' });
+    console.error('[Agenda] SAVE ERROR DETAILS:', err.code, err.message, err.stack);
+    res.status(500).json({ error: `Erro ao salvar no Firestore: ${err.message}` });
   }
 });
 

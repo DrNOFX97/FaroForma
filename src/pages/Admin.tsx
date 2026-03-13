@@ -466,8 +466,8 @@ function AgendaView({ data }: { data: RawData | null }) {
       if (res.ok) {
         alert('Agenda guardada com sucesso no servidor!');
       } else {
-        const txt = await res.text();
-        alert('Erro ao guardar: ' + txt);
+        const errorData = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
+        alert('Erro ao guardar: ' + (errorData.error || res.statusText));
       }
     } catch (err: any) { alert('Erro de rede: ' + err.message); } finally { setSaving(false); }
   };
