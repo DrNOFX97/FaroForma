@@ -34,24 +34,24 @@ export default function Hero() {
             <div className="hero__eyebrow-line" />
             <span className="hero__eyebrow-text">
               <MapPin size={12} style={{ display: 'inline', marginRight: 4 }} />
-              {language === 'pt' ? 'Faro, Portugal · Desde 2009' : 'Faro, Portugal · Since 2009'}
+              Faro, Portugal
             </span>
           </motion.div>
 
           {/* Title */}
           <motion.h1 className="hero__title" {...fadeUp(0.12)}>
             {language === 'pt' ? (
-              <>Formação que<br /><span className="gradient-text">transforma</span><br />carreiras.</>
+              <>Formação que<br /><span className="gradient-text">potencia</span><br />o seu futuro.</>
             ) : (
-              <>Training that<br /><span className="gradient-text">transforms</span><br />careers.</>
+              <>Training that<br /><span className="gradient-text">boosts</span><br />your future.</>
             )}
           </motion.h1>
 
           {/* Subtitle */}
           <motion.p className="hero__subtitle" {...fadeUp(0.24)}>
             {language === 'pt' 
-              ? 'FaroForma oferece formações personalizadas, apoio administrativo e explicações do secundário à universidade. Qualidade comprovada, resultados reais.'
-              : 'FaroForma offers tailored training, administrative support, and tutoring from secondary school to university. Proven quality, real results.'}
+              ? 'FaroForma oferece formações personalizadas, apoio administrativo e explicações do secundário à universidade. Excelência e proximidade em Faro.'
+              : 'FaroForma offers tailored training, administrative support, and tutoring from secondary school to university. Excellence and proximity in Faro.'}
           </motion.p>
 
           {/* CTAs */}
@@ -68,16 +68,18 @@ export default function Hero() {
           </motion.div>
 
           {/* Stats */}
-          <motion.div className="hero__stats" {...fadeUp(0.48)}>
-            {HERO_STATS.map((s, i) => (
-              <div key={i}>
-                <div className="hero__stat-value">
-                  {s.value}<span>{s.suffix}</span>
+          {HERO_STATS.length > 0 && (
+            <motion.div className="hero__stats" {...fadeUp(0.48)}>
+              {HERO_STATS.map((s, i) => (
+                <div key={i}>
+                  <div className="hero__stat-value">
+                    {s.value}<span>{s.suffix}</span>
+                  </div>
+                  <div className="hero__stat-label">{(s.label as any)[language]}</div>
                 </div>
-                <div className="hero__stat-label">{(s.label as any)[language]}</div>
-              </div>
-            ))}
-          </motion.div>
+              ))}
+            </motion.div>
+          )}
         </div>
       </div>
 

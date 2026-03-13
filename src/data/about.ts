@@ -4,8 +4,8 @@ export const ABOUT_FEATURES = [
     desc: { pt: 'Soluções adaptadas às necessidades específicas de cada projeto.', en: 'Tailored solutions adapted to the specific needs of each project.' } 
   },
   { 
-    title: { pt: 'Equipa experiente e qualificada', en: 'Experienced and qualified team' }, 
-    desc: { pt: 'Profissionais com anos de experiência em formação e educação.', en: 'Professionals with years of experience in training and education.' } 
+    title: { pt: 'Equipa dedicada e qualificada', en: 'Dedicated and qualified team' }, 
+    desc: { pt: 'Profissionais apaixonados por formação e dedicados ao sucesso dos alunos.', en: 'Professionals passionate about training and dedicated to student success.' } 
   },
   { 
     title: { pt: 'Localização privilegiada em Faro', en: 'Prime location in Faro' }, 

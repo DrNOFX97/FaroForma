@@ -35,12 +35,6 @@ export default function About() {
                 alt="Sala de formação moderna FaroForma"
                 loading="lazy"
               />
-              <div className="about__image-badge">
-                <div className="about__image-badge-value">15+</div>
-                <div className="about__image-badge-label">
-                  {language === 'pt' ? <>Anos de<br />Experiência</> : <>Years of<br />Experience</>}
-                </div>
-              </div>
             </div>
           </AnimatedSection>
 
@@ -49,20 +43,20 @@ export default function About() {
             <span className="tag about__tag">{language === 'pt' ? 'Sobre Nós' : 'About Us'}</span>
             <h2 className="about__title">
               {language === 'pt' ? (
-                <>O seu parceiro no<br /><span className="gradient-text">desenvolvimento e sucesso</span></>
+                <>Um novo conceito de<br /><span className="gradient-text">aprendizagem em Faro</span></>
               ) : (
-                <>Your partner in<br /><span className="gradient-text">development and success</span></>
+                <>A new concept of<br /><span className="gradient-text">learning in Faro</span></>
               )}
             </h2>
             <p className="about__text">
               {language === 'pt' 
-                ? 'FaroForma é uma instituição dedicada ao desenvolvimento pessoal e profissional, oferecendo serviços de qualidade em formações personalizadas, aluguer de salas e apoio administrativo.'
-                : 'FaroForma is an institution dedicated to personal and professional development, offering high-quality services in customised training, room hire, and administrative support.'}
+                ? 'FaroForma nasce com a missão de elevar o padrão do desenvolvimento pessoal e profissional, oferecendo serviços de excelência em formações personalizadas, aluguer de salas e apoio administrativo.'
+                : 'FaroForma was born with the mission to raise the standard of personal and professional development, offering excellence in customised training, room hire, and administrative support.'}
             </p>
             <p className="about__text">
               {language === 'pt'
-                ? 'Com uma abordagem centrada no cliente, adaptamos as nossas soluções às necessidades específicas de cada projeto, garantindo resultados eficazes e duradouros para indivíduos e empresas.'
-                : 'With a client-centric approach, we adapt our solutions to the specific needs of each project, ensuring effective and lasting results for individuals and companies.'}
+                ? 'Privilegiamos a proximidade e a inovação, adaptando as nossas soluções a cada aluno e empresa para garantir um crescimento real e sustentado.'
+                : 'We prioritise proximity and innovation, adapting our solutions to each student and company to ensure real and sustained growth.'}
             </p>
 
             <div className="about__features">
