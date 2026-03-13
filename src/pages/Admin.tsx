@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   signInWithPopup, 
   signOut, 
@@ -19,8 +19,13 @@ import {
   Pencil,
   X,
   Save,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Printer,
+  FileDown,
+  Eye
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const ADMIN_EMAIL = 'faroforma@gmail.com';
 
@@ -431,6 +436,7 @@ function AgendaView({ data }: { data: RawData | null }) {
   const [agenda, setAgenda] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const formadores = data?.formadores?.slice(1) || [];
 
@@ -457,8 +463,8 @@ function AgendaView({ data }: { data: RawData | null }) {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(agenda)
       });
-      alert('Agenda guardada!');
-    } catch (err) { alert('Erro ao guardar.'); } finally { setSaving(false); }
+      alert('Agenda sincronizada com sucesso!');
+    } catch (err) { alert('Erro ao sincronizar.'); } finally { setSaving(false); }
   };
 
   const updateSlot = (day: string, slot: string, field: 'trainer' | 'course', val: string) => {
@@ -472,18 +478,12 @@ function AgendaView({ data }: { data: RawData | null }) {
     });
   };
 
-  // Filter trainers by availability
   const getAvailableTrainers = (day: string, slot: string) => {
     return formadores.filter(f => {
       const availableDays = f[11]?.split(',').map((d: string) => d.trim()) || [];
       const availableSlots = f[12]?.split(',').map((s: string) => s.trim()) || [];
-      
-      // For Saturday, we check if they are available on Saturday and any shift
-      if (day === 'Sábado') {
-        return availableDays.includes('Sábado');
-      }
-
-      const slotName = slot.split(' ')[0]; // "Manhã", "Tarde", "Noite"
+      if (day === 'Sábado') return availableDays.includes('Sábado');
+      const slotName = slot.split(' ')[0];
       return availableDays.includes(day) && availableSlots.some((s: string) => s.includes(slotName));
     });
   };
@@ -501,9 +501,14 @@ function AgendaView({ data }: { data: RawData | null }) {
       <div className="glass" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h3>Mapa de Ocupação — Sala 1</h3>
-          <button className="btn btn--primary" onClick={saveAgenda} disabled={saving}>
-            {saving ? 'A Guardar...' : <><Save size={18} /> Guardar Mapa</>}
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="btn btn--outline" onClick={() => setShowPreview(true)}>
+              <Eye size={18} /> Visualizar / Imprimir
+            </button>
+            <button className="btn btn--primary" onClick={saveAgenda} disabled={saving}>
+              {saving ? 'A Sincronizar...' : <><Save size={18} /> Sincronizar Mapa</>}
+            </button>
+          </div>
         </div>
 
         <div className="agenda-grid">
@@ -514,12 +519,9 @@ function AgendaView({ data }: { data: RawData | null }) {
                 <div className="agenda-slot agenda-slot--full">
                   <label>Dia Inteiro (09h-18h)</label>
                   <AgendaSlotInputs 
-                    day={day} 
-                    slot="full" 
-                    agenda={agenda} 
+                    day={day} slot="full" agenda={agenda} 
                     trainers={getAvailableTrainers(day, 'full')} 
-                    onUpdate={updateSlot}
-                    getCourses={getTrainerCourses}
+                    onUpdate={updateSlot} getCourses={getTrainerCourses}
                   />
                 </div>
               ) : (
@@ -527,12 +529,9 @@ function AgendaView({ data }: { data: RawData | null }) {
                   <div key={slot} className="agenda-slot">
                     <label>{slot}</label>
                     <AgendaSlotInputs 
-                      day={day} 
-                      slot={slot} 
-                      agenda={agenda} 
+                      day={day} slot={slot} agenda={agenda} 
                       trainers={getAvailableTrainers(day, slot)} 
-                      onUpdate={updateSlot}
-                      getCourses={getTrainerCourses}
+                      onUpdate={updateSlot} getCourses={getTrainerCourses}
                     />
                   </div>
                 ))
@@ -541,6 +540,12 @@ function AgendaView({ data }: { data: RawData | null }) {
           ))}
         </div>
       </div>
+
+      <AnimatePresence>
+        {showPreview && (
+          <AgendaPreviewModal agenda={agenda} onClose={() => setShowPreview(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -553,29 +558,112 @@ function AgendaSlotInputs({ day, slot, agenda, trainers, onUpdate, getCourses }:
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-      <select 
-        className="agenda-select"
-        value={currentTrainer}
-        onChange={e => onUpdate(day, slot, 'trainer', e.target.value)}
-      >
+      <select className="agenda-select" value={currentTrainer} onChange={e => onUpdate(day, slot, 'trainer', e.target.value)}>
         <option value="">— Formador —</option>
-        {trainers.map((f: any) => (
-          <option key={f[1]} value={f[1]}>{f[1]}</option>
-        ))}
+        {trainers.map((f: any) => (<option key={f[1]} value={f[1]}>{f[1]}</option>))}
       </select>
-      
-      <select 
-        className="agenda-select"
-        value={currentCourse}
-        onChange={e => onUpdate(day, slot, 'course', e.target.value)}
-        disabled={!currentTrainer}
-      >
+      <select className="agenda-select" value={currentCourse} onChange={e => onUpdate(day, slot, 'course', e.target.value)} disabled={!currentTrainer}>
         <option value="">— Curso —</option>
-        {availableCourses.map((c: string) => (
-          <option key={c} value={c}>{c}</option>
-        ))}
+        {availableCourses.map((c: string) => (<option key={c} value={c}>{c}</option>))}
       </select>
     </div>
+  );
+}
+
+function AgendaPreviewModal({ agenda, onClose }: any) {
+  const printRef = useRef<HTMLDivElement>(null);
+  const [generating, setGenerating] = useState(false);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!printRef.current) return;
+    setGenerating(true);
+    try {
+      const canvas = await html2canvas(printRef.current, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save('Agenda_Sala1_FaroForma.pdf');
+    } catch (err) {
+      alert('Erro ao gerar PDF.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="admin-modal admin-modal--large glass" initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}>
+        <div className="admin-modal-header">
+          <h3>Pré-visualização do Documento</h3>
+          <button onClick={onClose} className="admin-close-btn"><X size={20} /></button>
+        </div>
+        
+        <div className="admin-modal-body" style={{ background: '#f0f0f0', padding: '3rem' }}>
+          {/* Paper Sheet */}
+          <div ref={printRef} className="print-sheet">
+            <div className="print-header">
+              <div className="print-logo">FaroForma</div>
+              <div className="print-title">Mapa de Ocupação — Sala 1</div>
+              <div className="print-date">Gerado em: {new Date().toLocaleDateString()}</div>
+            </div>
+
+            <table className="print-table">
+              <thead>
+                <tr>
+                  <th>Dia</th>
+                  <th>Manhã (09h-13h)</th>
+                  <th>Tarde (13h-18h)</th>
+                  <th>Noite (18h-21h)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {DAYS.map(day => (
+                  <tr key={day}>
+                    <td className="print-day-cell">{day}</td>
+                    {day === 'Sábado' ? (
+                      <td colSpan={3} className="print-full-cell">
+                        <div className="print-entry">
+                          <strong>{agenda[`${day}-full`]?.trainer || 'Livre'}</strong>
+                          <span>{agenda[`${day}-full`]?.course || ''}</span>
+                        </div>
+                      </td>
+                    ) : (
+                      SLOTS.map(slot => (
+                        <td key={slot}>
+                          <div className="print-entry">
+                            <strong>{agenda[`${day}-${slot}`]?.trainer || 'Livre'}</strong>
+                            <span>{agenda[`${day}-${slot}`]?.course || ''}</span>
+                          </div>
+                        </td>
+                      ))
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            
+            <div className="print-footer">Documento Oficial FaroForma — © {new Date().getFullYear()}</div>
+          </div>
+        </div>
+
+        <div className="admin-modal-footer">
+          <button className="btn" onClick={onClose}>Fechar</button>
+          <button className="btn btn--outline" onClick={handlePrint}>
+            <Printer size={18} /> Imprimir
+          </button>
+          <button className="btn btn--primary" onClick={handleDownloadPDF} disabled={generating}>
+            {generating ? 'A gerar PDF...' : <><FileDown size={18} /> Guardar PDF</>}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -628,6 +716,7 @@ const ADMIN_STYLES = `
 
   .admin-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 2rem; backdrop-filter: blur(4px); }
   .admin-modal { background: var(--bg); width: 100%; max-width: 720px; border-radius: var(--radius-xl); border: 1px solid var(--border); display: flex; flex-direction: column; max-height: 90vh; box-shadow: 0 30px 60px rgba(0,0,0,0.3); }
+  .admin-modal--large { max-width: 1100px; }
   .admin-modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
   .admin-modal-header h3 { font-size: 1.25rem; font-weight: 700; }
   .admin-close-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 50%; transition: all 0.2s; }
@@ -635,20 +724,39 @@ const ADMIN_STYLES = `
   .admin-modal-body { padding: 2rem; overflow-y: auto; }
   .admin-modal-footer { padding: 1.25rem 2rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 1rem; background: var(--bg-1); }
 
-  .admin-login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 0% 0%, var(--bg-1) 0%, var(--bg) 50%); padding: 2rem; }
-  .admin-login-card { max-width: 400px; width: 100%; padding: 3rem; text-align: center; border-radius: var(--radius-xl); }
-  .admin-login-header h1 { font-size: 1.75rem; margin: 1.5rem 0 0.5rem; font-weight: 800; }
-  .admin-login-header p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
-  
   .agenda-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-top: 1rem; }
   .agenda-day { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
   .agenda-day-header { font-weight: 800; font-size: 0.9rem; text-align: center; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); color: var(--accent); }
   .agenda-slot { display: flex; flex-direction: column; gap: 0.4rem; }
   .agenda-slot label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-  .agenda-slot input { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; color: var(--text); width: 100%; }
-  .agenda-slot input:focus { border-color: var(--accent); outline: none; }
   .agenda-select { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem; font-size: 0.8rem; color: var(--text); width: 100%; cursor: pointer; }
   .agenda-select:focus { border-color: var(--accent); outline: none; }
   .agenda-select:disabled { opacity: 0.5; cursor: not-allowed; }
   .agenda-slot--full { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+  /* Print Specific Styling */
+  .print-sheet { background: white; color: black; padding: 25mm; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 297mm; margin: 0 auto; min-height: 210mm; font-family: sans-serif; display: flex; flex-direction: column; }
+  .print-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid black; padding-bottom: 1rem; margin-bottom: 2rem; }
+  .print-logo { font-size: 1.5rem; font-weight: 900; letter-spacing: -1px; }
+  .print-title { font-size: 1.25rem; font-weight: 700; }
+  .print-date { font-size: 0.8rem; opacity: 0.7; }
+  .print-table { width: 100%; border-collapse: collapse; flex: 1; }
+  .print-table th, .print-table td { border: 1px solid #ddd; padding: 1rem; text-align: left; vertical-align: top; }
+  .print-table th { background: #f8f8f8; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; }
+  .print-day-cell { background: #fafafa; font-weight: 800; width: 120px; }
+  .print-entry { display: flex; flex-direction: column; gap: 0.2rem; }
+  .print-entry strong { font-size: 0.95rem; color: black; }
+  .print-entry span { font-size: 0.8rem; color: #666; }
+  .print-full-cell { background: rgba(0,0,0,0.02); }
+  .print-footer { margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1rem; font-size: 0.75rem; text-align: center; opacity: 0.5; }
+
+  @media print {
+    body * { visibility: hidden; }
+    .print-sheet, .print-sheet * { visibility: visible; }
+    .print-sheet { position: absolute; left: 0; top: 0; width: 100%; height: 100%; box-shadow: none; padding: 10mm; }
+    .admin-modal-overlay { background: none; padding: 0; position: static; }
+    .admin-modal-header, .admin-modal-footer { display: none !important; }
+    .admin-modal { border: none; box-shadow: none; background: white; max-width: none; max-height: none; }
+    .admin-modal-body { padding: 0; background: white !important; }
+  }
 `;
