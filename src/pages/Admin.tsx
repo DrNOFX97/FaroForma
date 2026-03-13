@@ -18,7 +18,8 @@ import {
   AlertCircle,
   Pencil,
   X,
-  Save
+  Save,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 
 const ADMIN_EMAIL = 'faroforma@gmail.com';
@@ -134,6 +135,7 @@ export default function Admin() {
             <NavItem active={activeTab === 'formadores'} icon={<Users size={18} />} label="Formadores" onClick={() => setActiveTab('formadores')} />
             <NavItem active={activeTab === 'alunos'} icon={<GraduationCap size={18} />} label="Alunos" onClick={() => setActiveTab('alunos')} />
             <NavItem active={activeTab === 'contactos'} icon={<MessageSquare size={18} />} label="Contactos" onClick={() => setActiveTab('contactos')} />
+            <NavItem active={activeTab === 'agenda'} icon={<CalendarIcon size={18} />} label="Agenda Sala 1" onClick={() => setActiveTab('agenda')} />
             <NavItem active={activeTab === 'config'} icon={<Settings size={18} />} label="Definições" onClick={() => setActiveTab('config')} />
           </nav>
 
@@ -152,7 +154,7 @@ export default function Admin() {
       <main className="admin-main-alt">
         <div className="container">
           <div className="admin-content-title">
-            <h2>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
+            <h2>{activeTab === 'agenda' ? 'Agenda Sala 1' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
           </div>
 
           <div className="admin-content">
@@ -162,6 +164,7 @@ export default function Admin() {
                 {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={() => fetchData(user)} onEdit={setEditingRow} />}
                 {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} />}
                 {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} />}
+                {activeTab === 'agenda' && <AgendaView />}
                 {activeTab === 'config' && <ConfigView />}
               </motion.div>
             </AnimatePresence>
@@ -419,6 +422,92 @@ function ConfigView() {
   );
 }
 
+// ── Agenda View ────────────────────────────────────────────────────────────────
+
+const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const SLOTS = ['Manhã (09h-13h)', 'Tarde (13h-18h)'];
+
+function AgendaView() {
+  const [agenda, setAgenda] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchAgenda();
+  }, []);
+
+  const fetchAgenda = async () => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/agenda', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) { setAgenda(await res.json()); }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const saveAgenda = async () => {
+    setSaving(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/agenda', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(agenda)
+      });
+      alert('Agenda guardada!');
+    } catch (err) { alert('Erro ao guardar.'); } finally { setSaving(false); }
+  };
+
+  const updateSlot = (day: string, slot: string, val: string) => {
+    setAgenda({ ...agenda, [`${day}-${slot}`]: val });
+  };
+
+  if (loading) return <div className="glass" style={{ padding: '2rem' }}>A carregar agenda...</div>;
+
+  return (
+    <div className="admin-agenda">
+      <div className="glass" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h3>Mapa de Ocupação — Sala 1</h3>
+          <button className="btn btn--primary" onClick={saveAgenda} disabled={saving}>
+            {saving ? 'A Guardar...' : <><Save size={18} /> Guardar Mapa</>}
+          </button>
+        </div>
+
+        <div className="agenda-grid">
+          {DAYS.map(day => (
+            <div key={day} className="agenda-day">
+              <div className="agenda-day-header">{day}</div>
+              {day === 'Sábado' ? (
+                <div className="agenda-slot agenda-slot--full">
+                  <label>Dia Inteiro (09h-18h)</label>
+                  <input 
+                    placeholder="Nome do curso/reserva" 
+                    value={agenda[`${day}-full`] || ''} 
+                    onChange={e => updateSlot(day, 'full', e.target.value)}
+                  />
+                </div>
+              ) : (
+                SLOTS.map(slot => (
+                  <div key={slot} className="agenda-slot">
+                    <label>{slot.split(' ')[0]}</label>
+                    <input 
+                      placeholder="Reservado por..." 
+                      value={agenda[`${day}-${slot}`] || ''} 
+                      onChange={e => updateSlot(day, slot, e.target.value)}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const ADMIN_STYLES = `
@@ -479,7 +568,13 @@ const ADMIN_STYLES = `
   .admin-login-card { max-width: 400px; width: 100%; padding: 3rem; text-align: center; border-radius: var(--radius-xl); }
   .admin-login-header h1 { font-size: 1.75rem; margin: 1.5rem 0 0.5rem; font-weight: 800; }
   .admin-login-header p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
-  .admin-icon-box { width: 64px; height: 64px; background: rgba(16, 185, 129, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
-  .admin-error { background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 0.75rem; border-radius: var(--radius); font-size: 0.85rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; justify-content: center; }
-  .btn--full { width: 100%; justify-content: center; }
+  
+  .agenda-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .agenda-day { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+  .agenda-day-header { font-weight: 800; font-size: 0.9rem; text-align: center; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); color: var(--accent); }
+  .agenda-slot { display: flex; flex-direction: column; gap: 0.4rem; }
+  .agenda-slot label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+  .agenda-slot input { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; color: var(--text); width: 100%; }
+  .agenda-slot input:focus { border-color: var(--accent); outline: none; }
+  .agenda-slot--full { flex: 1; display: flex; flex-direction: column; justify-content: center; }
 `;

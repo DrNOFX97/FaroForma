@@ -366,6 +366,24 @@ app.post('/api/admin/config', isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Erro ao guardar configurações' });
     }
 });
+app.get('/api/admin/agenda', isAdmin, async (req, res) => {
+    try {
+        const doc = await admin.firestore().collection('agenda').doc('sala1').get();
+        res.json(doc.exists ? doc.data() : {});
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao obter agenda' });
+    }
+});
+app.post('/api/admin/agenda', isAdmin, async (req, res) => {
+    try {
+        await admin.firestore().collection('agenda').doc('sala1').set(req.body);
+        res.json({ message: 'Agenda atualizada' });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao salvar agenda' });
+    }
+});
 app.get('/', (req, res) => {
     res.send('API is running');
 });

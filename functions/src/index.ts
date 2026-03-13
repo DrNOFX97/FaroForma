@@ -379,6 +379,24 @@ app.post('/api/admin/config', isAdmin as any, async (req: Request, res: Response
   }
 });
 
+app.get('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response) => {
+  try {
+    const doc = await admin.firestore().collection('agenda').doc('sala1').get();
+    res.json(doc.exists ? doc.data() : {});
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao obter agenda' });
+  }
+});
+
+app.post('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response) => {
+  try {
+    await admin.firestore().collection('agenda').doc('sala1').set(req.body);
+    res.json({ message: 'Agenda atualizada' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao salvar agenda' });
+  }
+});
+
 // Root for health check
 app.get('/', (req: Request, res: Response) => {
   res.send('API is running');
