@@ -19,7 +19,7 @@ const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json());
 
-const ADMIN_EMAIL = 'faroforma@gmail.com';
+const ADMIN_EMAILS = ['faroforma@gmail.com', 'custodio.guerreiro@gmail.com'];
 
 // ── Auth Middleware ──────────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     console.log(`[Auth] Token verified for: ${decodedToken.email}`);
-    if (decodedToken.email === ADMIN_EMAIL) {
+    if (ADMIN_EMAILS.includes(decodedToken.email || '')) {
       (req as any).user = decodedToken;
       next();
     } else {

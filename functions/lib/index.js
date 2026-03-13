@@ -53,7 +53,7 @@ const GMAIL_APP_PASSWORD = (0, params_1.defineSecret)("GMAIL_APP_PASSWORD");
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({ origin: true }));
 app.use(express_1.default.json());
-const ADMIN_EMAIL = 'faroforma@gmail.com';
+const ADMIN_EMAILS = ['faroforma@gmail.com', 'custodio.guerreiro@gmail.com'];
 const isAdmin = async (req, res, next) => {
     console.log('[Auth] Checking admin permissions for path:', req.path);
     const authHeader = req.headers.authorization;
@@ -66,7 +66,7 @@ const isAdmin = async (req, res, next) => {
     try {
         const decodedToken = await admin.auth().verifyIdToken(idToken);
         console.log(`[Auth] Token verified for: ${decodedToken.email}`);
-        if (decodedToken.email === ADMIN_EMAIL) {
+        if (ADMIN_EMAILS.includes(decodedToken.email || '')) {
             req.user = decodedToken;
             next();
         }

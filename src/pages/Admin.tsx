@@ -27,7 +27,7 @@ import {
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-const ADMIN_EMAIL = 'faroforma@gmail.com';
+const ADMIN_EMAILS = ['faroforma@gmail.com', 'custodio.guerreiro@gmail.com'];
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -50,12 +50,12 @@ export default function Admin() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
-      if (u && u.email === ADMIN_EMAIL) {
+      if (u && ADMIN_EMAILS.includes(u.email || '')) {
         setUser(u);
         setError('');
         fetchData(u);
       } else if (u) {
-        setError('Acesso negado. Apenas o administrador tem permissão.');
+        setError('Acesso negado. Apenas administradores autorizados têm permissão.');
         signOut(auth);
       } else {
         setUser(null);
@@ -91,8 +91,8 @@ export default function Admin() {
     setError('');
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      if (result.user.email !== ADMIN_EMAIL) {
-        setError('Acesso negado. Apenas o administrador tem permissão.');
+      if (!ADMIN_EMAILS.includes(result.user.email || '')) {
+        setError('Acesso negado. Apenas administradores autorizados têm permissão.');
         await signOut(auth);
       } else {
         fetchData(result.user);
