@@ -22,7 +22,8 @@ import {
   Calendar as CalendarIcon,
   Printer,
   FileDown,
-  Eye
+  Eye,
+  Search
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -47,6 +48,7 @@ export default function Admin() {
   const [data, setData] = useState<RawData | null>(null);
   const [fetching, setFetching] = useState(false);
   const [editingRow, setEditingRow] = useState<any | null>(null);
+  const [detailRow, setDetailRow] = useState<any | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -140,7 +142,8 @@ export default function Admin() {
             <NavItem active={activeTab === 'formadores'} icon={<Users size={18} />} label="Formadores" onClick={() => setActiveTab('formadores')} />
             <NavItem active={activeTab === 'alunos'} icon={<GraduationCap size={18} />} label="Alunos" onClick={() => setActiveTab('alunos')} />
             <NavItem active={activeTab === 'contactos'} icon={<MessageSquare size={18} />} label="Contactos" onClick={() => setActiveTab('contactos')} />
-            <NavItem active={activeTab === 'agenda'} icon={<CalendarIcon size={18} />} label="Agenda Sala 1" onClick={() => setActiveTab('agenda')} />
+            <NavItem active={activeTab === 'agenda'} icon={<CalendarIcon size={18} />} label="Agenda" onClick={() => setActiveTab('agenda')} />
+            <NavItem active={activeTab === 'cursos'} icon={<Award size={18} />} label="Cursos" onClick={() => setActiveTab('cursos')} />
             <NavItem active={activeTab === 'config'} icon={<Settings size={18} />} label="Definições" onClick={() => setActiveTab('config')} />
           </nav>
 
@@ -159,17 +162,18 @@ export default function Admin() {
       <main className="admin-main-alt">
         <div className="container">
           <div className="admin-content-title">
-            <h2>{activeTab === 'agenda' ? 'Agenda Sala 1' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
+            <h2>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
           </div>
 
           <div className="admin-content">
             <AnimatePresence mode="wait">
               <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                 {activeTab === 'dashboard' && <DashboardView data={data} error={error} />}
-                {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={() => fetchData(user)} onEdit={setEditingRow} />}
-                {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} />}
-                {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} />}
+                {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={() => fetchData(user)} onEdit={setEditingRow} onDetail={setDetailRow} />}
+                {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} onDetail={setDetailRow} />}
+                {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} onDetail={setDetailRow} />}
                 {activeTab === 'agenda' && <AgendaView data={data} />}
+                {activeTab === 'cursos' && <CoursesView />}
                 {activeTab === 'config' && <ConfigView />}
               </motion.div>
             </AnimatePresence>
@@ -183,6 +187,12 @@ export default function Admin() {
             row={editingRow} 
             onClose={() => setEditingRow(null)} 
             onSuccess={() => { setEditingRow(null); fetchData(user); }}
+          />
+        )}
+        {detailRow && (
+          <DetailModal 
+            data={detailRow} 
+            onClose={() => setDetailRow(null)} 
           />
         )}
       </AnimatePresence>
@@ -240,7 +250,7 @@ function StatCard({ label, val, icon, desc }: any) {
   );
 }
 
-function FormadoresTable({ data, fetching, onEdit }: { data: any[][], fetching: boolean, onRefresh: () => void, onEdit: (row: any) => void }) {
+function FormadoresTable({ data, fetching, onEdit, onDetail }: { data: any[][], fetching: boolean, onRefresh: () => void, onEdit: (row: any) => void, onDetail: (row: any) => void }) {
   if (fetching) return <div className="glass" style={{ padding: '2rem' }}>A carregar dados...</div>;
   if (!data || data.length <= 1) return <div className="glass" style={{ padding: '2rem' }}>Sem candidaturas para mostrar.</div>;
 
@@ -280,9 +290,14 @@ function FormadoresTable({ data, fetching, onEdit }: { data: any[][], fetching: 
                 <td>{item.cells[13]}</td>
                 <td>{new Date(item.cells[0]).toLocaleDateString()}</td>
                 <td>
-                  <button className="admin-action-btn" onClick={() => onEdit(item)}>
-                    <Pencil size={16} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="admin-action-btn" onClick={() => onDetail(item)} title="Ver Detalhes">
+                      <Search size={16} />
+                    </button>
+                    <button className="admin-action-btn" onClick={() => onEdit(item)} title="Editar">
+                      <Pencil size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -290,6 +305,46 @@ function FormadoresTable({ data, fetching, onEdit }: { data: any[][], fetching: 
         </table>
       </div>
     </div>
+  );
+}
+
+function DetailModal({ data, onClose }: { data: any, onClose: () => void }) {
+  const isFormador = Array.isArray(data.cells);
+  const fields = isFormador ? data.cells : Object.entries(data);
+
+  return (
+    <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="admin-modal glass" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+        <div className="admin-modal-header">
+          <h3>Detalhes do Registo {data.originalIndex ? `#${data.originalIndex}` : ''}</h3>
+          <button onClick={onClose} className="admin-close-btn"><X size={20} /></button>
+        </div>
+        <div className="admin-modal-body">
+          <div className="detail-grid">
+            {isFormador ? (
+              // Formadores data is an array
+              data.cells.map((val: any, idx: number) => (
+                <div key={idx} className="detail-item">
+                  <label>Campo {idx}</label>
+                  <div>{val || <span className="text-muted">—</span>}</div>
+                </div>
+              ))
+            ) : (
+              // Other data (alunos, contactos) might be objects
+              Object.entries(data).filter(([key]) => key !== 'originalIndex').map(([key, val]: [string, any]) => (
+                <div key={key} className="detail-item">
+                  <label>{key.charAt(0).toUpperCase() + key.slice(1)}</label>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{typeof val === 'string' || typeof val === 'number' ? val : JSON.stringify(val)}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        <div className="admin-modal-footer">
+          <button className="btn btn--primary" onClick={onClose}>Fechar</button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -354,19 +409,44 @@ function EditFormadorModal({ row, onClose, onSuccess }: any) {
   );
 }
 
-function TableView({ type, data, fetching }: { type: string, data: any[][], fetching: boolean }) {
+function TableView({ type, data, fetching, onDetail }: { type: string, data: any[][], fetching: boolean, onDetail: (row: any) => void }) {
   if (fetching) return <div className="glass" style={{ padding: '2rem' }}>A carregar dados...</div>;
   if (!data || data.length <= 1) return <div className="glass" style={{ padding: '2rem' }}>Sem dados em <strong>{type}</strong>.</div>;
 
   const headers = data[0];
-  const rows = data.slice(1).reverse();
+  const rows = data.slice(1).reverse().map((row, idx) => ({
+    originalIndex: data.length - 1 - idx,
+    cells: row
+  }));
 
   return (
     <div className="admin-table-container glass">
       <div className="admin-table-scroll">
         <table className="admin-table">
-          <thead><tr>{headers.map((h, i) => <th key={i}>{h}</th>)}</tr></thead>
-          <tbody>{rows.map((row, i) => (<tr key={i}>{row.map((cell, j) => <td key={j}>{cell}</td>)}</tr>))}</tbody>
+          <thead>
+            <tr>
+              {headers.map((h, i) => <th key={i}>{h}</th>)}
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((item, i) => (
+              <tr key={i}>
+                {item.cells.map((cell: any, j: number) => <td key={j}>{cell}</td>)}
+                <td>
+                  <button className="admin-action-btn" onClick={() => {
+                    const obj: any = { originalIndex: item.originalIndex };
+                    headers.forEach((h: string, idx: number) => {
+                      obj[h] = item.cells[idx];
+                    });
+                    onDetail(obj);
+                  }} title="Ver Detalhes">
+                    <Search size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
     </div>
@@ -427,12 +507,173 @@ function ConfigView() {
   );
 }
 
+function CoursesView() {
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingCourse, setEditingCourse] = useState<any | null>(null);
+
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const fetchCourses = async () => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/courses', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) { setCourses(await res.json()); }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const handleSave = async (course: any) => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/courses', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(course)
+      });
+      if (res.ok) { 
+        setEditingCourse(null);
+        fetchCourses();
+      }
+    } catch (err) { alert('Erro ao guardar curso'); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem a certeza que deseja remover este curso?')) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch(`/api/admin/courses/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) { fetchCourses(); }
+    } catch (err) { alert('Erro ao remover curso'); }
+  };
+
+  if (loading) return <div className="glass" style={{ padding: '2rem' }}>A carregar cursos...</div>;
+
+  return (
+    <div className="admin-courses-view">
+      <div className="admin-header-actions" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3>Gestão de Cursos</h3>
+        <button className="btn btn--primary" onClick={() => setEditingCourse({ title: { pt: '', en: '' }, subtitle: { pt: '', en: '' }, status: { pt: '', en: '' }, description: { pt: '', en: '' }, highlights: [], schedule: [] })}>
+          <Award size={18} /> Adicionar Novo Curso
+        </button>
+      </div>
+
+      <div className="admin-table-container glass">
+        <div className="admin-table-scroll">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Título (PT)</th>
+                <th>Estado</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {courses.map((course) => (
+                <tr key={course.id}>
+                  <td style={{ fontWeight: 600 }}>{course.title?.pt}</td>
+                  <td>{course.status?.pt}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button className="admin-action-btn" onClick={() => setEditingCourse(course)} title="Editar"><Pencil size={16} /></button>
+                      <button className="admin-action-btn" onClick={() => handleDelete(course.id)} title="Remover" style={{ color: '#ef4444' }}><X size={16} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {courses.length === 0 && <tr><td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>Nenhum curso registado no Firestore.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {editingCourse && (
+          <CourseEditModal 
+            course={editingCourse} 
+            onClose={() => setEditingCourse(null)} 
+            onSave={handleSave} 
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function CourseEditModal({ course, onClose, onSave }: any) {
+  const [data, setData] = useState({ 
+    ...course,
+    title: course.title || { pt: '', en: '' },
+    subtitle: course.subtitle || { pt: '', en: '' },
+    status: course.status || { pt: '', en: '' },
+    description: course.description || { pt: '', en: '' },
+    schedule: course.schedule || []
+  });
+
+  return (
+    <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="admin-modal admin-modal--large glass" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+        <div className="admin-modal-header">
+          <h3>{data.id ? 'Editar Curso' : 'Novo Curso'}</h3>
+          <button onClick={onClose} className="admin-close-btn"><X size={20} /></button>
+        </div>
+        <div className="admin-modal-body">
+          <div className="form__grid">
+            <div className="form__group"><label className="form__label">Título (PT)</label><input className="form__input" value={data.title.pt} onChange={e => setData({...data, title: {...data.title, pt: e.target.value}})} /></div>
+            <div className="form__group"><label className="form__label">Título (EN)</label><input className="form__input" value={data.title.en} onChange={e => setData({...data, title: {...data.title, en: e.target.value}})} /></div>
+            <div className="form__group"><label className="form__label">Subtítulo (PT)</label><input className="form__input" value={data.subtitle.pt} onChange={e => setData({...data, subtitle: {...data.subtitle, pt: e.target.value}})} /></div>
+            <div className="form__group"><label className="form__label">Subtítulo (EN)</label><input className="form__input" value={data.subtitle.en} onChange={e => setData({...data, subtitle: {...data.subtitle, en: e.target.value}})} /></div>
+            <div className="form__group"><label className="form__label">Estado/Badge (PT)</label><input className="form__input" value={data.status.pt} onChange={e => setData({...data, status: {...data.status, pt: e.target.value}})} placeholder="Ex: Inscrições Abertas" /></div>
+            <div className="form__group"><label className="form__label">Estado/Badge (EN)</label><input className="form__input" value={data.status.en} onChange={e => setData({...data, status: {...data.status, en: e.target.value}})} /></div>
+            <div className="form__group form__group--full"><label className="form__label">Descrição (PT)</label><textarea className="form__textarea" value={data.description.pt} onChange={e => setData({...data, description: {...data.description, pt: e.target.value}})} rows={2} /></div>
+            <div className="form__group form__group--full"><label className="form__label">Descrição (EN)</label><textarea className="form__textarea" value={data.description.en} onChange={e => setData({...data, description: {...data.description, en: e.target.value}})} rows={2} /></div>
+          </div>
+
+          <div style={{ marginTop: '2rem' }}>
+            <h4 style={{ marginBottom: '1rem' }}>Horários</h4>
+            <div className="admin-table-container glass" style={{ padding: '1rem' }}>
+              <table className="admin-table" style={{ fontSize: '0.75rem' }}>
+                <thead>
+                  <tr><th>Turma</th><th>Período</th><th>Horário</th><th>Dias</th><th>Ação</th></tr>
+                </thead>
+                <tbody>
+                  {data.schedule.map((s: any, i: number) => (
+                    <tr key={i}>
+                      <td><input className="form__input" value={s.turma?.pt} onChange={e => { const ns = [...data.schedule]; ns[i].turma = { pt: e.target.value, en: e.target.value }; setData({...data, schedule: ns}); }} style={{ padding: '0.25rem' }} /></td>
+                      <td><input className="form__input" value={s.período?.pt} onChange={e => { const ns = [...data.schedule]; ns[i].período = { pt: e.target.value, en: e.target.value }; setData({...data, schedule: ns}); }} style={{ padding: '0.25rem' }} /></td>
+                      <td><input className="form__input" value={s.horário} onChange={e => { const ns = [...data.schedule]; ns[i].horário = e.target.value; setData({...data, schedule: ns}); }} style={{ padding: '0.25rem' }} /></td>
+                      <td><input className="form__input" value={s.dias?.pt} onChange={e => { const ns = [...data.schedule]; ns[i].dias = { pt: e.target.value, en: e.target.value }; setData({...data, schedule: ns}); }} style={{ padding: '0.25rem' }} /></td>
+                      <td><button onClick={() => { const ns = data.schedule.filter((_: any, idx: number) => idx !== i); setData({...data, schedule: ns}); }} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><X size={14} /></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <button className="btn btn--outline btn--small" onClick={() => setData({...data, schedule: [...data.schedule, { turma: { pt: '', en: '' }, período: { pt: '', en: '' }, horário: '', dias: { pt: '', en: '' } }]})} style={{ marginTop: '1rem' }}>+ Adicionar Horário</button>
+            </div>
+          </div>
+        </div>
+        <div className="admin-modal-footer">
+          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn btn--primary" onClick={() => onSave(data)}><Save size={18} /> Guardar Curso</button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Agenda View ────────────────────────────────────────────────────────────────
 
 const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const SLOTS = ['Manhã (09h-13h)', 'Tarde (13h-18h)', 'Noite (18h-21h)'];
 
 function AgendaView({ data }: { data: RawData | null }) {
+  const [room, setRoom] = useState('sala1');
   const [agenda, setAgenda] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -442,12 +683,13 @@ function AgendaView({ data }: { data: RawData | null }) {
 
   useEffect(() => {
     fetchAgenda();
-  }, []);
+  }, [room]);
 
   const fetchAgenda = async () => {
+    setLoading(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/agenda', {
+      const res = await fetch(`/api/admin/agenda?room=${room}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) { setAgenda(await res.json()); }
@@ -458,13 +700,13 @@ function AgendaView({ data }: { data: RawData | null }) {
     setSaving(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/agenda', {
+      const res = await fetch(`/api/admin/agenda?room=${room}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(agenda)
       });
       if (res.ok) {
-        alert('Agenda guardada com sucesso no servidor!');
+        alert(`Agenda ${room.toUpperCase()} guardada com sucesso!`);
       } else {
         const errorData = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
         alert('Erro ao guardar: ' + (errorData.error || res.statusText));
@@ -499,56 +741,64 @@ function AgendaView({ data }: { data: RawData | null }) {
     return trainer[6]?.split(',').map((c: string) => c.trim()) || [];
   };
 
-  if (loading) return <div className="glass" style={{ padding: '2rem' }}>A carregar agenda...</div>;
-
   return (
     <div className="admin-agenda">
+      {/* Room Tabs */}
+      <div className="admin-tabs" style={{ marginBottom: '1.5rem' }}>
+        <button className={`admin-tab ${room === 'sala1' ? 'is-active' : ''}`} onClick={() => setRoom('sala1')}>Sala 1</button>
+        <button className={`admin-tab ${room === 'sala2' ? 'is-active' : ''}`} onClick={() => setRoom('sala2')}>Sala 2</button>
+      </div>
+
       <div className="glass" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h3>Mapa de Ocupação — Sala 1</h3>
+          <h3>Mapa de Ocupação — {room === 'sala1' ? 'Sala 1' : 'Sala 2'}</h3>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button className="btn btn--outline" onClick={() => setShowPreview(true)}>
               <Eye size={18} /> Visualizar / Imprimir
             </button>
-            <button className="btn btn--primary" onClick={saveAgenda} disabled={saving}>
+            <button className="btn btn--primary" onClick={saveAgenda} disabled={saving || loading}>
               {saving ? 'A Sincronizar...' : <><Save size={18} /> Sincronizar Mapa</>}
             </button>
           </div>
         </div>
 
-        <div className="agenda-grid">
-          {DAYS.map(day => (
-            <div key={day} className="agenda-day">
-              <div className="agenda-day-header">{day}</div>
-              {day === 'Sábado' ? (
-                <div className="agenda-slot agenda-slot--full">
-                  <label>Dia Inteiro (09h-18h)</label>
-                  <AgendaSlotInputs 
-                    day={day} slot="full" agenda={agenda} 
-                    trainers={getAvailableTrainers(day, 'full')} 
-                    onUpdate={updateSlot} getCourses={getTrainerCourses}
-                  />
-                </div>
-              ) : (
-                SLOTS.map(slot => (
-                  <div key={slot} className="agenda-slot">
-                    <label>{slot}</label>
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}><div className="spinner"></div></div>
+        ) : (
+          <div className="agenda-grid">
+            {DAYS.map(day => (
+              <div key={day} className="agenda-day">
+                <div className="agenda-day-header">{day}</div>
+                {day === 'Sábado' ? (
+                  <div className="agenda-slot agenda-slot--full">
+                    <label>Dia Inteiro (09h-18h)</label>
                     <AgendaSlotInputs 
-                      day={day} slot={slot} agenda={agenda} 
-                      trainers={getAvailableTrainers(day, slot)} 
+                      day={day} slot="full" agenda={agenda} 
+                      trainers={getAvailableTrainers(day, 'full')} 
                       onUpdate={updateSlot} getCourses={getTrainerCourses}
                     />
                   </div>
-                ))
-              )}
-            </div>
-          ))}
-        </div>
+                ) : (
+                  SLOTS.map(slot => (
+                    <div key={slot} className="agenda-slot">
+                      <label>{slot}</label>
+                      <AgendaSlotInputs 
+                        day={day} slot={slot} agenda={agenda} 
+                        trainers={getAvailableTrainers(day, slot)} 
+                        onUpdate={updateSlot} getCourses={getTrainerCourses}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
         {showPreview && (
-          <AgendaPreviewModal agenda={agenda} onClose={() => setShowPreview(false)} />
+          <AgendaPreviewModal agenda={agenda} room={room} onClose={() => setShowPreview(false)} />
         )}
       </AnimatePresence>
     </div>
@@ -575,7 +825,7 @@ function AgendaSlotInputs({ day, slot, agenda, trainers, onUpdate, getCourses }:
   );
 }
 
-function AgendaPreviewModal({ agenda, onClose }: any) {
+function AgendaPreviewModal({ agenda, room, onClose }: any) {
   const printRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
 
@@ -594,7 +844,7 @@ function AgendaPreviewModal({ agenda, onClose }: any) {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save('Agenda_Sala1_FaroForma.pdf');
+      pdf.save(`Agenda_${room === 'sala1' ? 'Sala1' : 'Sala2'}_FaroForma.pdf`);
     } catch (err) {
       alert('Erro ao gerar PDF.');
     } finally {
@@ -615,7 +865,7 @@ function AgendaPreviewModal({ agenda, onClose }: any) {
           <div ref={printRef} className="print-sheet">
             <div className="print-header">
               <div className="print-logo">FaroForma</div>
-              <div className="print-title">Mapa de Ocupação — Sala 1</div>
+              <div className="print-title">Mapa de Ocupação — {room === 'sala1' ? 'Sala 1' : 'Sala 2'}</div>
               <div className="print-date">Gerado em: {new Date().toLocaleDateString()}</div>
             </div>
 
@@ -695,6 +945,11 @@ const ADMIN_STYLES = `
   .admin-logout-btn { color: #ef4444; background: none; border: none; cursor: pointer; display: flex; align-items: center; opacity: 0.7; transition: opacity 0.2s; }
   .admin-logout-btn:hover { opacity: 1; }
 
+  .admin-tabs { display: flex; gap: 0.5rem; background: var(--bg-1); padding: 0.4rem; border-radius: var(--radius); border: 1px solid var(--border); width: fit-content; }
+  .admin-tab { padding: 0.5rem 1.5rem; border-radius: calc(var(--radius) - 2px); border: none; background: transparent; color: var(--text-muted); font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+  .admin-tab:hover { color: var(--text); }
+  .admin-tab.is-active { background: var(--bg); color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
   .admin-main-alt { padding-top: 104px; padding-bottom: 4rem; }
   .admin-content-title { margin-bottom: 2rem; }
   .admin-content-title h2 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; }
@@ -728,6 +983,11 @@ const ADMIN_STYLES = `
   .admin-close-btn:hover { background: var(--bg-1); color: var(--text); }
   .admin-modal-body { padding: 2rem; overflow-y: auto; }
   .admin-modal-footer { padding: 1.25rem 2rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 1rem; background: var(--bg-1); }
+
+  .detail-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+  .detail-item { display: flex; flex-direction: column; gap: 0.25rem; }
+  .detail-item label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+  .detail-item div { font-size: 1rem; color: var(--text); line-height: 1.5; }
 
   .agenda-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-top: 1rem; }
   .agenda-day { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }

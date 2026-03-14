@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { MessageCircle, Users, Award, Target } from 'lucide-react';
 import AnimatedSection from '../ui/AnimatedSection';
-import { COURSE_INFO } from '../../data/courses';
+import { COURSE_INFO as DEFAULT_COURSE_INFO } from '../../data/courses';
 import type { CourseHighlight } from '../../data/courses';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -11,22 +11,61 @@ export default function Courses() {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
   const [modalOpen, setModalOpen] = useState(false);
+  const [courseData, setCourseData] = useState<any>(DEFAULT_COURSE_INFO);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    level: (COURSE_INFO.schedule[0].turma as any)[language],
+    level: '',
   });
   const [formSuccess, setFormSuccess] = useState(false);
+
+  useEffect(() => {
+    fetchCourse();
+  }, []);
+
+  const fetchCourse = async () => {
+    try {
+      const res = await fetch('/api/courses');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setCourseData(data[0]);
+          setFormData(prev => ({ ...prev, level: (data[0].schedule[0].turma as any)[language] }));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching courses:', err);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormSuccess(true);
+    try {
+      const res = await fetch('/api/student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          program: courseData.title[language],
+          startDate: formData.level,
+          contactPreference: 'Email/Phone',
+          notes: `Inscrição via formulário de curso: ${formData.level}`
+        })
+      });
+      if (res.ok) {
+        setFormSuccess(true);
+      }
+    } catch (err) {
+      alert('Erro ao enviar inscrição. Por favor tente novamente.');
+    }
   };
 
   return (
@@ -41,19 +80,19 @@ export default function Courses() {
         >
           <span className="tag">{language === 'pt' ? 'Cursos' : 'Courses'}</span>
           <h2>
-            {COURSE_INFO.title[language]}<br />
-            <span className="gradient-text">{COURSE_INFO.subtitle[language]}</span>
+            {courseData.title[language]}<br />
+            <span className="gradient-text">{courseData.subtitle[language]}</span>
           </h2>
           <p>
-            {COURSE_INFO.description[language]}<br />
-            <strong>{COURSE_INFO.status[language]}</strong>
+            {courseData.description[language]}<br />
+            <strong>{courseData.status[language]}</strong>
           </p>
         </motion.div>
 
         <div className="courses__grid">
           <AnimatedSection direction="left" delay={0.15}>
               <div className="courses__highlights">
-                {COURSE_INFO.highlights.map((item: CourseHighlight, i: number) => (
+                {(courseData.highlights || DEFAULT_COURSE_INFO.highlights).map((item: CourseHighlight, i: number) => (
                   <div key={i} className="courses__highlight">
                     <span className="courses__highlight-icon">
                       {{
@@ -75,6 +114,9 @@ export default function Courses() {
                   onClick={() => {
                     setModalOpen(true);
                     setFormSuccess(false);
+                    if (!formData.level && courseData.schedule.length > 0) {
+                      setFormData(f => ({ ...f, level: courseData.schedule[0].turma[language] }));
+                    }
                   }}
                 >
                   {language === 'pt' ? 'Inscrever-me' : 'Enrol now'}
@@ -93,7 +135,7 @@ export default function Courses() {
                   <span>{language === 'pt' ? 'Horário' : 'Schedule'}</span>
                   <span>{language === 'pt' ? 'Dias' : 'Days'}</span>
                 </div>
-                {COURSE_INFO.schedule.map((slot, i) => (
+                {(courseData.schedule || []).map((slot: any, i: number) => (
                   <div key={i} className="courses__row">
                     <span>{(slot.turma as any)[language]}</span>
                     <span>{(slot.período as any)[language]}</span>
@@ -105,6 +147,7 @@ export default function Courses() {
             </div>
           </AnimatedSection>
         </div>
+...
         {modalOpen && (
           <div className="modal-overlay" role="dialog" aria-modal="true">
             <div className="modal-card">

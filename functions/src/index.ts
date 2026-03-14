@@ -306,8 +306,9 @@ app.post('/api/admin/config', isAdmin as any, async (req: Request, res: Response
 });
 
 app.get('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response) => {
+  const room = (req.query.room as string) || 'sala1';
   try {
-    const doc = await admin.firestore().collection('agenda').doc('sala1').get();
+    const doc = await admin.firestore().collection('agenda').doc(room).get();
     res.json(doc.exists ? doc.data() : {});
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao obter agenda' });
@@ -315,11 +316,57 @@ app.get('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response)
 });
 
 app.post('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response) => {
+  const room = (req.query.room as string) || 'sala1';
   try {
-    await admin.firestore().collection('agenda').doc('sala1').set(req.body);
+    await admin.firestore().collection('agenda').doc(room).set(req.body);
     res.json({ message: 'Agenda atualizada' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao salvar' });
+  }
+});
+
+// ── Course Routes ─────────────────────────────────────────────────────────────
+
+app.get('/api/courses', async (req: Request, res: Response) => {
+  try {
+    const snapshot = await admin.firestore().collection('courses').orderBy('title').get();
+    const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(courses);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao obter cursos' });
+  }
+});
+
+app.get('/api/admin/courses', isAdmin as any, async (req: Request, res: Response) => {
+  try {
+    const snapshot = await admin.firestore().collection('courses').orderBy('title').get();
+    const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(courses);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao obter cursos' });
+  }
+});
+
+app.post('/api/admin/courses', isAdmin as any, async (req: Request, res: Response) => {
+  const { id, ...data } = req.body;
+  try {
+    if (id) {
+      await admin.firestore().collection('courses').doc(id).set(data, { merge: true });
+    } else {
+      await admin.firestore().collection('courses').add(data);
+    }
+    res.json({ message: 'Curso guardado com sucesso' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao guardar curso' });
+  }
+});
+
+app.delete('/api/admin/courses/:id', isAdmin as any, async (req: Request, res: Response) => {
+  try {
+    await admin.firestore().collection('courses').doc(req.params.id).delete();
+    res.json({ message: 'Curso removido com sucesso' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao remover curso' });
   }
 });
 
