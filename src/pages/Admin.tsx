@@ -70,7 +70,7 @@ export default function Admin() {
     setError('');
     try {
       const token = await u.getIdToken();
-      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/data', {
+      const res = await fetch('/api/admin/data', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -301,7 +301,7 @@ function EditFormadorModal({ row, onClose, onSuccess }: any) {
     setSaving(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/update-formador', {
+      const res = await fetch('/api/admin/update-formador', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ rowIndex: row.originalIndex, values: values })
@@ -386,7 +386,7 @@ function ConfigView() {
   const fetchConfig = async () => {
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/config', {
+      const res = await fetch('/api/admin/config', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) { setConfig(await res.json()); }
@@ -397,7 +397,7 @@ function ConfigView() {
     setSaving(true); setMsg('');
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/config', {
+      const res = await fetch('/api/admin/config', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
@@ -447,7 +447,7 @@ function AgendaView({ data }: { data: RawData | null }) {
   const fetchAgenda = async () => {
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/agenda', {
+      const res = await fetch('/api/admin/agenda', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) { setAgenda(await res.json()); }
@@ -458,7 +458,7 @@ function AgendaView({ data }: { data: RawData | null }) {
     setSaving(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('https://europe-west1-faroformapt.cloudfunctions.net/api/api/admin/agenda', {
+      const res = await fetch('/api/admin/agenda', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(agenda)
