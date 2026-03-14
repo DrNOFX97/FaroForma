@@ -2,6 +2,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import { google } from "googleapis";
 import nodemailer from "nodemailer";
 import { z } from "zod";
@@ -16,10 +17,36 @@ const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 
 const app = express();
+app.set('trust proxy', 1); // Cloud Run sits behind Google's load balancer
 app.use(cors({ origin: true }));
 app.use(express.json());
 
-const ADMIN_EMAILS = ['faroforma@gmail.com', 'custodio.guerreiro@gmail.com'];
+const publicLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados pedidos. Tente novamente mais tarde.' },
+});
+
+// ── Admin emails — Firestore config/admins ────────────────────────────────────
+
+let adminEmailsCache: { emails: string[]; ts: number } | null = null;
+const ADMIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getAdminEmails(): Promise<string[]> {
+  if (adminEmailsCache && Date.now() - adminEmailsCache.ts < ADMIN_CACHE_TTL) {
+    return adminEmailsCache.emails;
+  }
+  try {
+    const doc = await admin.firestore().collection('config').doc('admins').get();
+    const emails = (doc.exists ? (doc.data()?.emails as string[]) : null) ?? [];
+    adminEmailsCache = { emails, ts: Date.now() };
+    return emails;
+  } catch {
+    return adminEmailsCache?.emails ?? [];
+  }
+}
 
 // ── Auth Middleware ──────────────────────────────────────────────────────────
 
@@ -33,11 +60,11 @@ const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
   const idToken = authHeader.split('Bearer ')[1];
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    if (ADMIN_EMAILS.includes(decodedToken.email || '')) {
+    const adminEmails = await getAdminEmails();
+    if (adminEmails.includes(decodedToken.email || '')) {
       (req as any).user = decodedToken;
       next();
     } else {
-      console.warn(`[Auth] Unauthorized access attempt: ${decodedToken.email}`);
       res.status(403).json({ error: 'Proibido' });
     }
   } catch (error: any) {
@@ -173,7 +200,7 @@ async function sendMail(options: { to: string, subject: string, html: string }) 
 
 // ── Public Routes ─────────────────────────────────────────────────────────────
 
-app.post('/api/inscricao-formadores', async (req: Request, res: Response) => {
+app.post('/api/inscricao-formadores', publicLimiter, async (req: Request, res: Response) => {
   const parsed = FormadoresSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: 'Dados inválidos' });
@@ -212,7 +239,7 @@ app.post('/api/inscricao-formadores', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/contact', async (req: Request, res: Response) => {
+app.post('/api/contact', publicLimiter, async (req: Request, res: Response) => {
   const parsed = ContactSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Dados inválidos' });
 
@@ -234,7 +261,7 @@ app.post('/api/contact', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/student', async (req: Request, res: Response) => {
+app.post('/api/student', publicLimiter, async (req: Request, res: Response) => {
   const parsed = StudentSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Dados inválidos' });
 
@@ -362,8 +389,9 @@ app.post('/api/admin/courses', isAdmin as any, async (req: Request, res: Respons
 });
 
 app.delete('/api/admin/courses/:id', isAdmin as any, async (req: Request, res: Response) => {
+  const { id } = req.params;
   try {
-    await admin.firestore().collection('courses').doc(req.params.id).delete();
+    await admin.firestore().collection('courses').doc(id as string).delete();
     res.json({ message: 'Curso removido com sucesso' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao remover curso' });

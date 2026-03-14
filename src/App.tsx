@@ -3,6 +3,7 @@ import { Navbar, Footer } from './components/layout';
 import { Hero, About, Services, Tutoring, Contact, Courses } from './components/sections';
 import FormadoresInscricao from './pages/FormadoresInscricao';
 import Admin from './pages/Admin';
+import { Toaster } from 'react-hot-toast';
 import { getSiteMeta, DEFAULT_SITE_META } from './config/siteMeta';
 
 export type Page = 'home' | 'formadores' | 'admin';
@@ -22,12 +23,40 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    document.title = meta.title;
+    if (page === 'admin') return;
+
+    const pageMeta = page === 'formadores'
+      ? {
+          title: 'Candidatura de Formadores | FaroForma — Faro',
+          description: 'Candidate-se como formador no FaroForma em Faro. Junte-se à nossa equipa de formadores certificados e contribua para a formação e ensino na região do Algarve.',
+          canonical: 'https://www.faroforma.pt/formadores',
+        }
+      : {
+          title: meta.title,
+          description: meta.description,
+          canonical: 'https://www.faroforma.pt/',
+        };
+
+    document.title = pageMeta.title;
+
     const desc = document.querySelector('meta[name="description"]');
-    if (desc) desc.setAttribute('content', meta.description);
+    if (desc) desc.setAttribute('content', pageMeta.description);
+
     const keywords = document.querySelector('meta[name="keywords"]');
-    if (keywords) keywords.setAttribute('content', meta.keywords);
-  }, [meta]);
+    if (keywords && page === 'home') keywords.setAttribute('content', meta.keywords);
+
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute('href', pageMeta.canonical);
+
+    const ogUrl = document.querySelector('meta[property="og:url"]');
+    if (ogUrl) ogUrl.setAttribute('content', pageMeta.canonical);
+
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', pageMeta.title);
+
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute('content', pageMeta.description);
+  }, [meta, page]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
@@ -52,11 +81,17 @@ export default function App() {
 
   // Hide Layout for Admin
   if (page === 'admin') {
-    return <Admin />;
+    return (
+      <>
+        <Admin />
+        <Toaster position="bottom-right" toastOptions={{ className: 'glass', style: { background: 'var(--bg-1)', color: 'var(--text)', border: '1px solid var(--border)', fontSize: '0.9rem', padding: '12px 20px', borderRadius: 'var(--radius)' } }} />
+      </>
+    );
   }
 
   return (
     <>
+      <Toaster position="bottom-right" toastOptions={{ className: 'glass', style: { background: 'var(--bg-1)', color: 'var(--text)', border: '1px solid var(--border)', fontSize: '0.9rem', padding: '12px 20px', borderRadius: 'var(--radius)' } }} />
       <Navbar
         isDark={isDark}
         onThemeToggle={() => setIsDark(v => !v)}

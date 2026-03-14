@@ -1,10 +1,26 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { MessageCircle, Users, Award, Target } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import AnimatedSection from '../ui/AnimatedSection';
 import { COURSE_INFO as DEFAULT_COURSE_INFO } from '../../data/courses';
 import type { CourseHighlight } from '../../data/courses';
 import { useLanguage } from '../../context/LanguageContext';
+
+import { apiService } from '../../services/api';
+
+const SCHEMA_DAY = 'https://schema.org/';
+const WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday'].map(d => SCHEMA_DAY + d);
+
+function mapDayOfWeek(dias: string | undefined): { byDay?: string[] } {
+  if (!dias) return {};
+  const lower = dias.toLowerCase();
+  if (lower.includes('sábado') && lower.includes('domingo')) return { byDay: [SCHEMA_DAY + 'Saturday', SCHEMA_DAY + 'Sunday'] };
+  if (lower.includes('sábado')) return { byDay: [SCHEMA_DAY + 'Saturday'] };
+  if (lower.includes('domingo')) return { byDay: [SCHEMA_DAY + 'Sunday'] };
+  if (lower.includes('2ª') || lower.includes('segunda') || lower.includes('mon')) return { byDay: WEEKDAYS };
+  return {};
+}
 
 export default function Courses() {
   const { language } = useLanguage();
@@ -24,15 +40,66 @@ export default function Courses() {
     fetchCourse();
   }, []);
 
+  useEffect(() => {
+    if (!courseData) return;
+
+    const schema = {
+      '@context': 'https://schema.org',
+      '@type': 'Course',
+      name: courseData.title?.pt ?? courseData.title,
+      description: courseData.description?.pt ?? courseData.description,
+      provider: {
+        '@type': 'Organization',
+        name: 'FaroForma',
+        url: 'https://www.faroforma.pt',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Rua Conselheiro Sebastião Teles 2A',
+          postalCode: '8000-256',
+          addressLocality: 'Faro',
+          addressCountry: 'PT',
+        },
+      },
+      inLanguage: 'pt',
+      hasCourseInstance: (courseData.schedule ?? []).map((slot: any) => ({
+        '@type': 'CourseInstance',
+        name: slot.turma?.pt ?? slot.turma,
+        courseMode: 'onsite',
+        location: {
+          '@type': 'Place',
+          name: 'FaroForma',
+          address: {
+            '@type': 'PostalAddress',
+            addressLocality: 'Faro',
+            addressCountry: 'PT',
+          },
+        },
+        courseSchedule: {
+          '@type': 'Schedule',
+          ...mapDayOfWeek(slot.dias?.pt ?? slot.dias),
+          startTime: slot.horário?.split('–')[0]?.trim(),
+          endTime: slot.horário?.split('–')[1]?.trim(),
+        },
+      })),
+    };
+
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id = 'ld-json-course';
+    script.textContent = JSON.stringify(schema);
+    document.head.appendChild(script);
+
+    return () => {
+      document.getElementById('ld-json-course')?.remove();
+    };
+  }, [courseData]);
+
   const fetchCourse = async () => {
     try {
-      const res = await fetch('/api/courses');
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.length > 0) {
-          setCourseData(data[0]);
-          setFormData(prev => ({ ...prev, level: (data[0].schedule[0].turma as any)[language] }));
-        }
+      const data = await apiService.getCourses();
+      if (data && data.length > 0) {
+        setCourseData(data[0]);
+        setFormData(prev => ({ ...prev, level: (data[0].schedule[0].turma as any)[language] }));
       }
     } catch (err) {
       console.error('Error fetching courses:', err);
@@ -47,24 +114,18 @@ export default function Courses() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/student', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          program: courseData.title[language],
-          startDate: formData.level,
-          contactPreference: 'Email/Phone',
-          notes: `Inscrição via formulário de curso: ${formData.level}`
-        })
+      await apiService.submitStudent({
+        fullName: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        program: courseData.title[language],
+        startDate: formData.level,
+        contactPreference: 'Email/Phone',
+        notes: `Inscrição via formulário de curso: ${formData.level}`
       });
-      if (res.ok) {
-        setFormSuccess(true);
-      }
+      setFormSuccess(true);
     } catch (err) {
-      alert('Erro ao enviar inscrição. Por favor tente novamente.');
+      toast.error('Erro ao enviar inscrição. Por favor tente novamente.');
     }
   };
 
@@ -205,7 +266,7 @@ export default function Courses() {
                   <label>
                     {language === 'pt' ? 'Turma' : 'Class'}
                     <select name="level" value={formData.level} onChange={handleChange}>
-                      {COURSE_INFO.schedule.map((slot, i) => (
+                      {(courseData.schedule || []).map((slot: any, i: number) => (
                         <option key={i} value={(slot.turma as any)[language]}>
                           {(slot.turma as any)[language]} · {(slot.período as any)[language]}
                         </option>

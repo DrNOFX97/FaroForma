@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { signInWithPopup, signOut } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Mail, Phone, Calendar, Hash,
@@ -8,6 +9,17 @@ import {
   X, ShieldCheck
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { apiService } from '../services/api';
+import { auth, googleProvider } from '../config/firebase';
+
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+    <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+    <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+  </svg>
+);
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -156,24 +168,31 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
   const next = () => { if (!validate(step)) return; setDir(1);  setStep(s => s + 1); };
   const back = () => {                                setDir(-1); setStep(s => s - 1); };
 
+  const fillWithGoogle = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      setData(prev => ({
+        ...prev,
+        nome: result.user.displayName ?? prev.nome,
+        email: result.user.email ?? prev.email,
+      }));
+      await signOut(auth);
+    } catch (err: any) {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setSubmitErr(language === 'pt' ? 'Não foi possível ligar ao Google.' : 'Could not connect to Google.');
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validate(3)) return;
     setLoading(true);
     setSubmitErr('');
     try {
-      const response = await fetch('/api/inscricao-formadores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (response.ok) {
-        setSuccess(true);
-      } else {
-        const body = await response.json().catch(() => ({}));
-        setSubmitErr((body as { error?: string }).error ?? (language === 'pt' ? 'Ocorreu um erro técnico. Tente novamente.' : 'A technical error occurred. Please try again.'));
-      }
-    } catch {
-      setSubmitErr(language === 'pt' ? 'Ocorreu um erro técnico. Tente novamente.' : 'A technical error occurred. Please try again.');
+      await apiService.submitFormador(data);
+      setSuccess(true);
+    } catch (err: any) {
+      setSubmitErr(err.message || (language === 'pt' ? 'Ocorreu um erro técnico. Tente novamente.' : 'A technical error occurred. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -281,7 +300,7 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
                   exit={{ opacity: 0, x: dir > 0 ? -20 : 20 }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                 >
-                  {step === 1 && <Step1 data={data} errors={errors} onChange={set} language={language} />}
+                  {step === 1 && <Step1 data={data} errors={errors} onChange={set} language={language} onFillWithGoogle={fillWithGoogle} />}
                   {step === 2 && <Step2 data={data} errors={errors} onChange={set} onToggle={toggle} language={language} />}
                   {step === 3 && <Step3 data={data} errors={errors} onChange={set} onToggle={toggle} language={language} />}
                 </motion.div>
@@ -349,13 +368,20 @@ interface StepProps {
   onChange: (field: keyof WizardData, value: WizardData[keyof WizardData]) => void;
   onToggle?: (field: 'areas' | 'dias' | 'periodos', val: string) => void;
   language: 'pt' | 'en';
+  onFillWithGoogle?: () => void;
 }
 
-function Step1({ data, errors, onChange, language }: StepProps) {
+function Step1({ data, errors, onChange, language, onFillWithGoogle }: StepProps) {
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible">
       <h2 className="wizard-step-title">{language === 'pt' ? 'Dados Pessoais' : 'Personal Details'}</h2>
       <p className="wizard-step-sub">{language === 'pt' ? 'Conte-nos um pouco sobre si para podermos começar.' : 'Tell us a bit about yourself so we can get started.'}</p>
+
+      {onFillWithGoogle && (
+        <button type="button" onClick={onFillWithGoogle} className="btn btn--google" style={{ marginBottom: '1.5rem' }}>
+          <GoogleIcon /> {language === 'pt' ? 'Preencher com Google' : 'Fill with Google'}
+        </button>
+      )}
 
       <div className="form__grid">
         <div className="form__group form__group--full">

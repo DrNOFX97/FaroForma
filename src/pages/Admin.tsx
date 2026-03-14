@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   signInWithPopup, 
   signOut, 
@@ -16,29 +16,20 @@ import {
   LogOut, 
   Lock,
   AlertCircle,
-  Pencil,
-  X,
-  Save,
-  Calendar as CalendarIcon,
-  Printer,
-  FileDown,
-  Eye,
-  Search
+  Award,
+  Calendar as CalendarIcon
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
-const ADMIN_EMAILS = ['faroforma@gmail.com', 'custodio.guerreiro@gmail.com'];
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-interface RawData {
-  formadores: any[][];
-  alunos: any[];
-  contactos: any[];
-}
-
-// ── Admin Component ────────────────────────────────────────────────────────────
+import { apiService } from '../services/api';
+import type { RawData } from '../services/api';
+import { DashboardView } from '../components/admin/DashboardView';
+import { FormadoresTable } from '../components/admin/FormadoresTable';
+import { TableView } from '../components/admin/TableView';
+import { AgendaView } from '../components/admin/AgendaView';
+import { CoursesView } from '../components/admin/CoursesView';
+import { ConfigView } from '../components/admin/ConfigView';
+import { DetailModal } from '../components/admin/DetailModal';
+import { EditFormadorModal } from '../components/admin/EditFormadorModal';
 
 export default function Admin() {
   const [user, setUser] = useState<User | null>(null);
@@ -51,39 +42,45 @@ export default function Admin() {
   const [detailRow, setDetailRow] = useState<any | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      if (u && ADMIN_EMAILS.includes(u.email || '')) {
-        setUser(u);
-        setError('');
-        fetchData(u);
-      } else if (u) {
-        setError('Acesso negado. Apenas administradores autorizados têm permissão.');
-        signOut(auth);
-      } else {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      if (!u) {
         setUser(null);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+      setLoading(true);
+      try {
+        const json = await apiService.getAdminData();
+        setUser(u);
+        setData(json);
+        setError('');
+      } catch (err: any) {
+        if (err.message === 'ACCESS_DENIED') {
+          setError('Acesso negado. Apenas administradores autorizados têm permissão.');
+        } else {
+          setError('Erro de rede: ' + err.message);
+        }
+        await signOut(auth);
+      } finally {
+        setLoading(false);
+      }
     });
     return () => unsubscribe();
   }, []);
 
-  const fetchData = async (u: User) => {
+  const fetchData = async () => {
     setFetching(true);
     setError('');
     try {
-      const token = await u.getIdToken();
-      const res = await fetch('/api/admin/data', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      } else {
-        const errText = await res.text();
-        setError(`Erro ${res.status}: ${errText || res.statusText}`);
-      }
+      const json = await apiService.getAdminData();
+      setData(json);
     } catch (err: any) {
-      setError('Erro de rede: ' + err.message);
+      if (err.message === 'ACCESS_DENIED') {
+        setError('Acesso negado. Apenas administradores autorizados têm permissão.');
+        await signOut(auth);
+      } else {
+        setError('Erro de rede: ' + err.message);
+      }
     } finally {
       setFetching(false);
     }
@@ -92,15 +89,12 @@ export default function Admin() {
   const login = async () => {
     setError('');
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      if (!ADMIN_EMAILS.includes(result.user.email || '')) {
-        setError('Acesso negado. Apenas administradores autorizados têm permissão.');
-        await signOut(auth);
-      } else {
-        fetchData(result.user);
-      }
+      await signInWithPopup(auth, googleProvider);
+      // onAuthStateChanged trata o resto
     } catch (err: any) {
-      setError('Erro ao fazer login: ' + err.message);
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError('Erro ao fazer login: ' + err.message);
+      }
     }
   };
 
@@ -169,7 +163,7 @@ export default function Admin() {
             <AnimatePresence mode="wait">
               <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                 {activeTab === 'dashboard' && <DashboardView data={data} error={error} />}
-                {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={() => fetchData(user)} onEdit={setEditingRow} onDetail={setDetailRow} />}
+                {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingRow} onDetail={setDetailRow} />}
                 {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} onDetail={setDetailRow} />}
                 {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} onDetail={setDetailRow} />}
                 {activeTab === 'agenda' && <AgendaView data={data} />}
@@ -186,7 +180,7 @@ export default function Admin() {
           <EditFormadorModal 
             row={editingRow} 
             onClose={() => setEditingRow(null)} 
-            onSuccess={() => { setEditingRow(null); fetchData(user); }}
+            onSuccess={() => { setEditingRow(null); fetchData(); }}
           />
         )}
         {detailRow && (
@@ -209,716 +203,6 @@ function NavItem({ active, icon, label, onClick }: any) {
     <button className={`admin-nav-item ${active ? 'is-active' : ''}`} onClick={onClick}>
       {icon}<span>{label}</span>
     </button>
-  );
-}
-
-function DashboardView({ data, error }: { data: RawData | null, error: string }) {
-  const stats = {
-    formadores: Math.max(0, (data?.formadores?.length || 1) - 1),
-    alunos: Math.max(0, (data?.alunos?.length || 1) - 1),
-    contactos: Math.max(0, (data?.contactos?.length || 1) - 1),
-  };
-
-  return (
-    <div className="admin-dashboard">
-      <div className="admin-stats-grid">
-        <StatCard label="Formadores" val={stats.formadores} icon={<Users size={20} />} desc="Total de candidaturas" />
-        <StatCard label="Alunos" val={stats.alunos} icon={<GraduationCap size={20} />} desc="Novas inscrições" />
-        <StatCard label="Contactos" val={stats.contactos} icon={<MessageSquare size={20} />} desc="Mensagens recebidas" />
-      </div>
-      
-      <div className="glass" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-        <h3 style={{ marginBottom: '1.5rem' }}>Estado do Sistema</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {!data && !error && <div className="spinner spinner--small"></div>}
-          <p style={{ color: 'var(--text-muted)' }}>
-            {data ? 'Ligação às Google Sheets ativa.' : (error ? `Erro: ${error}` : 'A sincronizar com Google Sheets...')}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ label, val, icon, desc }: any) {
-  return (
-    <div className="stat-card">
-      <div className="stat-card__header"><span>{label}</span>{icon}</div>
-      <div className="stat-card__val">{val}</div>
-      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{desc}</p>
-    </div>
-  );
-}
-
-function FormadoresTable({ data, fetching, onEdit, onDetail }: { data: any[][], fetching: boolean, onRefresh: () => void, onEdit: (row: any) => void, onDetail: (row: any) => void }) {
-  if (fetching) return <div className="glass" style={{ padding: '2rem' }}>A carregar dados...</div>;
-  if (!data || data.length <= 1) return <div className="glass" style={{ padding: '2rem' }}>Sem candidaturas para mostrar.</div>;
-
-  const indexedRows = data.slice(1).map((row, idx) => ({ 
-    originalIndex: idx + 1,
-    cells: row 
-  })).reverse();
-
-  return (
-    <div className="admin-table-container glass">
-      <div className="admin-table-scroll">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nome</th>
-              <th>Email</th>
-              <th>Telefone</th>
-              <th>Áreas</th>
-              <th>Dias</th>
-              <th>Períodos</th>
-              <th>Modalidade</th>
-              <th>Data Registo</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {indexedRows.map((item, i) => (
-              <tr key={i}>
-                <td style={{ fontWeight: 700 }}>#{item.originalIndex}</td>
-                <td style={{ color: 'var(--text)', fontWeight: 600 }}>{item.cells[1]}</td>
-                <td>{item.cells[2]}</td>
-                <td>{item.cells[3]}</td>
-                <td title={item.cells[6]}>{item.cells[6]}</td>
-                <td>{item.cells[11]}</td>
-                <td>{item.cells[12]}</td>
-                <td>{item.cells[13]}</td>
-                <td>{new Date(item.cells[0]).toLocaleDateString()}</td>
-                <td>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="admin-action-btn" onClick={() => onDetail(item)} title="Ver Detalhes">
-                      <Search size={16} />
-                    </button>
-                    <button className="admin-action-btn" onClick={() => onEdit(item)} title="Editar">
-                      <Pencil size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function DetailModal({ data, onClose }: { data: any, onClose: () => void }) {
-  const isFormador = Array.isArray(data.cells);
-  const fields = isFormador ? data.cells : Object.entries(data);
-
-  return (
-    <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div className="admin-modal glass" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
-        <div className="admin-modal-header">
-          <h3>Detalhes do Registo {data.originalIndex ? `#${data.originalIndex}` : ''}</h3>
-          <button onClick={onClose} className="admin-close-btn"><X size={20} /></button>
-        </div>
-        <div className="admin-modal-body">
-          <div className="detail-grid">
-            {isFormador ? (
-              // Formadores data is an array
-              data.cells.map((val: any, idx: number) => (
-                <div key={idx} className="detail-item">
-                  <label>Campo {idx}</label>
-                  <div>{val || <span className="text-muted">—</span>}</div>
-                </div>
-              ))
-            ) : (
-              // Other data (alunos, contactos) might be objects
-              Object.entries(data).filter(([key]) => key !== 'originalIndex').map(([key, val]: [string, any]) => (
-                <div key={key} className="detail-item">
-                  <label>{key.charAt(0).toUpperCase() + key.slice(1)}</label>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{typeof val === 'string' || typeof val === 'number' ? val : JSON.stringify(val)}</div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-        <div className="admin-modal-footer">
-          <button className="btn btn--primary" onClick={onClose}>Fechar</button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function EditFormadorModal({ row, onClose, onSuccess }: any) {
-  const [values, setValues] = useState([...row.cells]);
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/update-formador', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rowIndex: row.originalIndex, values: values })
-      });
-      if (res.ok) { onSuccess(); } else { alert('Erro ao guardar alterações.'); }
-    } catch (err) { alert('Erro de rede.'); } finally { setSaving(false); }
-  };
-
-  return (
-    <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div className="admin-modal glass" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
-        <div className="admin-modal-header">
-          <h3>Editar Formador #{row.originalIndex}</h3>
-          <button onClick={onClose} className="admin-close-btn"><X size={20} /></button>
-        </div>
-        <div className="admin-modal-body">
-          <div className="form__grid">
-            <div className="form__group"><label className="form__label">Nome</label><input className="form__input" value={values[1]} onChange={e => { const v = [...values]; v[1] = e.target.value; setValues(v); }} /></div>
-            <div className="form__group"><label className="form__label">Email</label><input className="form__input" value={values[2]} onChange={e => { const v = [...values]; v[2] = e.target.value; setValues(v); }} /></div>
-            <div className="form__group"><label className="form__label">Telefone</label><input className="form__input" value={values[3]} onChange={e => { const v = [...values]; v[3] = e.target.value; setValues(v); }} /></div>
-            <div className="form__group"><label className="form__label">Áreas</label><input className="form__input" value={values[6]} onChange={e => { const v = [...values]; v[6] = e.target.value; setValues(v); }} /></div>
-            <div className="form__group">
-              <label className="form__label">Habilitações</label>
-              <select className="form__input" value={values[7]} onChange={e => { const v = [...values]; v[7] = e.target.value; setValues(v); }}>
-                <option value="12ano">12.º Ano</option><option value="licenciatura">Licenciatura</option><option value="mestrado">Mestrado</option><option value="doutoramento">Doutoramento</option><option value="outro">Outro</option>
-              </select>
-            </div>
-            <div className="form__group">
-              <label className="form__label">CAP / CCP</label>
-              <select className="form__input" value={values[8]} onChange={e => { const v = [...values]; v[8] = e.target.value; setValues(v); }}>
-                <option value="sim">Possuo Certificado</option><option value="nao">Não Possuo</option><option value="processo">Em Processo</option>
-              </select>
-            </div>
-            <div className="form__group"><label className="form__label">Dias</label><input className="form__input" value={values[11]} onChange={e => { const v = [...values]; v[11] = e.target.value; setValues(v); }} placeholder="Ex: Segunda, Terça" /></div>
-            <div className="form__group"><label className="form__label">Períodos</label><input className="form__input" value={values[12]} onChange={e => { const v = [...values]; v[12] = e.target.value; setValues(v); }} placeholder="Ex: Manhã, Tarde" /></div>
-            <div className="form__group">
-              <label className="form__label">Modalidade</label>
-              <select className="form__input" value={values[13]} onChange={e => { const v = [...values]; v[13] = e.target.value; setValues(v); }}>
-                <option value="presencial">Presencial</option><option value="online">Online</option><option value="hibrida">Híbrida</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div className="admin-modal-footer">
-          <button className="btn" onClick={onClose}>Cancelar</button>
-          <button className="btn btn--primary" onClick={handleSave} disabled={saving}>{saving ? 'A guardar...' : <><Save size={18} /> Guardar</>}</button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function TableView({ type, data, fetching, onDetail }: { type: string, data: any[][], fetching: boolean, onDetail: (row: any) => void }) {
-  if (fetching) return <div className="glass" style={{ padding: '2rem' }}>A carregar dados...</div>;
-  if (!data || data.length <= 1) return <div className="glass" style={{ padding: '2rem' }}>Sem dados em <strong>{type}</strong>.</div>;
-
-  const headers = data[0];
-  const rows = data.slice(1).reverse().map((row, idx) => ({
-    originalIndex: data.length - 1 - idx,
-    cells: row
-  }));
-
-  return (
-    <div className="admin-table-container glass">
-      <div className="admin-table-scroll">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              {headers.map((h, i) => <th key={i}>{h}</th>)}
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((item, i) => (
-              <tr key={i}>
-                {item.cells.map((cell: any, j: number) => <td key={j}>{cell}</td>)}
-                <td>
-                  <button className="admin-action-btn" onClick={() => {
-                    const obj: any = { originalIndex: item.originalIndex };
-                    headers.forEach((h: string, idx: number) => {
-                      obj[h] = item.cells[idx];
-                    });
-                    onDetail(obj);
-                  }} title="Ver Detalhes">
-                    <Search size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function ConfigView() {
-  const [config, setConfig] = useState<any>({ title: '', description: '', keywords: '', contactEmail: '' });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
-
-  useEffect(() => {
-    fetchConfig();
-  }, []);
-
-  const fetchConfig = async () => {
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/config', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) { setConfig(await res.json()); }
-    } catch (err) { console.error(err); } finally { setLoading(false); }
-  };
-
-  const save = async () => {
-    setSaving(true); setMsg('');
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/config', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
-      });
-      if (res.ok) { setMsg('Configurações guardadas!'); setTimeout(() => setMsg(''), 3000); } else { setMsg('Erro ao guardar.'); }
-    } catch (err) { setMsg('Erro de rede.'); } finally { setSaving(false); }
-  };
-
-  if (loading) return <div className="glass" style={{ padding: '2rem' }}>A carregar configurações...</div>;
-
-  return (
-    <div className="admin-config-view">
-      <div className="glass" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-        <h3 style={{ marginBottom: '2rem' }}>Definições do Site</h3>
-        <div className="form__grid" style={{ maxWidth: 600 }}>
-          <div className="form__group form__group--full"><label className="form__label">Título do Site</label><input type="text" className="form__input" value={config.title} onChange={e => setConfig({...config, title: e.target.value})} /></div>
-          <div className="form__group form__group--full"><label className="form__label">Descrição (SEO)</label><textarea className="form__textarea" value={config.description} onChange={e => setConfig({...config, description: e.target.value})} rows={3} /></div>
-          <div className="form__group"><label className="form__label">Keywords</label><input type="text" className="form__input" value={config.keywords} onChange={e => setConfig({...config, keywords: e.target.value})} /></div>
-          <div className="form__group"><label className="form__label">Email de Contacto</label><input type="email" className="form__input" value={config.contactEmail} onChange={e => setConfig({...config, contactEmail: e.target.value})} /></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-            <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'A Guardar...' : 'Guardar Alterações'}</button>
-            {msg && <span style={{ fontSize: '0.85rem', color: msg.includes('sucesso') ? 'var(--accent)' : '#ef4444' }}>{msg}</span>}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CoursesView() {
-  const [courses, setCourses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingCourse, setEditingCourse] = useState<any | null>(null);
-
-  useEffect(() => {
-    fetchCourses();
-  }, []);
-
-  const fetchCourses = async () => {
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/courses', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) { setCourses(await res.json()); }
-    } catch (err) { console.error(err); } finally { setLoading(false); }
-  };
-
-  const handleSave = async (course: any) => {
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/courses', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(course)
-      });
-      if (res.ok) { 
-        setEditingCourse(null);
-        fetchCourses();
-      }
-    } catch (err) { alert('Erro ao guardar curso'); }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem a certeza que deseja remover este curso?')) return;
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch(`/api/admin/courses/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) { fetchCourses(); }
-    } catch (err) { alert('Erro ao remover curso'); }
-  };
-
-  if (loading) return <div className="glass" style={{ padding: '2rem' }}>A carregar cursos...</div>;
-
-  return (
-    <div className="admin-courses-view">
-      <div className="admin-header-actions" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3>Gestão de Cursos</h3>
-        <button className="btn btn--primary" onClick={() => setEditingCourse({ title: { pt: '', en: '' }, subtitle: { pt: '', en: '' }, status: { pt: '', en: '' }, description: { pt: '', en: '' }, highlights: [], schedule: [] })}>
-          <Award size={18} /> Adicionar Novo Curso
-        </button>
-      </div>
-
-      <div className="admin-table-container glass">
-        <div className="admin-table-scroll">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Título (PT)</th>
-                <th>Estado</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {courses.map((course) => (
-                <tr key={course.id}>
-                  <td style={{ fontWeight: 600 }}>{course.title?.pt}</td>
-                  <td>{course.status?.pt}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="admin-action-btn" onClick={() => setEditingCourse(course)} title="Editar"><Pencil size={16} /></button>
-                      <button className="admin-action-btn" onClick={() => handleDelete(course.id)} title="Remover" style={{ color: '#ef4444' }}><X size={16} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {courses.length === 0 && <tr><td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>Nenhum curso registado no Firestore.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {editingCourse && (
-          <CourseEditModal 
-            course={editingCourse} 
-            onClose={() => setEditingCourse(null)} 
-            onSave={handleSave} 
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function CourseEditModal({ course, onClose, onSave }: any) {
-  const [data, setData] = useState({ 
-    ...course,
-    title: course.title || { pt: '', en: '' },
-    subtitle: course.subtitle || { pt: '', en: '' },
-    status: course.status || { pt: '', en: '' },
-    description: course.description || { pt: '', en: '' },
-    schedule: course.schedule || []
-  });
-
-  return (
-    <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div className="admin-modal admin-modal--large glass" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
-        <div className="admin-modal-header">
-          <h3>{data.id ? 'Editar Curso' : 'Novo Curso'}</h3>
-          <button onClick={onClose} className="admin-close-btn"><X size={20} /></button>
-        </div>
-        <div className="admin-modal-body">
-          <div className="form__grid">
-            <div className="form__group"><label className="form__label">Título (PT)</label><input className="form__input" value={data.title.pt} onChange={e => setData({...data, title: {...data.title, pt: e.target.value}})} /></div>
-            <div className="form__group"><label className="form__label">Título (EN)</label><input className="form__input" value={data.title.en} onChange={e => setData({...data, title: {...data.title, en: e.target.value}})} /></div>
-            <div className="form__group"><label className="form__label">Subtítulo (PT)</label><input className="form__input" value={data.subtitle.pt} onChange={e => setData({...data, subtitle: {...data.subtitle, pt: e.target.value}})} /></div>
-            <div className="form__group"><label className="form__label">Subtítulo (EN)</label><input className="form__input" value={data.subtitle.en} onChange={e => setData({...data, subtitle: {...data.subtitle, en: e.target.value}})} /></div>
-            <div className="form__group"><label className="form__label">Estado/Badge (PT)</label><input className="form__input" value={data.status.pt} onChange={e => setData({...data, status: {...data.status, pt: e.target.value}})} placeholder="Ex: Inscrições Abertas" /></div>
-            <div className="form__group"><label className="form__label">Estado/Badge (EN)</label><input className="form__input" value={data.status.en} onChange={e => setData({...data, status: {...data.status, en: e.target.value}})} /></div>
-            <div className="form__group form__group--full"><label className="form__label">Descrição (PT)</label><textarea className="form__textarea" value={data.description.pt} onChange={e => setData({...data, description: {...data.description, pt: e.target.value}})} rows={2} /></div>
-            <div className="form__group form__group--full"><label className="form__label">Descrição (EN)</label><textarea className="form__textarea" value={data.description.en} onChange={e => setData({...data, description: {...data.description, en: e.target.value}})} rows={2} /></div>
-          </div>
-
-          <div style={{ marginTop: '2rem' }}>
-            <h4 style={{ marginBottom: '1rem' }}>Horários</h4>
-            <div className="admin-table-container glass" style={{ padding: '1rem' }}>
-              <table className="admin-table" style={{ fontSize: '0.75rem' }}>
-                <thead>
-                  <tr><th>Turma</th><th>Período</th><th>Horário</th><th>Dias</th><th>Ação</th></tr>
-                </thead>
-                <tbody>
-                  {data.schedule.map((s: any, i: number) => (
-                    <tr key={i}>
-                      <td><input className="form__input" value={s.turma?.pt} onChange={e => { const ns = [...data.schedule]; ns[i].turma = { pt: e.target.value, en: e.target.value }; setData({...data, schedule: ns}); }} style={{ padding: '0.25rem' }} /></td>
-                      <td><input className="form__input" value={s.período?.pt} onChange={e => { const ns = [...data.schedule]; ns[i].período = { pt: e.target.value, en: e.target.value }; setData({...data, schedule: ns}); }} style={{ padding: '0.25rem' }} /></td>
-                      <td><input className="form__input" value={s.horário} onChange={e => { const ns = [...data.schedule]; ns[i].horário = e.target.value; setData({...data, schedule: ns}); }} style={{ padding: '0.25rem' }} /></td>
-                      <td><input className="form__input" value={s.dias?.pt} onChange={e => { const ns = [...data.schedule]; ns[i].dias = { pt: e.target.value, en: e.target.value }; setData({...data, schedule: ns}); }} style={{ padding: '0.25rem' }} /></td>
-                      <td><button onClick={() => { const ns = data.schedule.filter((_: any, idx: number) => idx !== i); setData({...data, schedule: ns}); }} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><X size={14} /></button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <button className="btn btn--outline btn--small" onClick={() => setData({...data, schedule: [...data.schedule, { turma: { pt: '', en: '' }, período: { pt: '', en: '' }, horário: '', dias: { pt: '', en: '' } }]})} style={{ marginTop: '1rem' }}>+ Adicionar Horário</button>
-            </div>
-          </div>
-        </div>
-        <div className="admin-modal-footer">
-          <button className="btn" onClick={onClose}>Cancelar</button>
-          <button className="btn btn--primary" onClick={() => onSave(data)}><Save size={18} /> Guardar Curso</button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-// ── Agenda View ────────────────────────────────────────────────────────────────
-
-const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-const SLOTS = ['Manhã (09h-13h)', 'Tarde (13h-18h)', 'Noite (18h-21h)'];
-
-function AgendaView({ data }: { data: RawData | null }) {
-  const [room, setRoom] = useState('sala1');
-  const [agenda, setAgenda] = useState<any>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-
-  const formadores = data?.formadores?.slice(1) || [];
-
-  useEffect(() => {
-    fetchAgenda();
-  }, [room]);
-
-  const fetchAgenda = async () => {
-    setLoading(true);
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch(`/api/admin/agenda?room=${room}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) { setAgenda(await res.json()); }
-    } catch (err) { console.error(err); } finally { setLoading(false); }
-  };
-
-  const saveAgenda = async () => {
-    setSaving(true);
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch(`/api/admin/agenda?room=${room}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(agenda)
-      });
-      if (res.ok) {
-        alert(`Agenda ${room.toUpperCase()} guardada com sucesso!`);
-      } else {
-        const errorData = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
-        alert('Erro ao guardar: ' + (errorData.error || res.statusText));
-      }
-    } catch (err: any) { alert('Erro de rede: ' + err.message); } finally { setSaving(false); }
-  };
-
-  const updateSlot = (day: string, slot: string, field: 'trainer' | 'course', val: string) => {
-    const key = `${day}-${slot}`;
-    setAgenda({ 
-      ...agenda, 
-      [key]: { 
-        ...(agenda[key] || { trainer: '', course: '' }), 
-        [field]: val 
-      } 
-    });
-  };
-
-  const getAvailableTrainers = (day: string, slot: string) => {
-    return formadores.filter(f => {
-      const availableDays = f[11]?.split(',').map((d: string) => d.trim()) || [];
-      const availableSlots = f[12]?.split(',').map((s: string) => s.trim()) || [];
-      if (day === 'Sábado') return availableDays.includes('Sábado');
-      const slotName = slot.split(' ')[0];
-      return availableDays.includes(day) && availableSlots.some((s: string) => s.includes(slotName));
-    });
-  };
-
-  const getTrainerCourses = (trainerName: string) => {
-    const trainer = formadores.find(f => f[1] === trainerName);
-    if (!trainer) return [];
-    return trainer[6]?.split(',').map((c: string) => c.trim()) || [];
-  };
-
-  return (
-    <div className="admin-agenda">
-      {/* Room Tabs */}
-      <div className="admin-tabs" style={{ marginBottom: '1.5rem' }}>
-        <button className={`admin-tab ${room === 'sala1' ? 'is-active' : ''}`} onClick={() => setRoom('sala1')}>Sala 1</button>
-        <button className={`admin-tab ${room === 'sala2' ? 'is-active' : ''}`} onClick={() => setRoom('sala2')}>Sala 2</button>
-      </div>
-
-      <div className="glass" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h3>Mapa de Ocupação — {room === 'sala1' ? 'Sala 1' : 'Sala 2'}</h3>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button className="btn btn--outline" onClick={() => setShowPreview(true)}>
-              <Eye size={18} /> Visualizar / Imprimir
-            </button>
-            <button className="btn btn--primary" onClick={saveAgenda} disabled={saving || loading}>
-              {saving ? 'A Sincronizar...' : <><Save size={18} /> Sincronizar Mapa</>}
-            </button>
-          </div>
-        </div>
-
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}><div className="spinner"></div></div>
-        ) : (
-          <div className="agenda-grid">
-            {DAYS.map(day => (
-              <div key={day} className="agenda-day">
-                <div className="agenda-day-header">{day}</div>
-                {day === 'Sábado' ? (
-                  <div className="agenda-slot agenda-slot--full">
-                    <label>Dia Inteiro (09h-18h)</label>
-                    <AgendaSlotInputs 
-                      day={day} slot="full" agenda={agenda} 
-                      trainers={getAvailableTrainers(day, 'full')} 
-                      onUpdate={updateSlot} getCourses={getTrainerCourses}
-                    />
-                  </div>
-                ) : (
-                  SLOTS.map(slot => (
-                    <div key={slot} className="agenda-slot">
-                      <label>{slot}</label>
-                      <AgendaSlotInputs 
-                        day={day} slot={slot} agenda={agenda} 
-                        trainers={getAvailableTrainers(day, slot)} 
-                        onUpdate={updateSlot} getCourses={getTrainerCourses}
-                      />
-                    </div>
-                  ))
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <AnimatePresence>
-        {showPreview && (
-          <AgendaPreviewModal agenda={agenda} room={room} onClose={() => setShowPreview(false)} />
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function AgendaSlotInputs({ day, slot, agenda, trainers, onUpdate, getCourses }: any) {
-  const key = `${day}-${slot}`;
-  const currentTrainer = agenda[key]?.trainer || '';
-  const currentCourse = agenda[key]?.course || '';
-  const availableCourses = getCourses(currentTrainer);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-      <select className="agenda-select" value={currentTrainer} onChange={e => onUpdate(day, slot, 'trainer', e.target.value)}>
-        <option value="">— Formador —</option>
-        {trainers.map((f: any) => (<option key={f[1]} value={f[1]}>{f[1]}</option>))}
-      </select>
-      <select className="agenda-select" value={currentCourse} onChange={e => onUpdate(day, slot, 'course', e.target.value)} disabled={!currentTrainer}>
-        <option value="">— Curso —</option>
-        {availableCourses.map((c: string) => (<option key={c} value={c}>{c}</option>))}
-      </select>
-    </div>
-  );
-}
-
-function AgendaPreviewModal({ agenda, room, onClose }: any) {
-  const printRef = useRef<HTMLDivElement>(null);
-  const [generating, setGenerating] = useState(false);
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleDownloadPDF = async () => {
-    if (!printRef.current) return;
-    setGenerating(true);
-    try {
-      const canvas = await html2canvas(printRef.current, { scale: 2 });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Agenda_${room === 'sala1' ? 'Sala1' : 'Sala2'}_FaroForma.pdf`);
-    } catch (err) {
-      alert('Erro ao gerar PDF.');
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  return (
-    <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div className="admin-modal admin-modal--large glass" initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}>
-        <div className="admin-modal-header">
-          <h3>Pré-visualização do Documento</h3>
-          <button onClick={onClose} className="admin-close-btn"><X size={20} /></button>
-        </div>
-        
-        <div className="admin-modal-body" style={{ background: '#f0f0f0', padding: '3rem' }}>
-          {/* Paper Sheet */}
-          <div ref={printRef} className="print-sheet">
-            <div className="print-header">
-              <div className="print-logo">FaroForma</div>
-              <div className="print-title">Mapa de Ocupação — {room === 'sala1' ? 'Sala 1' : 'Sala 2'}</div>
-              <div className="print-date">Gerado em: {new Date().toLocaleDateString()}</div>
-            </div>
-
-            <table className="print-table">
-              <thead>
-                <tr>
-                  <th>Dia</th>
-                  <th>Manhã (09h-13h)</th>
-                  <th>Tarde (13h-18h)</th>
-                  <th>Noite (18h-21h)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {DAYS.map(day => (
-                  <tr key={day}>
-                    <td className="print-day-cell">{day}</td>
-                    {day === 'Sábado' ? (
-                      <td colSpan={3} className="print-full-cell">
-                        <div className="print-entry">
-                          <strong>{agenda[`${day}-full`]?.trainer || 'Livre'}</strong>
-                          <span>{agenda[`${day}-full`]?.course || ''}</span>
-                        </div>
-                      </td>
-                    ) : (
-                      SLOTS.map(slot => (
-                        <td key={slot}>
-                          <div className="print-entry">
-                            <strong>{agenda[`${day}-${slot}`]?.trainer || 'Livre'}</strong>
-                            <span>{agenda[`${day}-${slot}`]?.course || ''}</span>
-                          </div>
-                        </td>
-                      ))
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            
-            <div className="print-footer">Documento Oficial FaroForma — © {new Date().getFullYear()}</div>
-          </div>
-        </div>
-
-        <div className="admin-modal-footer">
-          <button className="btn" onClick={onClose}>Fechar</button>
-          <button className="btn btn--outline" onClick={handlePrint}>
-            <Printer size={18} /> Imprimir
-          </button>
-          <button className="btn btn--primary" onClick={handleDownloadPDF} disabled={generating}>
-            {generating ? 'A gerar PDF...' : <><FileDown size={18} /> Guardar PDF</>}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }
 

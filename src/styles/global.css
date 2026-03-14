@@ -247,6 +247,20 @@ main {
   box-shadow: var(--shadow-gold);
 }
 
+.btn--google {
+  background: #fff;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.btn--google:hover {
+  background: #f8f9fa;
+  border-color: #bdc1c6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
 .btn--gold:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 40px rgba(245, 158, 11, 0.4);

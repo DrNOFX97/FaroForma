@@ -41,6 +41,7 @@ const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const googleapis_1 = require("googleapis");
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const zod_1 = require("zod");
@@ -51,9 +52,32 @@ const SPREADSHEET_ID = (0, params_1.defineSecret)("SPREADSHEET_ID");
 const GMAIL_USER = (0, params_1.defineSecret)("GMAIL_USER");
 const GMAIL_APP_PASSWORD = (0, params_1.defineSecret)("GMAIL_APP_PASSWORD");
 const app = (0, express_1.default)();
+app.set('trust proxy', 1);
 app.use((0, cors_1.default)({ origin: true }));
 app.use(express_1.default.json());
-const ADMIN_EMAILS = ['faroforma@gmail.com', 'custodio.guerreiro@gmail.com'];
+const publicLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiados pedidos. Tente novamente mais tarde.' },
+});
+let adminEmailsCache = null;
+const ADMIN_CACHE_TTL = 5 * 60 * 1000;
+async function getAdminEmails() {
+    if (adminEmailsCache && Date.now() - adminEmailsCache.ts < ADMIN_CACHE_TTL) {
+        return adminEmailsCache.emails;
+    }
+    try {
+        const doc = await admin.firestore().collection('config').doc('admins').get();
+        const emails = (doc.exists ? doc.data()?.emails : null) ?? [];
+        adminEmailsCache = { emails, ts: Date.now() };
+        return emails;
+    }
+    catch {
+        return adminEmailsCache?.emails ?? [];
+    }
+}
 const isAdmin = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -63,12 +87,12 @@ const isAdmin = async (req, res, next) => {
     const idToken = authHeader.split('Bearer ')[1];
     try {
         const decodedToken = await admin.auth().verifyIdToken(idToken);
-        if (ADMIN_EMAILS.includes(decodedToken.email || '')) {
+        const adminEmails = await getAdminEmails();
+        if (adminEmails.includes(decodedToken.email || '')) {
             req.user = decodedToken;
             next();
         }
         else {
-            console.warn(`[Auth] Unauthorized access attempt: ${decodedToken.email}`);
             res.status(403).json({ error: 'Proibido' });
         }
     }
@@ -179,7 +203,7 @@ async function sendMail(options) {
     });
     return info;
 }
-app.post('/api/inscricao-formadores', async (req, res) => {
+app.post('/api/inscricao-formadores', publicLimiter, async (req, res) => {
     const parsed = FormadoresSchema.safeParse(req.body);
     if (!parsed.success) {
         res.status(400).json({ error: 'Dados inválidos' });
@@ -212,7 +236,7 @@ app.post('/api/inscricao-formadores', async (req, res) => {
         res.status(500).json({ error: err.message || 'Erro interno' });
     }
 });
-app.post('/api/contact', async (req, res) => {
+app.post('/api/contact', publicLimiter, async (req, res) => {
     const parsed = ContactSchema.safeParse(req.body);
     if (!parsed.success)
         return res.status(400).json({ error: 'Dados inválidos' });
@@ -233,7 +257,7 @@ app.post('/api/contact', async (req, res) => {
         res.status(500).json({ error: 'Erro ao processar contacto' });
     }
 });
-app.post('/api/student', async (req, res) => {
+app.post('/api/student', publicLimiter, async (req, res) => {
     const parsed = StudentSchema.safeParse(req.body);
     if (!parsed.success)
         return res.status(400).json({ error: 'Dados inválidos' });
@@ -301,8 +325,9 @@ app.post('/api/admin/config', isAdmin, async (req, res) => {
     }
 });
 app.get('/api/admin/agenda', isAdmin, async (req, res) => {
+    const room = req.query.room || 'sala1';
     try {
-        const doc = await admin.firestore().collection('agenda').doc('sala1').get();
+        const doc = await admin.firestore().collection('agenda').doc(room).get();
         res.json(doc.exists ? doc.data() : {});
     }
     catch (err) {
@@ -310,12 +335,58 @@ app.get('/api/admin/agenda', isAdmin, async (req, res) => {
     }
 });
 app.post('/api/admin/agenda', isAdmin, async (req, res) => {
+    const room = req.query.room || 'sala1';
     try {
-        await admin.firestore().collection('agenda').doc('sala1').set(req.body);
+        await admin.firestore().collection('agenda').doc(room).set(req.body);
         res.json({ message: 'Agenda atualizada' });
     }
     catch (err) {
         res.status(500).json({ error: 'Erro ao salvar' });
+    }
+});
+app.get('/api/courses', async (req, res) => {
+    try {
+        const snapshot = await admin.firestore().collection('courses').orderBy('title').get();
+        const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(courses);
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao obter cursos' });
+    }
+});
+app.get('/api/admin/courses', isAdmin, async (req, res) => {
+    try {
+        const snapshot = await admin.firestore().collection('courses').orderBy('title').get();
+        const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(courses);
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao obter cursos' });
+    }
+});
+app.post('/api/admin/courses', isAdmin, async (req, res) => {
+    const { id, ...data } = req.body;
+    try {
+        if (id) {
+            await admin.firestore().collection('courses').doc(id).set(data, { merge: true });
+        }
+        else {
+            await admin.firestore().collection('courses').add(data);
+        }
+        res.json({ message: 'Curso guardado com sucesso' });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao guardar curso' });
+    }
+});
+app.delete('/api/admin/courses/:id', isAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await admin.firestore().collection('courses').doc(id).delete();
+        res.json({ message: 'Curso removido com sucesso' });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao remover curso' });
     }
 });
 app.get('/health', (req, res) => res.send('OK'));

@@ -4,6 +4,7 @@ import { Send, CheckCircle, Navigation } from 'lucide-react';
 import AnimatedSection from '../ui/AnimatedSection';
 import { CONTACT_CARDS } from '../../data/contactInfo';
 import { useLanguage } from '../../context/LanguageContext';
+import { apiService } from '../../services/api';
 
 interface FormData {
   name: string;
@@ -81,20 +82,11 @@ export default function Contact() {
     setLoading(true);
     setSubmitErr('');
     try {
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (response.ok) {
-        setSuccess(true);
-        setForm(INITIAL);
-      } else {
-        const body = await response.json().catch(() => ({}));
-        setSubmitErr((body as { error?: string }).error ?? t('contact.form.error'));
-      }
-    } catch {
-      setSubmitErr(t('contact.form.error'));
+      await apiService.submitContact(form);
+      setSuccess(true);
+      setForm(INITIAL);
+    } catch (err: any) {
+      setSubmitErr(err.message || t('contact.form.error'));
     } finally {
       setLoading(false);
     }
