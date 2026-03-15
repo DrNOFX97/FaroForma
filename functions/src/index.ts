@@ -165,6 +165,10 @@ async function updateSheetRow(tabName: string, rowIndex: number, values: string[
 
 // ── Mail Helper ────────────────────────────────────────────────────────────────
 
+function escHtml(str: string) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 async function sendMail(options: { to: string, subject: string, html: string }) {
   const user = GMAIL_USER.value();
   const pass = GMAIL_APP_PASSWORD.value();
@@ -185,6 +189,13 @@ async function sendMail(options: { to: string, subject: string, html: string }) 
     ...options
   });
   return info;
+}
+
+async function notifyAdmins(subject: string, html: string) {
+  const admins = await getAdminEmails();
+  const fallback = GMAIL_USER.value();
+  const recipients = admins.length > 0 ? admins : (fallback ? [fallback] : []);
+  await Promise.all(recipients.map(to => sendMail({ to, subject, html }).catch(() => {})));
 }
 
 // ── Public Routes ─────────────────────────────────────────────────────────────
@@ -210,17 +221,26 @@ app.post('/api/inscricao-formadores', publicLimiter, async (req: Request, res: R
     await sendMail({
       to: d.email,
       subject: 'FaroForma — Candidatura recebida',
-      html: `<p>Olá <strong>${d.nome}</strong>,</p><p>Recebemos a sua candidatura. Entraremos em contacto brevemente.</p>`,
+      html: `<p>Olá <strong>${escHtml(d.nome)}</strong>,</p><p>Recebemos a sua candidatura como formador. Analisaremos o seu perfil e entraremos em contacto brevemente.</p><p>Obrigado pelo interesse em fazer parte da equipa FaroForma.</p>`,
     }).catch(() => {});
 
-    const adminEmail = GMAIL_USER.value();
-    if (adminEmail) {
-      await sendMail({
-        to: adminEmail,
-        subject: `[ADMIN] Nova Candidatura: ${d.nome}`,
-        html: `<h3>Nova Inscrição de Formador</h3><p><strong>Nome:</strong> ${d.nome}</p><p><strong>Email:</strong> ${d.email}</p><hr/><p><a href="https://faroformapt.web.app/admin">Aceder ao Backoffice</a></p>`,
-      }).catch(() => {});
-    }
+    await notifyAdmins(
+      `[Formador] Nova candidatura — ${d.nome}`,
+      `<h2>Nova candidatura de formador</h2>
+      <table cellpadding="6" style="border-collapse:collapse">
+        <tr><td><strong>Nome</strong></td><td>${escHtml(d.nome)}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${escHtml(d.email)}</td></tr>
+        <tr><td><strong>Telefone</strong></td><td>${escHtml(d.telefone)}</td></tr>
+        <tr><td><strong>Áreas</strong></td><td>${escHtml(d.areas.join(', '))}</td></tr>
+        <tr><td><strong>Habilitações</strong></td><td>${escHtml(d.habilitacoes)}</td></tr>
+        <tr><td><strong>CAP/CCP</strong></td><td>${escHtml(d.capCcp)}</td></tr>
+        <tr><td><strong>Dias</strong></td><td>${escHtml(d.dias.join(', '))}</td></tr>
+        <tr><td><strong>Períodos</strong></td><td>${escHtml(d.periodos.join(', '))}</td></tr>
+        <tr><td><strong>Modalidade</strong></td><td>${escHtml(d.modalidade)}</td></tr>
+      </table>
+      ${d.motivacao ? `<p><strong>Motivação:</strong><br>${escHtml(d.motivacao)}</p>` : ''}
+      <p><a href="https://faroforma.pt/admin">Aceder ao Backoffice</a></p>`
+    );
 
     res.status(201).json({ message: 'Inscrição recebida com sucesso' });
   } catch (err: any) {
@@ -236,14 +256,19 @@ app.post('/api/contact', publicLimiter, async (req: Request, res: Response) => {
   try {
     await appendToSheet('Contactos', [new Date().toISOString(), d.name, d.email, d.phone, d.subject, d.message]);
     
-    const adminEmail = GMAIL_USER.value();
-    if (adminEmail) {
-      await sendMail({
-        to: adminEmail,
-        subject: `FaroForma — Nova mensagem: ${d.name}`,
-        html: `<p><strong>De:</strong> ${d.name} (${d.email})</p><p><strong>Mensagem:</strong></p><p>${d.message}</p>`,
-      }).catch(() => {});
-    }
+    await notifyAdmins(
+      `[Contacto] ${d.name} — ${d.subject || 'sem assunto'}`,
+      `<h2>Nova mensagem de contacto</h2>
+      <table cellpadding="6" style="border-collapse:collapse">
+        <tr><td><strong>Nome</strong></td><td>${escHtml(d.name)}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${escHtml(d.email)}</td></tr>
+        ${d.phone ? `<tr><td><strong>Telefone</strong></td><td>${escHtml(d.phone)}</td></tr>` : ''}
+        ${d.subject ? `<tr><td><strong>Assunto</strong></td><td>${escHtml(d.subject)}</td></tr>` : ''}
+      </table>
+      <p><strong>Mensagem:</strong></p>
+      <blockquote style="border-left:3px solid #ccc;padding-left:1em;color:#555">${escHtml(d.message)}</blockquote>
+      <p><a href="https://faroforma.pt/admin">Aceder ao Backoffice</a></p>`
+    );
     res.status(201).json({ message: 'Mensagem enviada com sucesso' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao processar contacto' });
@@ -261,17 +286,23 @@ app.post('/api/student', publicLimiter, async (req: Request, res: Response) => {
     await sendMail({
       to: d.email,
       subject: 'FaroForma — Inscrição recebida',
-      html: `<p>Olá <strong>${d.fullName}</strong>,</p><p>Recebemos a sua inscrição para ${d.program}.</p>`,
+      html: `<p>Olá <strong>${escHtml(d.fullName)}</strong>,</p><p>Recebemos a sua inscrição para <strong>${escHtml(d.program)}</strong>. Entraremos em contacto brevemente através do seu meio de contacto preferido.</p><p>Obrigado por escolher a FaroForma.</p>`,
     }).catch(() => {});
 
-    const adminEmail = GMAIL_USER.value();
-    if (adminEmail) {
-      await sendMail({
-        to: adminEmail,
-        subject: `[ADMIN] Novo Aluno: ${d.fullName}`,
-        html: `<h3>Nova Inscrição</h3><p><strong>Nome:</strong> ${d.fullName}</p><p><strong>Programa:</strong> ${d.program}</p>`,
-      }).catch(() => {});
-    }
+    await notifyAdmins(
+      `[Aluno] Nova inscrição — ${d.fullName}`,
+      `<h2>Nova inscrição de aluno</h2>
+      <table cellpadding="6" style="border-collapse:collapse">
+        <tr><td><strong>Nome</strong></td><td>${escHtml(d.fullName)}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${escHtml(d.email)}</td></tr>
+        <tr><td><strong>Telefone</strong></td><td>${escHtml(d.phone)}</td></tr>
+        <tr><td><strong>Programa</strong></td><td>${escHtml(d.program)}</td></tr>
+        <tr><td><strong>Início pretendido</strong></td><td>${escHtml(d.startDate)}</td></tr>
+        <tr><td><strong>Contacto preferido</strong></td><td>${escHtml(d.contactPreference)}</td></tr>
+      </table>
+      ${d.notes ? `<p><strong>Notas:</strong><br>${escHtml(d.notes)}</p>` : ''}
+      <p><a href="https://faroforma.pt/admin">Aceder ao Backoffice</a></p>`
+    );
     res.status(201).json({ message: 'Inscrição recebida com sucesso' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao processar inscrição' });
