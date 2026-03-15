@@ -29,9 +29,9 @@ export default function Tutoring() {
             <span className="tag tutoring__tag">{language === 'pt' ? 'Explicações' : 'Tutoring'}</span>
             <h2 className="tutoring__title">
               {language === 'pt' ? (
-                <>Apoio académico<br /><span className="gradient-text">personalizado e eficaz</span></>
+                <>Explicações em <span className="gradient-text">Faro</span><br />personalizadas e eficazes</>
               ) : (
-                <>Academic support<br /><span className="gradient-text">personalised and effective</span></>
+                <>Tutoring in <span className="gradient-text">Faro</span><br />personalised and effective</>
               )}
             </h2>
             <p className="tutoring__text">

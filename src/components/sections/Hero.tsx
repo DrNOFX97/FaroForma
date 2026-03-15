@@ -41,9 +41,9 @@ export default function Hero() {
           {/* Title */}
           <motion.h1 className="hero__title" {...fadeUp(0.12)}>
             {language === 'pt' ? (
-              <>Formação que<br /><span className="gradient-text">potencia</span><br />o seu futuro.</>
+              <>Formação em <span className="gradient-text">Faro</span><br />que potencia o seu futuro.</>
             ) : (
-              <>Training that<br /><span className="gradient-text">boosts</span><br />your future.</>
+              <>Training in <span className="gradient-text">Faro</span><br />that boosts your future.</>
             )}
           </motion.h1>
 
