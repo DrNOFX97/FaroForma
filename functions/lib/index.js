@@ -198,7 +198,8 @@ async function sendMail(options) {
         auth: { user, pass },
     });
     const info = await transporter.sendMail({
-        from: `"FaroForma" <${user}>`,
+        from: '"FaroForma" <geral@faroforma.pt>',
+        replyTo: user,
         ...options
     });
     return info;

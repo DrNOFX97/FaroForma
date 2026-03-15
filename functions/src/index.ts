@@ -192,7 +192,8 @@ async function sendMail(options: { to: string, subject: string, html: string }) 
   });
 
   const info = await transporter.sendMail({
-    from: `"FaroForma" <${user}>`,
+    from: '"FaroForma" <geral@faroforma.pt>',
+    replyTo: user,
     ...options
   });
   return info;
