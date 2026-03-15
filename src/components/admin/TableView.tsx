@@ -67,8 +67,8 @@ export function TableView({ type, data, fetching, onDetail }: TableViewProps) {
         <table className="admin-table">
           <thead>
             <tr>
-              {headers.map((h, i) => <th key={i}>{h}</th>)}
-              <th>Ações</th>
+              {headers.map((h, i) => <th key={i} scope="col">{h}</th>)}
+              <th scope="col">Ações</th>
             </tr>
           </thead>
           <tbody>

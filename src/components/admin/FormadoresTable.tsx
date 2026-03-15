@@ -74,16 +74,16 @@ export function FormadoresTable({ data, fetching, onEdit, onDetail }: Formadores
         <table className="admin-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Nome</th>
-              <th>Email</th>
-              <th>Telefone</th>
-              <th>Áreas</th>
-              <th>Dias</th>
-              <th>Períodos</th>
-              <th>Modalidade</th>
-              <th>Data Registo</th>
-              <th>Ações</th>
+              <th scope="col">ID</th>
+              <th scope="col">Nome</th>
+              <th scope="col">Email</th>
+              <th scope="col">Telefone</th>
+              <th scope="col">Áreas</th>
+              <th scope="col">Dias</th>
+              <th scope="col">Períodos</th>
+              <th scope="col">Modalidade</th>
+              <th scope="col">Data Registo</th>
+              <th scope="col">Ações</th>
             </tr>
           </thead>
           <tbody>
