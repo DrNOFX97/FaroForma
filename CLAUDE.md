@@ -20,11 +20,14 @@ npm run build && cd functions && npm run build && cd ..
 # Lint
 npm run lint
 
-# Deploy to Firebase
+# Deploy everything
 firebase deploy --project faroformapt
 
 # Deploy only functions
 firebase deploy --only functions --project faroformapt
+
+# Deploy only hosting
+firebase deploy --only hosting --project faroformapt
 
 # Local emulators (run alongside npm run dev)
 firebase emulators:start --only functions
@@ -42,7 +45,11 @@ No automated tests exist yet. If added, place them in `src/__tests__/` using Vit
 
 **Dual data stores:**
 - **Google Sheets** — permanent records for form submissions (Formadores, Alunos, Contactos tabs). Written via `googleapis` using a service account.
-- **Firestore** — app state: courses catalogue, weekly agenda, dynamic site config (title/description/SEO). Read by the frontend through the `/api/*` endpoints and Firebase SDK directly.
+- **Firestore** — app state and config. Collections/documents in use:
+  - `courses/` — course catalogue (CRUD via admin)
+  - `agenda/sala1`, `agenda/sala2` — weekly timetable
+  - `config/siteMeta` — dynamic site title/description/SEO
+  - `config/admins` — `{ emails: string[] }` — allowed admin emails (no redeploy needed to change)
 
 **`firebase.json` routing:**
 ```
@@ -56,14 +63,15 @@ No automated tests exist yet. If added, place them in `src/__tests__/` using Vit
 |------|------|
 | `functions/src/index.ts` | All API routes + Express app + CF export |
 | `src/App.tsx` | Client-side routing (History API, no React Router) and theme management |
-| `src/services/api.ts` | All frontend→backend calls; attaches Firebase ID token for admin routes |
+| `src/main.tsx` | App entry point — wraps with `MotionConfig reducedMotion="user"` and `LanguageProvider` |
+| `src/services/api.ts` | All frontend→backend calls; attaches Firebase ID token for admin routes; throws `Error('ACCESS_DENIED')` on 403 |
 | `src/config/firebase.ts` | Firebase SDK init (reads `VITE_*` env vars) |
 | `src/pages/Admin.tsx` | Admin portal: Google Sign-In + 7-tab dashboard |
 | `src/components/admin/` | Dashboard sub-components (AgendaView, CoursesView, ConfigView, etc.) |
 
 ## API Endpoints
 
-**Public (no auth):**
+**Public (no auth) — rate limited: 5 req/hour/IP:**
 - `POST /api/inscricao-formadores` → Sheets "Formadores" + confirmation email
 - `POST /api/contact` → Sheets "Contactos" + admin notification email
 - `POST /api/student` → Sheets "Alunos" + confirmation email
@@ -72,8 +80,8 @@ No automated tests exist yet. If added, place them in `src/__tests__/` using Vit
 **Admin (Bearer token required — Firebase ID token):**
 - `GET /api/admin/data` → All three Sheets tabs
 - `POST /api/admin/update-formador` → Update row in Formadores sheet
-- `GET|POST /api/admin/config` → Firestore `config.siteMeta`
-- `GET|POST /api/admin/agenda` → Firestore `agenda.sala1`
+- `GET|POST /api/admin/config` → Firestore `config/siteMeta`
+- `GET|POST /api/admin/agenda` → Firestore `agenda/{room}`
 - `GET|POST|DELETE /api/admin/courses` → Courses CRUD
 
 All POST bodies are validated with Zod. Sheets failures return HTTP 503; email failures are logged and non-blocking.
@@ -91,9 +99,13 @@ VITE_FIREBASE_APP_ID, VITE_FIREBASE_MEASUREMENT_ID
 ```
 GOOGLE_SERVICE_ACCOUNT_JSON   # Full service account JSON as single line
 SPREADSHEET_ID                # Google Sheet ID
-GMAIL_USER                    # faroforma@gmail.com
+GMAIL_USER                    # faroforma@gmail.com (SMTP auth account)
 GMAIL_APP_PASSWORD            # 16-char Gmail app password (no spaces)
 ```
+
+## Email
+
+All transactional emails are sent **from `geral@faroforma.pt`** (with `replyTo: faroforma@gmail.com`) via Gmail SMTP. Routing: `geral@faroforma.pt` → ImprovMX → `faroforma@gmail.com`. DNS records (MX + SPF) are on Cloudflare. SMTP credentials in Secret Manager remain the Gmail account.
 
 ## Module Conventions
 
@@ -101,8 +113,10 @@ GMAIL_APP_PASSWORD            # 16-char Gmail app password (no spaces)
 - `functions/` uses **CommonJS** (`"type": "commonjs"`) — required by Cloud Functions
 - CSS follows BEM-like naming (`hero__stat-value`, `btn--primary`) in `src/styles/global.css`
 - Static content lives in `src/data/*.ts` (hero, services, courses copy, nav links)
-- The `archive/` directory contains the previous GCP Cloud Run server (`archive/server/`) — ignore it
+- The `archive/` directory contains the previous GCP Cloud Run server — ignore it
 
 ## Admin Access Control
 
-Admin routes use Firebase Authentication. The Admin page does Google Sign-In and the resulting ID token is sent as `Authorization: Bearer <token>` on all `/api/admin/*` calls. Allowed admin emails are hardcoded in `functions/src/index.ts`.
+Admin routes use Firebase Authentication. The Admin page does Google Sign-In; the resulting ID token is sent as `Authorization: Bearer <token>` on all `/api/admin/*` calls.
+
+Allowed admin emails are stored in **Firestore `config/admins`** (`{ emails: ["..."] }`), fetched by the backend with a 5-minute instance-level cache. To add/remove an admin, edit that document — no redeploy required. The frontend does not maintain its own email list; access denial is determined solely by the API returning 403.
