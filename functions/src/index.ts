@@ -111,19 +111,30 @@ const StudentSchema = z.object({
 
 // ── Google Sheets Helper ───────────────────────────────────────────────────────
 
-async function getSheetData(tabName: string) {
+let sheetsClient: ReturnType<typeof google.sheets> | null = null;
+let sheetsSpreadsheetId: string | null = null;
+
+function getSheetsClient() {
   const raw = GOOGLE_SERVICE_ACCOUNT_JSON.value();
   const spreadsheetId = SPREADSHEET_ID.value();
 
   if (!raw || !spreadsheetId) throw new Error('Missing Sheets configuration');
 
-  const credentials = JSON.parse(raw);
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-  });
+  if (!sheetsClient) {
+    const credentials = JSON.parse(raw);
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+    sheetsClient = google.sheets({ version: 'v4', auth });
+    sheetsSpreadsheetId = spreadsheetId;
+  }
 
-  const sheets = google.sheets({ version: 'v4', auth });
+  return { sheets: sheetsClient, spreadsheetId: sheetsSpreadsheetId! };
+}
+
+async function getSheetData(tabName: string) {
+  const { sheets, spreadsheetId } = getSheetsClient();
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
     range: `${tabName}!A:Z`,
@@ -132,18 +143,7 @@ async function getSheetData(tabName: string) {
 }
 
 async function appendToSheet(tabName: string, values: string[]) {
-  const raw = GOOGLE_SERVICE_ACCOUNT_JSON.value();
-  const spreadsheetId = SPREADSHEET_ID.value();
-
-  if (!raw || !spreadsheetId) throw new Error('Missing Sheets configuration');
-
-  const credentials = JSON.parse(raw);
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-
-  const sheets = google.sheets({ version: 'v4', auth });
+  const { sheets, spreadsheetId } = getSheetsClient();
   await sheets.spreadsheets.values.append({
     spreadsheetId,
     range: `${tabName}!A1`,
@@ -153,20 +153,8 @@ async function appendToSheet(tabName: string, values: string[]) {
 }
 
 async function updateSheetRow(tabName: string, rowIndex: number, values: string[]) {
-  const raw = GOOGLE_SERVICE_ACCOUNT_JSON.value();
-  const spreadsheetId = SPREADSHEET_ID.value();
-
-  if (!raw || !spreadsheetId) throw new Error('Missing Sheets configuration');
-
-  const credentials = JSON.parse(raw);
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-
-  const sheets = google.sheets({ version: 'v4', auth });
-  const sheetRow = rowIndex + 1; 
-  
+  const { sheets, spreadsheetId } = getSheetsClient();
+  const sheetRow = rowIndex + 1;
   await sheets.spreadsheets.values.update({
     spreadsheetId,
     range: `${tabName}!A${sheetRow}`,
