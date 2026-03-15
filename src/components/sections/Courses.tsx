@@ -99,10 +99,13 @@ export default function Courses() {
       const data = await apiService.getCourses();
       if (data && data.length > 0) {
         setCourseData(data[0]);
-        setFormData(prev => ({ ...prev, level: (data[0].schedule[0].turma as any)[language] }));
+        const firstSlot = data[0].schedule?.[0];
+        if (firstSlot) {
+          setFormData(prev => ({ ...prev, level: (firstSlot.turma as any)[language] ?? '' }));
+        }
       }
     } catch (err) {
-      console.error('Error fetching courses:', err);
+      // API unavailable — silently keep DEFAULT_COURSE_INFO already in state
     }
   };
 
