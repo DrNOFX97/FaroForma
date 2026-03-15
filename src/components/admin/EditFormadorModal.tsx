@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { F } from '../../config/sheetsSchema';
 import { X, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiService } from '../../services/api';
@@ -52,27 +53,27 @@ export function EditFormadorModal({ row, onClose, onSuccess }: EditFormadorModal
         </div>
         <div className="admin-modal-body">
           <div className="form__grid">
-            <div className="form__group"><label className="form__label">Nome</label><input className="form__input" value={values[1]} onChange={e => { const v = [...values]; v[1] = e.target.value; setValues(v); }} /></div>
-            <div className="form__group"><label className="form__label">Email</label><input className="form__input" value={values[2]} onChange={e => { const v = [...values]; v[2] = e.target.value; setValues(v); }} /></div>
-            <div className="form__group"><label className="form__label">Telefone</label><input className="form__input" value={values[3]} onChange={e => { const v = [...values]; v[3] = e.target.value; setValues(v); }} /></div>
-            <div className="form__group"><label className="form__label">Áreas</label><input className="form__input" value={values[6]} onChange={e => { const v = [...values]; v[6] = e.target.value; setValues(v); }} /></div>
+            <div className="form__group"><label className="form__label">Nome</label><input className="form__input" value={values[F.NOME]} onChange={e => { const v = [...values]; v[F.NOME] = e.target.value; setValues(v); }} /></div>
+            <div className="form__group"><label className="form__label">Email</label><input className="form__input" value={values[F.EMAIL]} onChange={e => { const v = [...values]; v[F.EMAIL] = e.target.value; setValues(v); }} /></div>
+            <div className="form__group"><label className="form__label">Telefone</label><input className="form__input" value={values[F.TELEFONE]} onChange={e => { const v = [...values]; v[F.TELEFONE] = e.target.value; setValues(v); }} /></div>
+            <div className="form__group"><label className="form__label">Áreas</label><input className="form__input" value={values[F.AREAS]} onChange={e => { const v = [...values]; v[F.AREAS] = e.target.value; setValues(v); }} /></div>
             <div className="form__group">
               <label className="form__label">Habilitações</label>
-              <select className="form__input" value={values[7]} onChange={e => { const v = [...values]; v[7] = e.target.value; setValues(v); }}>
+              <select className="form__input" value={values[F.HABILITACOES]} onChange={e => { const v = [...values]; v[F.HABILITACOES] = e.target.value; setValues(v); }}>
                 <option value="12ano">12.º Ano</option><option value="licenciatura">Licenciatura</option><option value="mestrado">Mestrado</option><option value="doutoramento">Doutoramento</option><option value="outro">Outro</option>
               </select>
             </div>
             <div className="form__group">
               <label className="form__label">CAP / CCP</label>
-              <select className="form__input" value={values[8]} onChange={e => { const v = [...values]; v[8] = e.target.value; setValues(v); }}>
+              <select className="form__input" value={values[F.CAP_CCP]} onChange={e => { const v = [...values]; v[F.CAP_CCP] = e.target.value; setValues(v); }}>
                 <option value="sim">Possuo Certificado</option><option value="nao">Não Possuo</option><option value="processo">Em Processo</option>
               </select>
             </div>
-            <div className="form__group"><label className="form__label">Dias</label><input className="form__input" value={values[11]} onChange={e => { const v = [...values]; v[11] = e.target.value; setValues(v); }} placeholder="Ex: Segunda, Terça" /></div>
-            <div className="form__group"><label className="form__label">Períodos</label><input className="form__input" value={values[12]} onChange={e => { const v = [...values]; v[12] = e.target.value; setValues(v); }} placeholder="Ex: Manhã, Tarde" /></div>
+            <div className="form__group"><label className="form__label">Dias</label><input className="form__input" value={values[F.DIAS]} onChange={e => { const v = [...values]; v[F.DIAS] = e.target.value; setValues(v); }} placeholder="Ex: Segunda, Terça" /></div>
+            <div className="form__group"><label className="form__label">Períodos</label><input className="form__input" value={values[F.PERIODOS]} onChange={e => { const v = [...values]; v[F.PERIODOS] = e.target.value; setValues(v); }} placeholder="Ex: Manhã, Tarde" /></div>
             <div className="form__group">
               <label className="form__label">Modalidade</label>
-              <select className="form__input" value={values[13]} onChange={e => { const v = [...values]; v[13] = e.target.value; setValues(v); }}>
+              <select className="form__input" value={values[F.MODALIDADE]} onChange={e => { const v = [...values]; v[F.MODALIDADE] = e.target.value; setValues(v); }}>
                 <option value="presencial">Presencial</option><option value="online">Online</option><option value="hibrida">Híbrida</option>
               </select>
             </div>

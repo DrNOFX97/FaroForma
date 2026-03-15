@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Search, Pencil, FileDown } from 'lucide-react';
+import { F } from '../../config/sheetsSchema';
 
 interface FormadoresTableProps {
   data: any[][];
@@ -20,9 +21,9 @@ export function FormadoresTable({ data, fetching, onEdit, onDetail }: Formadores
 
   const filteredRows = rows.filter(row => {
     const term = search.toLowerCase();
-    const nome = String(row[1] || '').toLowerCase();
-    const telefone = String(row[3] || '').toLowerCase();
-    const nif = String(row[5] || '').toLowerCase();
+    const nome = String(row[F.NOME] || '').toLowerCase();
+    const telefone = String(row[F.TELEFONE] || '').toLowerCase();
+    const nif = String(row[F.NIF] || '').toLowerCase();
     return nome.includes(term) || telefone.includes(term) || nif.includes(term);
   });
 
@@ -89,14 +90,14 @@ export function FormadoresTable({ data, fetching, onEdit, onDetail }: Formadores
             {indexedRows.map((item, i) => (
               <tr key={i}>
                 <td style={{ fontWeight: 700 }}>#{item.originalIndex}</td>
-                <td style={{ color: 'var(--text)', fontWeight: 600 }}>{item.cells[1]}</td>
-                <td>{item.cells[2]}</td>
-                <td>{item.cells[3]}</td>
-                <td title={item.cells[6]}>{item.cells[6]}</td>
-                <td>{item.cells[11]}</td>
-                <td>{item.cells[12]}</td>
-                <td>{item.cells[13]}</td>
-                <td>{new Date(item.cells[0]).toLocaleDateString()}</td>
+                <td style={{ color: 'var(--text)', fontWeight: 600 }}>{item.cells[F.NOME]}</td>
+                <td>{item.cells[F.EMAIL]}</td>
+                <td>{item.cells[F.TELEFONE]}</td>
+                <td title={item.cells[F.AREAS]}>{item.cells[F.AREAS]}</td>
+                <td>{item.cells[F.DIAS]}</td>
+                <td>{item.cells[F.PERIODOS]}</td>
+                <td>{item.cells[F.MODALIDADE]}</td>
+                <td>{new Date(item.cells[F.TIMESTAMP]).toLocaleDateString()}</td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button className="admin-action-btn" onClick={() => onDetail(item)} title="Ver Detalhes">

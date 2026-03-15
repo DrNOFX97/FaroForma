@@ -5,6 +5,7 @@ import {
   Cell, PieChart, Pie, Legend
 } from 'recharts';
 import type { RawData } from '../../services/api';
+import { F } from '../../config/sheetsSchema';
 
 interface DashboardViewProps {
   data: RawData | null;
@@ -54,7 +55,7 @@ export function DashboardView({ data, error }: DashboardViewProps) {
     if (!data?.formadores) return [];
     const areaCounts: Record<string, number> = {};
     data.formadores.slice(1).forEach(row => {
-      const areas = row[6]?.split(',').map((a: string) => a.trim()) || [];
+      const areas = row[F.AREAS]?.split(',').map((a: string) => a.trim()) || [];
       areas.forEach((a: string) => {
         if (a) areaCounts[a] = (areaCounts[a] || 0) + 1;
       });
