@@ -91,6 +91,7 @@ export default function App() {
 
   return (
     <>
+      <a href="#main-content" className="skip-to-content">Saltar para o conteúdo</a>
       <Toaster position="bottom-right" toastOptions={{ className: 'glass', style: { background: 'var(--bg-1)', color: 'var(--text)', border: '1px solid var(--border)', fontSize: '0.9rem', padding: '12px 20px', borderRadius: 'var(--radius)' } }} />
       <Navbar
         isDark={isDark}
@@ -99,7 +100,7 @@ export default function App() {
         onNavigate={navigate}
       />
       {page === 'home' ? (
-        <main>
+        <main id="main-content">
           <Hero />
           <About />
           <Courses />

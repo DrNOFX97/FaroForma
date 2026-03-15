@@ -247,6 +247,24 @@ main {
   box-shadow: var(--shadow-gold);
 }
 
+.skip-to-content {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  z-index: 9999;
+  padding: 0.6rem 1.2rem;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: top 0.1s;
+}
+.skip-to-content:focus {
+  top: 1rem;
+}
+
 .btn--google {
   background: #fff;
   color: #3c4043;
