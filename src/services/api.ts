@@ -136,5 +136,24 @@ export const apiService = {
     });
     if (!res.ok) throw new Error('Erro ao remover curso');
     return res.json();
+  },
+
+  async getAdmins(): Promise<string[]> {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/admin/admins`, { headers });
+    if (!res.ok) throw new Error('Erro ao obter administradores');
+    const data = await res.json();
+    return data.emails;
+  },
+
+  async saveAdmins(emails: string[]) {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/admin/admins`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ emails })
+    });
+    if (!res.ok) throw new Error('Erro ao guardar administradores');
+    return res.json();
   }
 };

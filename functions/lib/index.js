@@ -401,6 +401,30 @@ app.delete('/api/admin/courses/:id', isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Erro ao remover curso' });
     }
 });
+app.get('/api/admin/admins', isAdmin, async (req, res) => {
+    try {
+        const doc = await admin.firestore().collection('config').doc('admins').get();
+        const emails = (doc.exists ? doc.data()?.emails : null) ?? [];
+        res.json({ emails });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao obter administradores' });
+    }
+});
+app.post('/api/admin/admins', isAdmin, async (req, res) => {
+    const { emails } = req.body;
+    if (!Array.isArray(emails) || emails.some(e => typeof e !== 'string')) {
+        return res.status(400).json({ error: 'Dados inválidos' });
+    }
+    try {
+        await admin.firestore().collection('config').doc('admins').set({ emails });
+        adminEmailsCache = { emails, ts: Date.now() };
+        res.json({ message: 'Administradores guardados' });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao guardar administradores' });
+    }
+});
 app.get('/health', (req, res) => res.send('OK'));
 exports.api = (0, https_1.onRequest)({
     region: "europe-west1",
