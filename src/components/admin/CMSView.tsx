@@ -22,6 +22,7 @@ type Section = 'hero' | 'about' | 'services' | 'tutoring';
 export function CMSView() {
   const [activeTab, setActiveTab] = useState<Section>('hero');
   const [data, setData] = useState<any>(null);
+  const [savedData, setSavedData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -35,6 +36,7 @@ export function CMSView() {
     try {
       const res = await apiService.getCMS(section);
       setData(res);
+      setSavedData(res);
     } catch (err) {
       toast.error('Erro ao carregar dados.');
     } finally {
@@ -46,6 +48,7 @@ export function CMSView() {
     setSaving(true);
     try {
       await apiService.updateCMS(activeTab, data);
+      setSavedData(JSON.parse(JSON.stringify(data)));
       setIsDirty(false);
       toast.success('Alterações publicadas com sucesso!');
     } catch (err) {
@@ -84,15 +87,33 @@ export function CMSView() {
         <TabItem active={activeTab === 'tutoring'} icon={<GraduationCap size={18} />} label="Explicações" onClick={() => handleTabChange('tutoring')} />
       </div>
 
-      <div className="cms-content">
-        <AnimatePresence mode="wait">
-          <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-            {activeTab === 'hero' && <HeroEditor data={data} onChange={updateField} />}
-            {activeTab === 'about' && <AboutEditor data={data} onChange={updateField} />}
-            {activeTab === 'services' && <ListEditor title="Lista de Serviços" items={data?.items || []} onChange={(items: any[]) => updateField(['items'], items)} type="service" />}
-            {activeTab === 'tutoring' && <TutoringEditor data={data} onChange={updateField} />}
-          </motion.div>
-        </AnimatePresence>
+      <div className="cms-workspace">
+        <div className="cms-editor-col">
+          <AnimatePresence mode="wait">
+            <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              {activeTab === 'hero' && <HeroEditor data={data} onChange={updateField} />}
+              {activeTab === 'about' && <AboutEditor data={data} onChange={updateField} />}
+              {activeTab === 'services' && <ListEditor title="Lista de Serviços" items={data?.items || []} onChange={(items: any[]) => updateField(['items'], items)} type="service" />}
+              {activeTab === 'tutoring' && <TutoringEditor data={data} onChange={updateField} />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <div className="cms-preview-col">
+          <div className="cms-preview-panel glass">
+            <div className="cms-preview-header">
+              <span className="cms-preview-badge">Publicado</span>
+              <span className="cms-preview-title">Conteúdo atual no site</span>
+            </div>
+            <div className="cms-preview-body">
+              {savedData ? (
+                <SectionPreview section={activeTab} data={savedData} />
+              ) : (
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Sem dados publicados.</span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="cms-footer">
@@ -104,6 +125,113 @@ export function CMSView() {
       <style>{CMS_STYLES}</style>
     </div>
   );
+}
+
+function SectionPreview({ section, data }: { section: Section; data: any }) {
+  if (!data) return null;
+
+  if (section === 'hero') return (
+    <div className="preview-section">
+      {data.backgroundImage && <img src={data.backgroundImage} alt="" className="preview-img" />}
+      <PreviewField label="Título PT" value={data.title?.pt} />
+      <PreviewField label="Título EN" value={data.title?.en} />
+      <PreviewField label="Subtítulo PT" value={data.subtitle?.pt} />
+      <PreviewField label="Subtítulo EN" value={data.subtitle?.en} />
+      <div className="preview-row">
+        <PreviewChip label={data.buttonCursos || '—'} />
+        <PreviewChip label={data.buttonServicos || '—'} />
+      </div>
+    </div>
+  );
+
+  if (section === 'about') return (
+    <div className="preview-section">
+      <div className="preview-img-row">
+        {data.imageSala1 && <img src={data.imageSala1} alt="Sala 1" className="preview-img-thumb" />}
+        {data.imageSala2 && <img src={data.imageSala2} alt="Sala 2" className="preview-img-thumb" />}
+      </div>
+      <PreviewField label="Título PT" value={data.title?.pt} />
+      <PreviewField label="Título EN" value={data.title?.en} />
+      {(data.features || []).length > 0 && (
+        <div className="preview-list">
+          <span className="preview-list-label">Destaques ({data.features.length})</span>
+          {data.features.map((f: any, i: number) => (
+            <div key={i} className="preview-list-item">
+              <span className="preview-dot" />
+              <span>{f.title?.pt || '—'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  if (section === 'services') return (
+    <div className="preview-section">
+      {(data.items || []).length === 0
+        ? <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Sem serviços.</span>
+        : (
+          <div className="preview-list">
+            <span className="preview-list-label">Serviços ({data.items.length})</span>
+            {data.items.map((item: any, i: number) => (
+              <div key={i} className="preview-list-item">
+                {(LucideIcons as any)[item.icon] && React.createElement((LucideIcons as any)[item.icon], { size: 13, style: { flexShrink: 0, color: 'var(--accent)' } })}
+                <span>{item.title?.pt || '—'}</span>
+              </div>
+            ))}
+          </div>
+        )
+      }
+    </div>
+  );
+
+  if (section === 'tutoring') return (
+    <div className="preview-section">
+      <div className="preview-img-row">
+        {data.image1 && <img src={data.image1} alt="" className="preview-img-thumb" />}
+        {data.image2 && <img src={data.image2} alt="" className="preview-img-thumb" />}
+      </div>
+      <PreviewField label="Título PT" value={data.title?.pt} />
+      <PreviewField label="Descrição PT" value={data.description?.pt} muted />
+      {(data.subjects || []).length > 0 && (
+        <div className="preview-list">
+          <span className="preview-list-label">Disciplinas ({data.subjects.length})</span>
+          <div className="preview-chips-wrap">
+            {data.subjects.map((s: any, i: number) => (
+              <PreviewChip key={i} label={`${s.emoji || ''} ${s.label?.pt || '—'}`} />
+            ))}
+          </div>
+        </div>
+      )}
+      {(data.levels || []).length > 0 && (
+        <div className="preview-list">
+          <span className="preview-list-label">Níveis ({data.levels.length})</span>
+          {data.levels.map((l: any, i: number) => (
+            <div key={i} className="preview-list-item">
+              <span className="preview-dot" />
+              <span>{l.title?.pt || '—'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  return null;
+}
+
+function PreviewField({ label, value, muted }: { label: string; value?: string; muted?: boolean }) {
+  if (!value) return null;
+  return (
+    <div className="preview-field">
+      <span className="preview-field-label">{label}</span>
+      <span className={`preview-field-value ${muted ? 'muted' : ''}`}>{value}</span>
+    </div>
+  );
+}
+
+function PreviewChip({ label }: { label: string }) {
+  return <span className="preview-chip">{label}</span>;
 }
 
 function TabItem({ active, icon, label, onClick }: any) {
@@ -301,6 +429,37 @@ const CMS_STYLES = `
   .cms-tab:hover { color: var(--text); background: var(--bg-2); }
   .cms-tab.is-active { background: var(--bg); color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 
+  /* Workspace split */
+  .cms-workspace { display: grid; grid-template-columns: 1fr 280px; gap: 1.5rem; align-items: start; }
+  .cms-editor-col { min-width: 0; }
+  .cms-preview-col { position: sticky; top: 80px; }
+
+  /* Preview panel */
+  .cms-preview-panel { border-radius: var(--radius-lg); overflow: hidden; }
+  .cms-preview-header { padding: 0.875rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.6rem; background: var(--bg-2); }
+  .cms-preview-badge { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(16,185,129,0.15); color: #10b981; padding: 2px 7px; border-radius: 100px; }
+  .cms-preview-title { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); }
+  .cms-preview-body { padding: 1rem; }
+
+  .preview-section { display: flex; flex-direction: column; gap: 0.875rem; }
+  .preview-img { width: 100%; height: 90px; object-fit: cover; border-radius: var(--radius); margin-bottom: 0.25rem; }
+  .preview-img-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .preview-img-thumb { width: 100%; height: 60px; object-fit: cover; border-radius: var(--radius); }
+
+  .preview-field { display: flex; flex-direction: column; gap: 0.2rem; }
+  .preview-field-label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); }
+  .preview-field-value { font-size: 0.82rem; color: var(--text); line-height: 1.4; }
+  .preview-field-value.muted { color: var(--text-muted); font-size: 0.78rem; }
+
+  .preview-list { display: flex; flex-direction: column; gap: 0.35rem; }
+  .preview-list-label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin-bottom: 0.1rem; }
+  .preview-list-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-muted); }
+  .preview-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+  .preview-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .preview-chips-wrap { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .preview-chip { font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 100px; background: var(--bg-2); color: var(--text-muted); border: 1px solid var(--border); white-space: nowrap; }
+
   .editor-stack { display: flex; flex-direction: column; gap: 2rem; }
   .editor-card { padding: 2rem; border-radius: var(--radius-lg); }
   .editor-card h4 { margin: 0 0 1.5rem; font-size: 1rem; font-weight: 700; color: var(--text); }
@@ -335,6 +494,11 @@ const CMS_STYLES = `
 
   .cms-footer { position: sticky; bottom: 0; background: var(--bg); padding: 1.5rem 0; border-top: 1px solid var(--border); margin-top: 2rem; display: flex; justify-content: flex-end; z-index: 50; }
 
+  @media (max-width: 1200px) {
+    .cms-workspace { grid-template-columns: 1fr; }
+    .cms-preview-col { position: static; }
+    .cms-preview-panel { display: none; }
+  }
   @media (max-width: 1024px) {
     .i18n-inputs { grid-template-columns: 1fr; }
     .editor-grid { grid-template-columns: 1fr !important; }
