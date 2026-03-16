@@ -511,21 +511,25 @@ app.post('/api/admin/admins', isAdmin as any, async (req: Request, res: Response
 
 app.post('/api/track-visit', async (req: Request, res: Response) => {
   const now = new Date();
-  const dateKey = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  const dateKey = now.toISOString().split('T')[0];
   const hourKey = now.getHours().toString();
+  const ts = now.toISOString();
 
   try {
     const docRef = admin.firestore().collection('analytics').doc(dateKey);
     await admin.firestore().runTransaction(async (t) => {
       const doc = await t.get(docRef);
       if (!doc.exists) {
-        t.set(docRef, { total: 1, hourly: { [hourKey]: 1 } });
+        t.set(docRef, { total: 1, hourly: { [hourKey]: 1 }, log: [ts] });
       } else {
         const data = doc.data() || {};
         const newTotal = (data.total || 0) + 1;
         const newHourly = { ...data.hourly };
         newHourly[hourKey] = (newHourly[hourKey] || 0) + 1;
-        t.update(docRef, { total: newTotal, hourly: newHourly });
+        const log: string[] = data.log || [];
+        // keep last 200 entries
+        const newLog = [...log, ts].slice(-200);
+        t.update(docRef, { total: newTotal, hourly: newHourly, log: newLog });
       }
     });
     res.json({ success: true });

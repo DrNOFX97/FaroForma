@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, BarChart, Bar
 } from 'recharts';
 import { apiService } from '../../services/api';
 import type { RawData } from '../../services/api';
@@ -131,7 +131,7 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
 
       <AnimatePresence>
         {visitorPopup && (
-          <VisitorPopup total={stats.visitantes} onClose={() => setVisitorPopup(false)} />
+          <VisitorPopup total={stats.visitantes} hourly={analytics.hourly || {}} log={analytics.log || []} onClose={() => setVisitorPopup(false)} />
         )}
       </AnimatePresence>
 
@@ -297,7 +297,21 @@ function StatCard({ label, val, icon, trend, trendPositive, color, onClick }: an
   );
 }
 
-function VisitorPopup({ total, onClose }: { total: number; onClose: () => void }) {
+function VisitorPopup({ total, hourly, log, onClose }: { total: number; hourly: Record<string, number>; log: string[]; onClose: () => void }) {
+  // Build 24-hour bar chart data
+  const hourlyData = Array.from({ length: 24 }, (_, h) => ({
+    h: `${h}h`,
+    n: hourly[h.toString()] || 0,
+  }));
+
+  // Format log entries newest-first
+  const logEntries = [...log].reverse().map(ts => {
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? ts : d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  });
+
+  const peakHour = hourlyData.reduce((a, b) => b.n > a.n ? b : a, { h: '—', n: 0 });
+
   return (
     <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.div
@@ -305,26 +319,77 @@ function VisitorPopup({ total, onClose }: { total: number; onClose: () => void }
         initial={{ scale: 0.92, opacity: 0, y: 16 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.92, opacity: 0, y: 16 }}
+        transition={{ type: 'spring', stiffness: 340, damping: 28 }}
         onClick={e => e.stopPropagation()}
       >
+        {/* Header */}
         <div className="visitor-popup-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div className="stat-card-icon amber" style={{ width: 36, height: 36, borderRadius: 10 }}><MousePointer2 size={16} /></div>
             <div>
               <h4 style={{ margin: 0, fontSize: '1rem' }}>Visitantes Hoje</h4>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sessões únicas registadas</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </span>
             </div>
           </div>
           <button className="admin-close-btn" onClick={onClose}><X size={18} /></button>
         </div>
-        <div className="visitor-popup-body">
-          <div className="visitor-big-stat">
-            <span className="visitor-number">{total}</span>
-            <span className="visitor-unit">visitas hoje</span>
+
+        <div className="vp-body">
+          {/* Summary row */}
+          <div className="vp-summary">
+            <div className="vp-stat">
+              <span className="vp-stat-val" style={{ color: '#f59e0b' }}>{total}</span>
+              <span className="vp-stat-label">visitas</span>
+            </div>
+            <div className="vp-divider" />
+            <div className="vp-stat">
+              <span className="vp-stat-val">{peakHour.n > 0 ? peakHour.h : '—'}</span>
+              <span className="vp-stat-label">hora de pico</span>
+            </div>
+            <div className="vp-divider" />
+            <div className="vp-stat">
+              <span className="vp-stat-val">{logEntries.length > 0 ? logEntries[0] : '—'}</span>
+              <span className="vp-stat-label">última visita</span>
+            </div>
           </div>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
-            Contagem via Firebase Analytics.<br />Actualiza em cada acesso ao dashboard.
-          </p>
+
+          {/* Hourly bar chart */}
+          <div className="vp-section-title">Acessos por hora</div>
+          <div style={{ width: '100%', height: 110 }}>
+            <ResponsiveContainer>
+              <BarChart data={hourlyData} barSize={8} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                <XAxis dataKey="h" tick={{ fontSize: 9, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} interval={3} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 9, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.75rem' }}
+                  formatter={(v: any) => [v, 'visitas']}
+                  cursor={{ fill: 'rgba(245,158,11,0.08)' }}
+                />
+                <Bar dataKey="n" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Access log */}
+          <div className="vp-section-title" style={{ marginTop: '1rem' }}>
+            Log de acessos
+            <span className="vp-log-count">{logEntries.length}</span>
+          </div>
+          <div className="vp-log">
+            {logEntries.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', padding: '0.75rem 0' }}>Sem registos hoje.</div>
+            ) : (
+              logEntries.map((t, i) => (
+                <div key={i} className="vp-log-entry">
+                  <span className="vp-log-dot" />
+                  <span className="vp-log-time">{t}</span>
+                  {i === 0 && <span className="vp-log-badge">agora</span>}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </motion.div>
     </motion.div>
@@ -362,13 +427,26 @@ const DASHBOARD_STYLES = `
   .stat-trend.negative { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
 
   /* Visitor Popup */
-  .visitor-popup { width: 100%; max-width: 320px; border-radius: var(--radius-xl); overflow: hidden; }
+  .visitor-popup { width: 100%; max-width: 420px; border-radius: var(--radius-xl); overflow: hidden; }
   .visitor-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.25rem 1rem; border-bottom: 1px solid var(--border); }
-  .visitor-popup-body { padding: 1.5rem 1.25rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-  .visitor-big-stat { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
-  .visitor-number { font-size: 3rem; font-weight: 800; color: #f59e0b; line-height: 1; }
-  .visitor-unit { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .stat-card-icon.amber { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+
+  .vp-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0; }
+  .vp-summary { display: flex; align-items: center; justify-content: space-around; padding: 0.75rem 0 1.25rem; }
+  .vp-stat { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+  .vp-stat-val { font-size: 1.4rem; font-weight: 800; color: var(--text); line-height: 1; }
+  .vp-stat-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .vp-divider { width: 1px; height: 32px; background: var(--border); }
+
+  .vp-section-title { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+  .vp-log-count { background: var(--bg-2); border: 1px solid var(--border); border-radius: 20px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; color: var(--text-muted); }
+
+  .vp-log { display: flex; flex-direction: column; gap: 0; max-height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.25rem 0; background: var(--bg-2); }
+  .vp-log-entry { display: flex; align-items: center; gap: 0.6rem; padding: 0.3rem 0.75rem; }
+  .vp-log-entry:hover { background: var(--bg-1); }
+  .vp-log-dot { width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; flex-shrink: 0; }
+  .vp-log-time { font-size: 0.8rem; font-family: monospace; color: var(--text); font-weight: 600; flex: 1; }
+  .vp-log-badge { font-size: 0.62rem; font-weight: 700; background: rgba(245,158,11,0.15); color: #f59e0b; padding: 1px 6px; border-radius: 20px; }
 
   .dashboard-main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 2rem; }
   .dashboard-column { display: flex; flex-direction: column; gap: 2rem; }
