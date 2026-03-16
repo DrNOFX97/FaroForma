@@ -89,6 +89,18 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
       </div>
       <div className="admin-table-scroll">
         <table className="admin-table">
+          <colgroup>
+            <col style={{ width: '4%' }} />   {/* ID */}
+            <col style={{ width: '14%' }} />  {/* Nome */}
+            <col style={{ width: '16%' }} />  {/* Email */}
+            <col style={{ width: '10%' }} />  {/* Telefone */}
+            <col style={{ width: '18%' }} />  {/* Áreas */}
+            <col style={{ width: '10%' }} />  {/* Dias */}
+            <col style={{ width: '9%' }} />   {/* Períodos */}
+            <col style={{ width: '9%' }} />   {/* Modalidade */}
+            <col style={{ width: '10%' }} />  {/* Data */}
+            <col style={{ width: '8%' }} />   {/* Ações */}
+          </colgroup>
           <thead>
             <tr>
               <th>ID</th>

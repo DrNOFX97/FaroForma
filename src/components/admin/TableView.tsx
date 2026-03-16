@@ -87,6 +87,12 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail }:
       </div>
       <div className="admin-table-scroll">
         <table className="admin-table">
+          <colgroup>
+            {headers.map((_: any, i: number) => (
+              <col key={i} style={{ width: `${Math.floor(82 / headers.length)}%` }} />
+            ))}
+            <col style={{ width: '18%' }} /> {/* Ações */}
+          </colgroup>
           <thead>
             <tr>
               {headers.map((h, i) => <th key={i}>{h}</th>)}

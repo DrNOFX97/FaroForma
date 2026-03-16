@@ -699,10 +699,10 @@ const ADMIN_STYLES = `
   /* Table styling enhancements */
   .admin-table-container { border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-1); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
   .admin-table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .admin-table { width: 100%; min-width: 600px; border-collapse: collapse; table-layout: auto; }
-  .admin-table th { background: var(--bg-2); padding: 0.75rem 1rem; font-weight: 700; color: var(--text); border-bottom: 2px solid var(--border); white-space: nowrap; text-align: left; }
-  .admin-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); color: var(--text-muted); }
-  .admin-table td .cell-truncate { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .admin-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .admin-table th { background: var(--bg-2); padding: 0.6rem 0.75rem; font-weight: 700; font-size: 0.78rem; color: var(--text); border-bottom: 2px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+  .admin-table td { padding: 0.6rem 0.75rem; font-size: 0.82rem; border-bottom: 1px solid var(--border); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .admin-table td .cell-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
   .admin-table tr:last-child td { border-bottom: none; }
   .admin-table tr:hover td { background: rgba(16, 185, 129, 0.03); color: var(--text); }
 
