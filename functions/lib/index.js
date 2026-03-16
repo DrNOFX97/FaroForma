@@ -128,8 +128,10 @@ const StudentSchema = zod_1.z.object({
     email: zod_1.z.string().email(),
     phone: zod_1.z.string().min(1),
     program: zod_1.z.string().min(1),
+    turma: zod_1.z.string().optional().default(''),
     startDate: zod_1.z.string().min(1),
     contactPreference: zod_1.z.string().min(1),
+    needsTransport: zod_1.z.boolean().optional().default(false),
     notes: zod_1.z.string().optional().default(''),
 });
 let sheetsClient = null;
@@ -156,7 +158,8 @@ async function getSheetData(tabName) {
         spreadsheetId,
         range: `${tabName}!A:Z`,
     });
-    return response.data.values || [];
+    const rows = response.data.values || [];
+    return rows.filter(row => row.some(cell => cell !== '' && cell !== undefined && cell !== null));
 }
 async function appendToSheet(tabName, values) {
     const { sheets, spreadsheetId } = getSheetsClient();
@@ -295,11 +298,12 @@ app.post('/api/student', publicLimiter, async (req, res) => {
         return res.status(400).json({ error: 'Dados inválidos' });
     const d = parsed.data;
     try {
-        await appendToSheet('Alunos', [new Date().toISOString(), d.fullName, d.email, d.phone, d.program, d.startDate, d.contactPreference, d.notes]);
+        const transportLabel = d.needsTransport ? 'Sim (+2,50 €/viagem/dia)' : 'Não';
+        await appendToSheet('Alunos', [new Date().toISOString(), d.fullName, d.email, d.phone, d.program, d.turma, d.startDate, d.contactPreference, transportLabel, d.notes]);
         await sendMail({
             to: d.email,
             subject: 'FaroForma — Inscrição recebida',
-            html: `<p>Olá <strong>${escHtml(d.fullName)}</strong>,</p><p>Recebemos a sua inscrição para <strong>${escHtml(d.program)}</strong>. Entraremos em contacto brevemente através do seu meio de contacto preferido.</p><p>Obrigado por escolher a FaroForma.</p>`,
+            html: `<p>Olá <strong>${escHtml(d.fullName)}</strong>,</p><p>Recebemos a sua inscrição para <strong>${escHtml(d.program)}</strong>${d.turma ? ` (${escHtml(d.turma)})` : ''}. Entraremos em contacto brevemente através do seu meio de contacto preferido.</p>${d.needsTransport ? `<p>Confirmamos que solicitou transporte com taxa adicional de <strong>2,50 € por viagem/dia</strong>.</p>` : ''}<p>Obrigado por escolher a FaroForma.</p>`,
         }).catch(() => { });
         await notifyAdmins(`[Aluno] Nova inscrição — ${d.fullName}`, `<h2>Nova inscrição de aluno</h2>
       <table cellpadding="6" style="border-collapse:collapse">
@@ -307,8 +311,10 @@ app.post('/api/student', publicLimiter, async (req, res) => {
         <tr><td><strong>Email</strong></td><td>${escHtml(d.email)}</td></tr>
         <tr><td><strong>Telefone</strong></td><td>${escHtml(d.phone)}</td></tr>
         <tr><td><strong>Programa</strong></td><td>${escHtml(d.program)}</td></tr>
+        ${d.turma ? `<tr><td><strong>Turma</strong></td><td>${escHtml(d.turma)}</td></tr>` : ''}
         <tr><td><strong>Início pretendido</strong></td><td>${escHtml(d.startDate)}</td></tr>
         <tr><td><strong>Contacto preferido</strong></td><td>${escHtml(d.contactPreference)}</td></tr>
+        <tr><td><strong>Transporte</strong></td><td>${transportLabel}</td></tr>
       </table>
       ${d.notes ? `<p><strong>Notas:</strong><br>${escHtml(d.notes)}</p>` : ''}
       <p><a href="https://faroforma.pt/admin">Aceder ao Backoffice</a></p>`);
@@ -327,6 +333,15 @@ app.get('/api/admin/data', isAdmin, async (req, res) => {
     }
     catch (err) {
         res.status(500).json({ error: 'Erro ao obter dados' });
+    }
+});
+app.post('/api/admin/seed-headers', isAdmin, async (req, res) => {
+    try {
+        await updateSheetRow('Alunos', 0, ['Timestamp', 'Nome', 'Email', 'Telefone', 'Programa', 'Turma', 'DataInicio', 'PreferenciaContacto', 'Transporte', 'Notas']);
+        res.json({ message: 'Alunos headers updated' });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 app.post('/api/admin/update-row', isAdmin, async (req, res) => {

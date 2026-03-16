@@ -183,17 +183,51 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
                   <PieChartIcon size={18} className="text-accent" />
                   <h4>Top Áreas</h4>
                 </div>
+                {areaData.length > 0 && (
+                  <span className="areas-total-badge">{areaData.reduce((s, d) => s + d.value, 0)} formadores</span>
+                )}
               </div>
-              <div style={{ width: '100%', height: 240 }}>
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie data={areaData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value">
-                      {areaData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '12px' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              {areaData.length === 0 ? (
+                <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Sem dados de áreas.</div>
+              ) : (
+                <div className="area-chart-wrapper">
+                  <div style={{ width: 160, height: 160, flexShrink: 0 }}>
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie data={areaData} cx="50%" cy="50%" innerRadius={44} outerRadius={65} paddingAngle={4} dataKey="value" startAngle={90} endAngle={-270}>
+                          {areaData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="none" />)}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '10px', fontSize: '0.8rem' }}
+                          formatter={(value: any, _: any, props: any) => [value, props.payload.name]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="area-legend">
+                    {(() => {
+                      const total = areaData.reduce((s, d) => s + d.value, 0);
+                      return areaData.map((item, i) => {
+                        const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+                        return (
+                          <div key={i} className="area-legend-item">
+                            <span className="area-legend-swatch" style={{ background: COLORS[i % COLORS.length] }} />
+                            <div className="area-legend-body">
+                              <div className="area-legend-top">
+                                <span className="area-legend-name" title={item.name}>{item.name}</span>
+                                <span className="area-legend-count">{item.value}</span>
+                              </div>
+                              <div className="area-legend-track">
+                                <div className="area-legend-fill" style={{ width: `${pct}%`, background: COLORS[i % COLORS.length] }} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="glass card quick-actions-card">
               <div className="card-header"><div className="header-info"><Activity size={18} className="text-accent" /><h4>Ações Rápidas</h4></div></div>
@@ -346,6 +380,19 @@ const DASHBOARD_STYLES = `
   .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
   .charts-sub-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem; }
+
+  /* Top Áreas legend */
+  .areas-total-badge { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); background: var(--bg-2); padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border); }
+  .area-chart-wrapper { display: flex; align-items: center; gap: 1rem; margin-top: 1.25rem; }
+  .area-legend { display: flex; flex-direction: column; gap: 0.65rem; flex: 1; min-width: 0; }
+  .area-legend-item { display: flex; align-items: center; gap: 0.6rem; }
+  .area-legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .area-legend-body { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+  .area-legend-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .area-legend-name { font-size: 0.75rem; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .area-legend-count { font-size: 0.72rem; font-weight: 800; color: var(--text-muted); flex-shrink: 0; }
+  .area-legend-track { height: 4px; border-radius: 99px; background: var(--border); overflow: hidden; }
+  .area-legend-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
 
   /* Activity Feed */
   .activity-card { height: 100%; display: flex; flex-direction: column; }

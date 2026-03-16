@@ -142,8 +142,11 @@ async function getSheetData(tabName: string) {
     range: `${tabName}!A:Z`,
   });
   const rows = response.data.values || [];
-  // Filter out blank rows (rows where every cell is empty/undefined)
-  return rows.filter(row => row.some(cell => cell !== '' && cell !== undefined && cell !== null));
+  // Filter out blank rows (rows where every cell is empty/undefined/whitespace only)
+  return rows.filter(row => row.some(cell => {
+    if (cell === undefined || cell === null) return false;
+    return String(cell).trim() !== '';
+  }));
 }
 
 async function appendToSheet(tabName: string, values: string[]) {
@@ -353,6 +356,16 @@ app.get('/api/admin/data', isAdmin as any, async (req: Request, res: Response) =
     res.json({ formadores, alunos, contactos });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao obter dados' });
+  }
+});
+
+// TEMP — update Alunos headers to match new 10-column schema
+app.post('/api/admin/seed-headers', isAdmin as any, async (req: Request, res: Response) => {
+  try {
+    await updateSheetRow('Alunos', 0, ['Timestamp','Nome','Email','Telefone','Programa','Turma','DataInicio','PreferenciaContacto','Transporte','Notas']);
+    res.json({ message: 'Alunos headers updated' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
