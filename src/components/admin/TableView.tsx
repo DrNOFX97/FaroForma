@@ -11,9 +11,11 @@ interface TableViewProps {
   onRefresh: () => void;
   onEdit: (row: any) => void;
   onDetail: (row: any) => void;
+  /** If provided, only these column indices are shown (ID + Ações always included). CSV still exports all columns. */
+  columns?: number[];
 }
 
-export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail }: TableViewProps) {
+export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, columns }: TableViewProps) {
   const [search, setSearch] = useState('');
   const [deleting, setDeleting] = useState<number | null>(null);
 
@@ -87,31 +89,56 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail }:
       </div>
       <div className="admin-table-scroll">
         <table className="admin-table">
-          <colgroup>
-            {headers.map((_: any, i: number) => (
-              <col key={i} style={{ width: `${Math.floor(82 / headers.length)}%` }} />
-            ))}
-            <col style={{ width: '18%' }} /> {/* Ações */}
-          </colgroup>
+          {columns ? (
+            <colgroup>
+              <col style={{ width: '6%' }} />  {/* ID */}
+              {columns.map((_, i) => <col key={i} style={{ width: `${Math.floor(76 / columns.length)}%` }} />)}
+              <col style={{ width: '18%' }} />  {/* Ações */}
+            </colgroup>
+          ) : (
+            <colgroup>
+              {headers.map((_: any, i: number) => (
+                <col key={i} style={{ width: `${Math.floor(82 / headers.length)}%` }} />
+              ))}
+              <col style={{ width: '18%' }} />
+            </colgroup>
+          )}
           <thead>
             <tr>
-              {headers.map((h, i) => <th key={i}>{h}</th>)}
-              <th>Ações</th>
+              {columns ? (
+                <>
+                  <th>ID</th>
+                  {columns.map(ci => <th key={ci}>{headers[ci]}</th>)}
+                  <th>Ações</th>
+                </>
+              ) : (
+                <>
+                  {headers.map((h: string, i: number) => <th key={i}>{h}</th>)}
+                  <th>Ações</th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
             {displayRows.map((item, i) => (
               <tr key={i}>
-                {item.cells.map((cell: any, j: number) => (
-                  <td key={j}><span className="cell-truncate" title={String(cell ?? '')}>{cell}</span></td>
-                ))}
+                {columns ? (
+                  <>
+                    <td style={{ fontWeight: 700 }}>#{item.originalIndex}</td>
+                    {columns.map(ci => (
+                      <td key={ci}><span className="cell-truncate" title={String(item.cells[ci] ?? '')}>{item.cells[ci]}</span></td>
+                    ))}
+                  </>
+                ) : (
+                  item.cells.map((cell: any, j: number) => (
+                    <td key={j}><span className="cell-truncate" title={String(cell ?? '')}>{cell}</span></td>
+                  ))
+                )}
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button className="admin-action-btn" onClick={() => {
                       const obj: any = { originalIndex: item.originalIndex, cells: item.cells };
-                      headers.forEach((h: string, idx: number) => {
-                        obj[h] = item.cells[idx];
-                      });
+                      headers.forEach((h: string, idx: number) => { obj[h] = item.cells[idx]; });
                       onDetail(obj);
                     }} title="Ver Detalhes">
                       <Search size={16} />
@@ -121,9 +148,9 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail }:
                     }} title="Editar">
                       <Pencil size={16} />
                     </button>
-                    <button 
-                      className="admin-action-btn" 
-                      onClick={() => handleDelete(item.originalIndex)} 
+                    <button
+                      className="admin-action-btn"
+                      onClick={() => handleDelete(item.originalIndex)}
                       title="Eliminar"
                       style={{ color: '#ef4444' }}
                       disabled={deleting === item.originalIndex}
