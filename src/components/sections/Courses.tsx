@@ -33,6 +33,7 @@ export default function Courses() {
     email: '',
     phone: '',
     level: '',
+    needsTransport: false,
   });
   const [formSuccess, setFormSuccess] = useState(false);
 
@@ -110,8 +111,11 @@ export default function Courses() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,9 +126,11 @@ export default function Courses() {
         email: formData.email,
         phone: formData.phone,
         program: courseData.title[language],
-        startDate: formData.level,
+        turma: formData.level,
+        startDate: new Date().toISOString().split('T')[0],
         contactPreference: 'Email/Phone',
-        notes: `Inscrição via formulário de curso: ${formData.level}`
+        needsTransport: formData.needsTransport,
+        notes: `Inscrição via formulário de curso: ${formData.level}`,
       });
       setFormSuccess(true);
     } catch (err) {
@@ -275,6 +281,19 @@ export default function Courses() {
                         </option>
                       ))}
                     </select>
+                  </label>
+                  <label className="modal-form__checkbox">
+                    <input
+                      type="checkbox"
+                      name="needsTransport"
+                      checked={formData.needsTransport}
+                      onChange={handleChange}
+                    />
+                    <span>
+                      {language === 'pt'
+                        ? <> Necessito de transporte <strong>(+2,50 € por viagem/dia)</strong></>
+                        : <> I need transport <strong>(+€2.50 per trip/day)</strong></>}
+                    </span>
                   </label>
                   <button type="submit" className="btn btn--primary btn--lg">
                     {language === 'pt' ? 'Enviar inscrição' : 'Send enrolment'}
