@@ -1,7 +1,7 @@
 import {
   Users, GraduationCap, MessageSquare, TrendingUp,
   PieChart as PieChartIcon, Clock, MousePointer2,
-  Calendar, FileText, PlusCircle, ArrowRight, Activity, X
+  Calendar, FileText, PlusCircle, ArrowRight, Activity, X, Wrench
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -11,6 +11,7 @@ import { apiService } from '../../services/api';
 import type { RawData } from '../../services/api';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { F } from '../../config/sheetsSchema';
 
 interface DashboardViewProps {
   data: RawData | null;
@@ -20,6 +21,22 @@ interface DashboardViewProps {
 export function DashboardView({ data, onNavigate }: DashboardViewProps) {
   const [analytics, setAnalytics] = useState<any>({ total: 0 });
   const [visitorPopup, setVisitorPopup] = useState(false);
+  const [seedingHeaders, setSeedingHeaders] = useState(false);
+
+  const handleSeedHeaders = async () => {
+    if (!confirm('Actualizar headers da tab Alunos no Google Sheets?')) return;
+    setSeedingHeaders(true);
+    try {
+      const token = await (await import('../../config/firebase')).auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/seed-headers', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      alert(json.message || json.error);
+    } catch (e: any) {
+      alert('Erro: ' + e.message);
+    } finally {
+      setSeedingHeaders(false);
+    }
+  };
 
   useEffect(() => {
     apiService.getAnalytics().then(setAnalytics).catch(console.error);
@@ -42,7 +59,7 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
     let cur = 0, prev = 0;
     rows.slice(1).forEach(r => {
       try {
-        const d = new Date(r[0]);
+        const d = new Date(r[F.TIMESTAMP] || r[0]); // Use F.TIMESTAMP for formadores, fallback for others
         if (isNaN(d.getTime())) return;
         if (d.getFullYear() === curYear && d.getMonth() === curMonth) cur++;
         else if (d.getFullYear() === curYear && d.getMonth() === curMonth - 1) prev++;
@@ -67,7 +84,8 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
     const feed: any[] = [];
     
     data.alunos?.slice(1).forEach(r => feed.push({ type: 'aluno', name: r[1], date: new Date(r[0]), desc: `Inscrição em ${r[4]}` }));
-    data.formadores?.slice(1).forEach(r => feed.push({ type: 'formador', name: r[1], date: new Date(r[0]), desc: `Candidatura: ${r[6]?.split(',')[0]}` }));
+    // Using F schema for formadores
+    data.formadores?.slice(1).forEach(r => feed.push({ type: 'formador', name: r[F.NOME], date: new Date(r[F.TIMESTAMP]), desc: `Candidatura: ${r[F.AREAS]?.split(',')[0]}` }));
     data.contactos?.slice(1).forEach(r => feed.push({ type: 'contacto', name: r[1], date: new Date(r[0]), desc: `Mensagem: ${r[4]}` }));
 
     return feed.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 8);
@@ -87,7 +105,7 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
 
     data.formadores?.slice(1).forEach(r => {
       try {
-        const key = new Date(r[0]).toLocaleString('pt-PT', { month: 'short', year: '2-digit' });
+        const key = new Date(r[F.TIMESTAMP]).toLocaleString('pt-PT', { month: 'short', year: '2-digit' });
         if (months[key]) months[key].formadores++;
       } catch { /* ignore */ }
     });
@@ -104,7 +122,7 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
     if (!data?.formadores) return [];
     const areaCounts: Record<string, number> = {};
     data.formadores.slice(1).forEach(row => {
-      row[6]?.split(',').forEach((a: string) => {
+      row[F.AREAS]?.split(',').forEach((a: string) => {
         const clean = a.trim();
         if (clean) areaCounts[clean] = (areaCounts[clean] || 0) + 1;
       });
@@ -236,6 +254,7 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
                 <QuickAction icon={<PlusCircle size={16} />} label="Novo Curso" onClick={() => onNavigate?.('cursos')} />
                 <QuickAction icon={<FileText size={16} />} label="Ver Alunos" onClick={() => onNavigate?.('alunos')} />
                 <QuickAction icon={<ArrowRight size={16} />} label="Ver Contactos" onClick={() => onNavigate?.('contactos')} />
+                <QuickAction icon={<Wrench size={16} />} label={seedingHeaders ? 'A corrigir…' : 'Corrigir Headers Alunos'} onClick={handleSeedHeaders} />
               </div>
             </div>
           </div>
