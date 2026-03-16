@@ -46,6 +46,7 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [data, setData] = useState<RawData | null>(null);
   const [fetching, setFetching] = useState(false);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -115,12 +116,20 @@ export default function Admin() {
     try {
       const json = await apiService.getAdminData();
       setData(json);
+      setLastSync(new Date());
     } catch (err: any) {
       console.error(err);
     } finally {
       setFetching(false);
     }
   };
+
+  // Auto-sync every 30 seconds while logged in
+  useEffect(() => {
+    if (!user) return;
+    const id = setInterval(fetchData, 30_000);
+    return () => clearInterval(id);
+  }, [user]);
 
   const login = async () => {
     setError('');
@@ -287,6 +296,12 @@ export default function Admin() {
           </div>
 
           <div className="topbar-right">
+            {lastSync && (
+              <button className="sync-btn" onClick={fetchData} disabled={fetching} title="Sincronizar com Google Sheets">
+                <span className={`sync-dot ${fetching ? 'is-syncing' : ''}`} />
+                <span className="sync-label">{fetching ? 'A sincronizar…' : `Sync ${lastSync.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}`}</span>
+              </button>
+            )}
             <div className="notification-bell" ref={notifRef}>
               <button className="notif-bell-btn" onClick={openNotif} aria-label="Notificações">
                 <Bell size={20} />
@@ -516,7 +531,27 @@ const ADMIN_STYLES = `
   }
 
   .topbar-left { display: flex; align-items: center; gap: 1rem; }
-  .topbar-right { display: flex; align-items: center; gap: 1.5rem; }
+  .topbar-right { display: flex; align-items: center; gap: 1rem; }
+
+  .sync-btn {
+    display: flex; align-items: center; gap: 0.45rem;
+    background: var(--bg-2); border: 1px solid var(--border); border-radius: 20px;
+    padding: 0.3rem 0.75rem; cursor: pointer; transition: all 0.2s; color: var(--text-muted);
+  }
+  .sync-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .sync-btn:disabled { opacity: 0.6; cursor: default; }
+  .sync-label { font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+  .sync-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #10b981; flex-shrink: 0;
+  }
+  .sync-dot.is-syncing {
+    background: var(--accent);
+    animation: pulse-sync 1s ease-in-out infinite;
+  }
+  @keyframes pulse-sync {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
 
   .admin-content-area {
     padding: 2.5rem;
