@@ -23,10 +23,7 @@ export function ConfigView() {
   const fetchConfig = async () => {
     try {
       const data = await apiService.getConfig();
-      setConfig({
-        ...config,
-        ...data
-      });
+      setConfig((prev: any) => ({ ...prev, ...data }));
     } catch (err) {
       console.error(err);
     } finally {
@@ -97,11 +94,12 @@ export function ConfigView() {
                   {config.gbpDescription?.length || 0} / 750
                 </span>
               </div>
-              <textarea 
-                className="form__textarea" 
-                value={config.gbpDescription} 
-                onChange={e => setConfig({...config, gbpDescription: e.target.value})} 
-                rows={4} 
+              <textarea
+                className="form__textarea"
+                value={config.gbpDescription}
+                onChange={e => setConfig({...config, gbpDescription: e.target.value})}
+                rows={4}
+                maxLength={750}
                 placeholder="Escreva a descrição focada em Faro e keywords locais..."
               />
             </div>

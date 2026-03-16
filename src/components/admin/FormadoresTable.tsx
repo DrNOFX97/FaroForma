@@ -36,18 +36,20 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
     }
   };
 
-  const filteredRows = rows.filter(row => {
+  const rowsWithIdx = rows.map((row, i) => ({ row, originalIndex: i + 1 }));
+  const filteredRows = rowsWithIdx.filter(({ row }) => {
     const term = search.toLowerCase();
     const nome = String(row[1] || '').toLowerCase();
+    const email = String(row[2] || '').toLowerCase();
     const telefone = String(row[3] || '').toLowerCase();
     const nif = String(row[5] || '').toLowerCase();
-    return nome.includes(term) || telefone.includes(term) || nif.includes(term);
+    return nome.includes(term) || email.includes(term) || telefone.includes(term) || nif.includes(term);
   });
 
   const handleExport = () => {
     const csvContent = [
       headers.join(','),
-      ...filteredRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ...filteredRows.map(({ row }) => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -59,10 +61,10 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
     document.body.removeChild(link);
   };
 
-  const indexedRows = filteredRows.map((row) => ({ 
-    originalIndex: rows.indexOf(row) + 1,
-    cells: row 
-  })).reverse();
+  const indexedRows = [...filteredRows].reverse().map(({ row, originalIndex }) => ({
+    originalIndex,
+    cells: row
+  }));
 
   return (
     <div className="admin-table-container glass">
@@ -74,7 +76,7 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
             <input 
               type="text" 
               className="form__input" 
-              placeholder="Pesquisar por nome, telefone ou NIF..." 
+              placeholder="Pesquisar por nome, email, telefone ou NIF..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ paddingLeft: '2.5rem', height: '40px', fontSize: '0.85rem' }}

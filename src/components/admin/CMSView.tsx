@@ -24,6 +24,7 @@ export function CMSView() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     loadSection(activeTab);
@@ -45,6 +46,7 @@ export function CMSView() {
     setSaving(true);
     try {
       await apiService.updateCMS(activeTab, data);
+      setIsDirty(false);
       toast.success('Alterações publicadas com sucesso!');
     } catch (err) {
       toast.error('Erro ao publicar.');
@@ -53,8 +55,15 @@ export function CMSView() {
     }
   };
 
+  const handleTabChange = (section: Section) => {
+    if (isDirty && !confirm('Tens alterações não guardadas. Continuar?')) return;
+    setIsDirty(false);
+    setActiveTab(section);
+  };
+
   const updateField = (path: string[], value: any) => {
-    const newData = { ...data };
+    setIsDirty(true);
+    const newData = JSON.parse(JSON.stringify(data));
     let current = newData;
     for (let i = 0; i < path.length - 1; i++) {
       if (!current[path[i]]) current[path[i]] = {};
@@ -69,10 +78,10 @@ export function CMSView() {
   return (
     <div className="cms-container">
       <div className="cms-tabs">
-        <TabItem active={activeTab === 'hero'} icon={<Layout size={18} />} label="Hero" onClick={() => setActiveTab('hero')} />
-        <TabItem active={activeTab === 'about'} icon={<Info size={18} />} label="Sobre Nós" onClick={() => setActiveTab('about')} />
-        <TabItem active={activeTab === 'services'} icon={<Briefcase size={18} />} label="Serviços" onClick={() => setActiveTab('services')} />
-        <TabItem active={activeTab === 'tutoring'} icon={<GraduationCap size={18} />} label="Explicações" onClick={() => setActiveTab('tutoring')} />
+        <TabItem active={activeTab === 'hero'} icon={<Layout size={18} />} label="Hero" onClick={() => handleTabChange('hero')} />
+        <TabItem active={activeTab === 'about'} icon={<Info size={18} />} label="Sobre Nós" onClick={() => handleTabChange('about')} />
+        <TabItem active={activeTab === 'services'} icon={<Briefcase size={18} />} label="Serviços" onClick={() => handleTabChange('services')} />
+        <TabItem active={activeTab === 'tutoring'} icon={<GraduationCap size={18} />} label="Explicações" onClick={() => handleTabChange('tutoring')} />
       </div>
 
       <div className="cms-content">

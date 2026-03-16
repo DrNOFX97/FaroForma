@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   signInWithPopup, 
   signOut, 
@@ -48,7 +48,15 @@ export default function Admin() {
   const [fetching, setFetching] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [lastViewedAt] = useState<Date>(() => {
+    const ts = localStorage.getItem('admin_notif_viewed');
+    return ts && !isNaN(Date.parse(ts)) ? new Date(ts) : new Date(0);
+  });
+  const notifRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchRef = useRef<HTMLDivElement>(null);
+
   // Modals
   const [editingRow, setEditingRow] = useState<any | null>(null);
   const [editingGenericRow, setEditingGenericRow] = useState<any | null>(null);
@@ -80,6 +88,28 @@ export default function Admin() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!notifOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [notifOpen]);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [searchQuery]);
+
   const fetchData = async () => {
     setFetching(true);
     try {
@@ -103,6 +133,46 @@ export default function Admin() {
 
   const logout = () => signOut(auth);
 
+  // ── Memoized computations (must be before conditional returns) ────────────
+  const notifItems = useMemo(() => {
+    if (!data) return [];
+    const items: { type: string; name: string; desc: string; date: Date; tab: string }[] = [];
+    data.alunos?.slice(1).forEach(r => {
+      const d = new Date(r[0]);
+      if (!isNaN(d.getTime())) items.push({ type: 'aluno', name: r[1], desc: `Inscrição em ${r[4] || '—'}`, date: d, tab: 'alunos' });
+    });
+    data.contactos?.slice(1).forEach(r => {
+      const d = new Date(r[0]);
+      if (!isNaN(d.getTime())) items.push({ type: 'contacto', name: r[1], desc: r[4] || '—', date: d, tab: 'contactos' });
+    });
+    return items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 8);
+  }, [data]);
+
+  const unreadCount = useMemo(
+    () => notifItems.filter(n => n.date > lastViewedAt).length,
+    [notifItems, lastViewedAt]
+  );
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q || !data) return [];
+    const results: { tab: string; label: string; name: string; sub: string }[] = [];
+    const match = (...fields: any[]) => fields.some(f => String(f || '').toLowerCase().includes(q));
+    data.formadores?.slice(1).forEach(r => {
+      if (match(r[1], r[2], r[3], r[5]))
+        results.push({ tab: 'formadores', label: 'Formador', name: r[1], sub: r[2] || r[3] || '' });
+    });
+    data.alunos?.slice(1).forEach(r => {
+      if (match(r[1], r[2], r[3]))
+        results.push({ tab: 'alunos', label: 'Aluno', name: r[1], sub: r[4] || r[2] || '' });
+    });
+    data.contactos?.slice(1).forEach(r => {
+      if (match(r[1], r[2], r[3], r[4]))
+        results.push({ tab: 'contactos', label: 'Contacto', name: r[1], sub: r[4] || r[2] || '' });
+    });
+    return results.slice(0, 8);
+  }, [searchQuery, data]);
+
   if (loading) {
     return <div className="admin-loading"><div className="spinner"></div></div>;
   }
@@ -124,7 +194,12 @@ export default function Admin() {
     );
   }
 
-  const unreadCount = (data?.alunos?.length || 0) + (data?.contactos?.length || 0);
+  const openNotif = () => {
+    setNotifOpen(o => {
+      if (!o) localStorage.setItem('admin_notif_viewed', new Date().toISOString());
+      return !o;
+    });
+  };
 
   return (
     <div className={`admin-layout ${sidebarCollapsed ? 'is-sidebar-collapsed' : ''}`}>
@@ -170,19 +245,73 @@ export default function Admin() {
       <div className="admin-main-wrapper">
         <header className="admin-topbar">
           <div className="topbar-left">
-            <button className="btn btn--icon mobile-only" onClick={() => setMobileMenuOpen(true)} style={{ display: 'none' }}>
+            <button className="btn btn--icon mobile-only" onClick={() => setMobileMenuOpen(true)}>
               <Menu size={20} />
             </button>
-            <div className="search-pill">
+            <div className="search-pill" ref={searchRef}>
               <SearchIcon size={16} />
-              <span>Pesquisar em todo o sistema...</span>
+              <input
+                className="search-pill-input"
+                placeholder="Pesquisar nome, email, NIF..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => e.key === 'Escape' && setSearchQuery('')}
+              />
+              {searchQuery && searchResults.length === 0 && (
+                <div className="search-dropdown glass">
+                  <div className="search-empty">Sem resultados para "{searchQuery}"</div>
+                </div>
+              )}
+              {searchResults.length > 0 && (
+                <div className="search-dropdown glass">
+                  {searchResults.map((r) => (
+                    <button
+                      key={`${r.tab}-${r.name}-${r.sub}`}
+                      className="search-result-item"
+                      onClick={() => { setActiveTab(r.tab); setSearchQuery(''); }}
+                    >
+                      <span className={`search-type-badge ${r.tab}`}>{r.label}</span>
+                      <div className="search-result-body">
+                        <span className="search-result-name">{r.name}</span>
+                        <span className="search-result-sub">{r.sub}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="topbar-right">
-            <div className="notification-bell">
-              <Bell size={20} />
-              {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+            <div className="notification-bell" ref={notifRef}>
+              <button className="notif-bell-btn" onClick={openNotif} aria-label="Notificações">
+                <Bell size={20} />
+                {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+              </button>
+              {notifOpen && (
+                <div className="notif-dropdown glass">
+                  <div className="notif-header">
+                    <span>Notificações recentes</span>
+                    {unreadCount > 0 && <span className="notif-new-pill">{unreadCount} novas</span>}
+                  </div>
+                  {notifItems.length === 0 ? (
+                    <div className="notif-empty">Sem registos recentes.</div>
+                  ) : notifItems.map((n) => (
+                    <button
+                      key={`${n.date.getTime()}-${n.name}`}
+                      className={`notif-item ${n.date > lastViewedAt ? 'is-new' : ''}`}
+                      onClick={() => { setActiveTab(n.tab); setNotifOpen(false); }}
+                    >
+                      <div className={`notif-dot ${n.type}`} />
+                      <div className="notif-item-body">
+                        <span className="notif-name">{n.name}</span>
+                        <span className="notif-desc">{n.desc}</span>
+                        <span className="notif-time">{n.date.toLocaleDateString('pt-PT')} · {n.date.getHours()}h{String(n.date.getMinutes()).padStart(2,'0')}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="admin-user-pill">
               <img src={user.photoURL || ''} alt="" className="admin-avatar" />
@@ -203,7 +332,7 @@ export default function Admin() {
           <div className="admin-view-container">
             <AnimatePresence mode="wait">
               <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                {activeTab === 'dashboard' && <DashboardView data={data} />}
+                {activeTab === 'dashboard' && <DashboardView data={data} onNavigate={setActiveTab} />}
                 {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingRow} onDetail={setDetailRow} />}
                 {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} />}
                 {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} />}
@@ -408,6 +537,7 @@ const ADMIN_STYLES = `
   .collapse-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   .search-pill {
+    position: relative;
     background: var(--bg-2);
     border: 1px solid var(--border);
     border-radius: 100px;
@@ -418,31 +548,145 @@ const ADMIN_STYLES = `
     width: 300px;
     color: var(--text-muted);
     font-size: 0.85rem;
+    transition: border-color 0.2s;
   }
+  .search-pill:focus-within {
+    border-color: var(--accent);
+    border-radius: 12px 12px 0 0;
+  }
+  .search-pill-input {
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 0.85rem;
+    width: 100%;
+  }
+  .search-pill-input::placeholder { color: var(--text-muted); }
+  .search-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    border: 1px solid var(--accent);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    background: var(--bg-1);
+    z-index: 2000;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  .search-empty { padding: 1rem 1.25rem; color: var(--text-muted); font-size: 0.85rem; }
+  .search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item:hover { background: var(--bg-2); }
+  .search-type-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .search-type-badge.formadores { background: rgba(16,185,129,0.1); color: #10b981; }
+  .search-type-badge.alunos { background: rgba(59,130,246,0.1); color: #3b82f6; }
+  .search-type-badge.contactos { background: rgba(139,92,246,0.1); color: #8b5cf6; }
+  .search-result-body { display: flex; flex-direction: column; min-width: 0; }
+  .search-result-name { font-size: 0.85rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .search-result-sub { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  .notification-bell {
+  .notification-bell { position: relative; }
+  .notif-bell-btn {
     position: relative;
+    background: none;
+    border: none;
     color: var(--text-muted);
     cursor: pointer;
-    transition: color 0.2s;
-  }
-  .notification-bell:hover { color: var(--text); }
-  .notification-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    width: 16px;
-    height: 16px;
-    background: #ef4444;
-    color: white;
-    font-size: 0.65rem;
-    font-weight: 800;
-    border-radius: 50%;
+    padding: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 8px;
+    transition: color 0.2s, background 0.2s;
+  }
+  .notif-bell-btn:hover { color: var(--text); background: var(--bg-2); }
+  .notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 16px;
+    height: 16px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 800;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
     border: 2px solid var(--bg-1);
   }
+  .notif-dropdown {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: 320px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    z-index: 2000;
+    overflow: hidden;
+    background: var(--bg-1);
+  }
+  .notif-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem 0.75rem;
+    font-weight: 700;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .notif-new-pill { font-size: 0.7rem; background: rgba(239,68,68,0.1); color: #ef4444; padding: 2px 8px; border-radius: 100px; font-weight: 700; }
+  .notif-empty { padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+  .notif-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+    align-items: flex-start;
+  }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-item:hover { background: var(--bg-2); }
+  .notif-item.is-new { background: rgba(16,185,129,0.04); }
+  .notif-item.is-new:hover { background: rgba(16,185,129,0.08); }
+  .notif-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .notif-dot.aluno { background: #3b82f6; }
+  .notif-dot.contacto { background: #8b5cf6; }
+  .notif-item-body { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+  .notif-name { font-size: 0.85rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .notif-desc { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .notif-time { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem; }
 
   .admin-badge { font-size: 0.6rem; background: var(--accent); color: white; padding: 1px 5px; border-radius: 4px; text-transform: uppercase; }
   .admin-avatar { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); }

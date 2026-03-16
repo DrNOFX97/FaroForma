@@ -13,10 +13,11 @@ import { useState, useEffect } from 'react';
 
 interface DashboardViewProps {
   data: RawData | null;
+  onNavigate?: (tab: string) => void;
 }
 
-export function DashboardView({ data }: DashboardViewProps) {
-  const [analytics, setAnalytics] = useState<any>({ total: 0, hourly: {} });
+export function DashboardView({ data, onNavigate }: DashboardViewProps) {
+  const [analytics, setAnalytics] = useState<any>({ total: 0 });
 
   useEffect(() => {
     apiService.getAnalytics().then(setAnalytics).catch(console.error);
@@ -28,6 +29,34 @@ export function DashboardView({ data }: DashboardViewProps) {
     alunos: Math.max(0, (data?.alunos?.length || 1) - 1),
     contactos: Math.max(0, (data?.contactos?.length || 1) - 1),
     visitantes: analytics.total || 0,
+  };
+
+  // ── Month-over-month trend ─────────────────────────────────────────────────
+  const getMonthTrend = (rows: any[][] | undefined): { label: string; positive: boolean } => {
+    if (!rows || rows.length <= 1) return { label: '—', positive: true };
+    const now = new Date();
+    const curMonth = now.getMonth();
+    const curYear = now.getFullYear();
+    let cur = 0, prev = 0;
+    rows.slice(1).forEach(r => {
+      try {
+        const d = new Date(r[0]);
+        if (isNaN(d.getTime())) return;
+        if (d.getFullYear() === curYear && d.getMonth() === curMonth) cur++;
+        else if (d.getFullYear() === curYear && d.getMonth() === curMonth - 1) prev++;
+        else if (curMonth === 0 && d.getFullYear() === curYear - 1 && d.getMonth() === 11) prev++;
+      } catch { /* ignore */ }
+    });
+    if (prev === 0 && cur === 0) return { label: '—', positive: true };
+    if (prev === 0) return { label: `+${cur} novo${cur > 1 ? 's' : ''}`, positive: true };
+    const pct = Math.round(((cur - prev) / prev) * 100);
+    return { label: `${pct >= 0 ? '+' : ''}${pct}%`, positive: pct >= 0 };
+  };
+
+  const trends = {
+    formadores: getMonthTrend(data?.formadores),
+    alunos: getMonthTrend(data?.alunos),
+    contactos: getMonthTrend(data?.contactos),
   };
 
   // ── Activity Feed ──────────────────────────────────────────────────────────
@@ -45,20 +74,28 @@ export function DashboardView({ data }: DashboardViewProps) {
   // ── Chart Data ──────────────────────────────────────────────────────────────
   const getTrendData = () => {
     if (!data) return [];
-    const months: Record<string, number> = {};
+    const keys: string[] = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = d.toLocaleString('pt-PT', { month: 'short', year: '2-digit' });
-      months[key] = 0;
+      keys.push(d.toLocaleString('pt-PT', { month: 'short', year: '2-digit' }));
     }
-    [...(data.formadores?.slice(1) || []), ...(data.alunos?.slice(1) || [])].forEach(r => {
+    const months: Record<string, { formadores: number; alunos: number }> = {};
+    keys.forEach(k => { months[k] = { formadores: 0, alunos: 0 }; });
+
+    data.formadores?.slice(1).forEach(r => {
       try {
         const key = new Date(r[0]).toLocaleString('pt-PT', { month: 'short', year: '2-digit' });
-        if (months[key] !== undefined) months[key]++;
-      } catch (e) { /* ignore */ }
+        if (months[key]) months[key].formadores++;
+      } catch { /* ignore */ }
     });
-    return Object.entries(months).map(([name, total]) => ({ name, total }));
+    data.alunos?.slice(1).forEach(r => {
+      try {
+        const key = new Date(r[0]).toLocaleString('pt-PT', { month: 'short', year: '2-digit' });
+        if (months[key]) months[key].alunos++;
+      } catch { /* ignore */ }
+    });
+    return keys.map(name => ({ name, ...months[name] }));
   };
 
   const getAreaData = () => {
@@ -82,10 +119,10 @@ export function DashboardView({ data }: DashboardViewProps) {
     <div className="command-center">
       {/* Top Stats */}
       <div className="stats-row">
-        <StatCard label="Formadores" val={stats.formadores} icon={<Users size={20} />} trend="+12%" color="emerald" />
-        <StatCard label="Alunos" val={stats.alunos} icon={<GraduationCap size={20} />} trend="+5%" color="blue" />
-        <StatCard label="Visitantes Hoje" val={stats.visitantes} icon={<MousePointer2 size={20} />} trend="Live" color="amber" />
-        <StatCard label="Contactos" val={stats.contactos} icon={<MessageSquare size={20} />} trend="Novos" color="violet" />
+        <StatCard label="Formadores" val={stats.formadores} icon={<Users size={20} />} trend={trends.formadores.label} trendPositive={trends.formadores.positive} color="emerald" />
+        <StatCard label="Alunos" val={stats.alunos} icon={<GraduationCap size={20} />} trend={trends.alunos.label} trendPositive={trends.alunos.positive} color="blue" />
+        <StatCard label="Visitantes Hoje" val={stats.visitantes} icon={<MousePointer2 size={20} />} trend="Hoje" trendPositive={true} color="amber" />
+        <StatCard label="Contactos" val={stats.contactos} icon={<MessageSquare size={20} />} trend={trends.contactos.label} trendPositive={trends.contactos.positive} color="violet" />
       </div>
 
       <div className="dashboard-main-grid">
@@ -97,21 +134,35 @@ export function DashboardView({ data }: DashboardViewProps) {
                 <TrendingUp size={18} className="text-accent" />
                 <h4>Tendência de Crescimento</h4>
               </div>
+              <div className="chart-legend">
+                <span className="legend-dot" style={{ background: '#10b981' }} />
+                <span>Formadores</span>
+                <span className="legend-dot" style={{ background: '#3b82f6' }} />
+                <span>Alunos</span>
+              </div>
             </div>
             <div style={{ width: '100%', height: 300, marginTop: '1.5rem' }}>
               <ResponsiveContainer>
                 <AreaChart data={trendData}>
                   <defs>
-                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorFormadores" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorAlunos" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                   <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} dy={10} />
-                  <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '12px' }} />
-                  <Area type="monotone" dataKey="total" stroke="#10b981" fillOpacity={1} fill="url(#colorTotal)" strokeWidth={3} />
+                  <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '12px' }}
+                    formatter={(value: any, name: any) => [value, name === 'formadores' ? 'Formadores' : 'Alunos']}
+                  />
+                  <Area type="monotone" dataKey="formadores" stroke="#10b981" fillOpacity={1} fill="url(#colorFormadores)" strokeWidth={2.5} />
+                  <Area type="monotone" dataKey="alunos" stroke="#3b82f6" fillOpacity={1} fill="url(#colorAlunos)" strokeWidth={2.5} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -139,10 +190,10 @@ export function DashboardView({ data }: DashboardViewProps) {
             <div className="glass card quick-actions-card">
               <div className="card-header"><div className="header-info"><Activity size={18} className="text-accent" /><h4>Ações Rápidas</h4></div></div>
               <div className="quick-actions-list">
-                <QuickAction icon={<Calendar size={16} />} label="Agenda Hoje" />
-                <QuickAction icon={<PlusCircle size={16} />} label="Novo Curso" />
-                <QuickAction icon={<FileText size={16} />} label="Exportar Alunos" />
-                <QuickAction icon={<ArrowRight size={16} />} label="Ver Contactos" />
+                <QuickAction icon={<Calendar size={16} />} label="Agenda Hoje" onClick={() => onNavigate?.('agenda')} />
+                <QuickAction icon={<PlusCircle size={16} />} label="Novo Curso" onClick={() => onNavigate?.('cursos')} />
+                <QuickAction icon={<FileText size={16} />} label="Ver Alunos" onClick={() => onNavigate?.('alunos')} />
+                <QuickAction icon={<ArrowRight size={16} />} label="Ver Contactos" onClick={() => onNavigate?.('contactos')} />
               </div>
             </div>
           </div>
@@ -183,7 +234,7 @@ export function DashboardView({ data }: DashboardViewProps) {
   );
 }
 
-function StatCard({ label, val, icon, trend, color }: any) {
+function StatCard({ label, val, icon, trend, trendPositive, color }: any) {
   return (
     <div className={`stat-card-v2 ${color}`}>
       <div className="stat-card-icon">{icon}</div>
@@ -191,16 +242,20 @@ function StatCard({ label, val, icon, trend, color }: any) {
         <span className="stat-label">{label}</span>
         <div className="stat-value-row">
           <span className="stat-value">{val}</span>
-          <span className="stat-trend">{trend}</span>
+          {trend !== '—' && (
+            <span className={`stat-trend ${trendPositive ? 'positive' : 'negative'}`} title="vs mês anterior">
+              {trend}
+            </span>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function QuickAction({ icon, label }: any) {
+function QuickAction({ icon, label, onClick }: any) {
   return (
-    <button className="quick-action-btn">
+    <button className="quick-action-btn" onClick={onClick}>
       <div className="qa-icon">{icon}</div>
       <span>{label}</span>
     </button>
@@ -224,7 +279,9 @@ const DASHBOARD_STYLES = `
   .stat-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.02em; }
   .stat-value-row { display: flex; align-items: baseline; gap: 0.75rem; }
   .stat-value { font-size: 1.75rem; font-weight: 800; }
-  .stat-trend { font-size: 0.75rem; font-weight: 700; color: #10b981; background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 4px; }
+  .stat-trend { font-size: 0.75rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .stat-trend.positive { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+  .stat-trend.negative { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
 
   .dashboard-main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 2rem; }
   .dashboard-column { display: flex; flex-direction: column; gap: 2rem; }
@@ -233,6 +290,9 @@ const DASHBOARD_STYLES = `
   .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1.25rem; }
   .header-info { display: flex; align-items: center; gap: 0.75rem; }
   .header-info h4 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+
+  .chart-legend { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
   .charts-sub-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem; }
 

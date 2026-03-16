@@ -19,6 +19,7 @@ export function CoursesView() {
       setCourses(data);
     } catch (err) {
       console.error(err);
+      toast.error('Erro ao carregar cursos.');
     } finally {
       setLoading(false);
     }
@@ -27,6 +28,7 @@ export function CoursesView() {
   const handleSave = async (course: any) => {
     try {
       await apiService.saveCourse(course);
+      toast.success('Curso guardado!');
       setEditingCourse(null);
       fetchCourses();
     } catch (err) {
@@ -44,7 +46,7 @@ export function CoursesView() {
     }
   };
 
-  if (loading) return <div className="glass" style={{ padding: '2rem' }}>A carregar cursos...</div>;
+  if (loading) return <div className="glass" style={{ padding: '2rem', display: 'flex', justifyContent: 'center' }}><div className="spinner"></div></div>;
 
   return (
     <div className="admin-courses-view">
@@ -151,7 +153,7 @@ function CourseEditModal({ course, onClose, onSave }: any) {
         </div>
         <div className="admin-modal-footer">
           <button className="btn" onClick={onClose}>Cancelar</button>
-          <button className="btn btn--primary" onClick={() => onSave(data)}><Save size={18} /> Guardar Curso</button>
+          <button className="btn btn--primary" onClick={() => onSave(data)} disabled={!data.title?.pt?.trim()}><Save size={18} /> Guardar Curso</button>
         </div>
       </motion.div>
     </motion.div>

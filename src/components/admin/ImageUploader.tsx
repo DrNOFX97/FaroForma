@@ -23,6 +23,12 @@ export function ImageUploader({ label, value, folder, onChange }: ImageUploaderP
       return;
     }
 
+    const MAX_MB = 5;
+    if (file.size > MAX_MB * 1024 * 1024) {
+      toast.error(`Imagem demasiado grande. Máximo ${MAX_MB}MB.`);
+      return;
+    }
+
     setUploading(true);
     const toastId = toast.loading('A carregar imagem...');
     

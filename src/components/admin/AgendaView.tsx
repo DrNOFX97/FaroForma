@@ -189,6 +189,7 @@ function AgendaBlock({ label, data, onEdit }: any) {
 function AgendaEditorPopOver({ day, slot, currentData, formadores, onClose, onSave }: any) {
   const [trainerSearch, setTrainerSearch] = useState(currentData?.trainer || '');
   const [courseSearch, setCourseSearch] = useState(currentData?.course || '');
+  const [customConfirmed, setCustomConfirmed] = useState(false);
   const [step, setStep] = useState(1); // 1: Trainer, 2: Course
 
   const filteredTrainers = formadores.filter((f: any) => 
@@ -248,11 +249,11 @@ function AgendaEditorPopOver({ day, slot, currentData, formadores, onClose, onSa
               <label className="form__label">Selecionar Curso (de {trainerSearch})</label>
               <div className="search-input-wrap">
                 <SearchIcon size={16} />
-                <input 
-                  autoFocus 
-                  placeholder="Pesquise por curso..." 
-                  value={courseSearch} 
-                  onChange={e => setCourseSearch(e.target.value)} 
+                <input
+                  autoFocus
+                  placeholder="Pesquise por curso..."
+                  value={courseSearch}
+                  onChange={e => { setCourseSearch(e.target.value); setCustomConfirmed(false); }}
                 />
               </div>
               <div className="search-results">
@@ -263,8 +264,9 @@ function AgendaEditorPopOver({ day, slot, currentData, formadores, onClose, onSa
                     {courseSearch === c && <Check size={14} className="text-accent" />}
                   </button>
                 ))}
-                <button className="result-item custom-val" onClick={() => setCourseSearch(courseSearch)}>
+                <button className={`result-item custom-val ${customConfirmed ? 'is-selected' : ''}`} onClick={() => setCustomConfirmed(true)}>
                   <Plus size={14} /> Usar valor personalizado: "{courseSearch}"
+                  {customConfirmed && <Check size={14} className="text-accent" />}
                 </button>
               </div>
             </div>
@@ -274,7 +276,7 @@ function AgendaEditorPopOver({ day, slot, currentData, formadores, onClose, onSa
         <div className="popover-footer">
           {step === 2 && <button className="btn btn--link" onClick={() => setStep(1)}>Voltar</button>}
           <div style={{ flex: 1 }} />
-          <button className="btn btn--outline btn--small text-red" onClick={() => onSave(day, slot, '', '')}><Trash2 size={14} /> Limpar</button>
+          <button className="btn btn--outline btn--small text-red" onClick={() => { if (confirm('Limpar este slot?')) onSave(day, slot, '', ''); }}><Trash2 size={14} /> Limpar</button>
           <button className="btn btn--primary btn--small" onClick={() => onSave(day, slot, trainerSearch, courseSearch)}>Confirmar</button>
         </div>
       </motion.div>

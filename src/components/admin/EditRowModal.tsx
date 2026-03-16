@@ -23,6 +23,7 @@ export function EditRowModal({ row, headers, onClose, onSuccess }: EditRowModalP
       toast.success('Registo atualizado!');
       onSuccess();
     } catch (err) {
+      console.error(err);
       toast.error('Erro ao guardar alterações.');
     } finally {
       setSaving(false);
@@ -30,8 +31,8 @@ export function EditRowModal({ row, headers, onClose, onSuccess }: EditRowModalP
   };
 
   return (
-    <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div className="admin-modal glass" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+    <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+      <motion.div className="admin-modal glass" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={e => e.stopPropagation()}>
         <div className="admin-modal-header">
           <h3>Editar {row.type.slice(0, -1)} #{row.originalIndex}</h3>
           <button onClick={onClose} className="admin-close-btn"><X size={20} /></button>

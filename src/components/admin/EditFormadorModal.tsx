@@ -14,6 +14,10 @@ interface EditFormadorModalProps {
 export function EditFormadorModal({ row, onClose, onSuccess }: EditFormadorModalProps) {
   const [values, setValues] = useState([...row.cells]);
   const [saving, setSaving] = useState(false);
+
+  const updateField = (idx: number, val: any) => {
+    setValues(prev => prev.map((v, i) => i === idx ? val : v));
+  };
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,27 +57,27 @@ export function EditFormadorModal({ row, onClose, onSuccess }: EditFormadorModal
         </div>
         <div className="admin-modal-body">
           <div className="form__grid">
-            <div className="form__group"><label className="form__label">Nome</label><input className="form__input" value={values[F.NOME]} onChange={e => { const v = [...values]; v[F.NOME] = e.target.value; setValues(v); }} /></div>
-            <div className="form__group"><label className="form__label">Email</label><input className="form__input" value={values[F.EMAIL]} onChange={e => { const v = [...values]; v[F.EMAIL] = e.target.value; setValues(v); }} /></div>
-            <div className="form__group"><label className="form__label">Telefone</label><input className="form__input" value={values[F.TELEFONE]} onChange={e => { const v = [...values]; v[F.TELEFONE] = e.target.value; setValues(v); }} /></div>
-            <div className="form__group"><label className="form__label">Áreas</label><input className="form__input" value={values[F.AREAS]} onChange={e => { const v = [...values]; v[F.AREAS] = e.target.value; setValues(v); }} /></div>
+            <div className="form__group"><label className="form__label">Nome</label><input className="form__input" value={values[F.NOME]} onChange={e => updateField(F.NOME, e.target.value)} /></div>
+            <div className="form__group"><label className="form__label">Email</label><input className="form__input" value={values[F.EMAIL]} onChange={e => updateField(F.EMAIL, e.target.value)} /></div>
+            <div className="form__group"><label className="form__label">Telefone</label><input className="form__input" value={values[F.TELEFONE]} onChange={e => updateField(F.TELEFONE, e.target.value)} /></div>
+            <div className="form__group"><label className="form__label">Áreas</label><input className="form__input" value={values[F.AREAS]} onChange={e => updateField(F.AREAS, e.target.value)} /></div>
             <div className="form__group">
               <label className="form__label">Habilitações</label>
-              <select className="form__input" value={values[F.HABILITACOES]} onChange={e => { const v = [...values]; v[F.HABILITACOES] = e.target.value; setValues(v); }}>
+              <select className="form__input" value={values[F.HABILITACOES]} onChange={e => updateField(F.HABILITACOES, e.target.value)}>
                 <option value="12ano">12.º Ano</option><option value="licenciatura">Licenciatura</option><option value="mestrado">Mestrado</option><option value="doutoramento">Doutoramento</option><option value="outro">Outro</option>
               </select>
             </div>
             <div className="form__group">
               <label className="form__label">CAP / CCP</label>
-              <select className="form__input" value={values[F.CAP_CCP]} onChange={e => { const v = [...values]; v[F.CAP_CCP] = e.target.value; setValues(v); }}>
+              <select className="form__input" value={values[F.CAP_CCP]} onChange={e => updateField(F.CAP_CCP, e.target.value)}>
                 <option value="sim">Possuo Certificado</option><option value="nao">Não Possuo</option><option value="processo">Em Processo</option>
               </select>
             </div>
-            <div className="form__group"><label className="form__label">Dias</label><input className="form__input" value={values[F.DIAS]} onChange={e => { const v = [...values]; v[F.DIAS] = e.target.value; setValues(v); }} placeholder="Ex: Segunda, Terça" /></div>
-            <div className="form__group"><label className="form__label">Períodos</label><input className="form__input" value={values[F.PERIODOS]} onChange={e => { const v = [...values]; v[F.PERIODOS] = e.target.value; setValues(v); }} placeholder="Ex: Manhã, Tarde" /></div>
+            <div className="form__group"><label className="form__label">Dias</label><input className="form__input" value={values[F.DIAS]} onChange={e => updateField(F.DIAS, e.target.value)} placeholder="Ex: Segunda, Terça" /></div>
+            <div className="form__group"><label className="form__label">Períodos</label><input className="form__input" value={values[F.PERIODOS]} onChange={e => updateField(F.PERIODOS, e.target.value)} placeholder="Ex: Manhã, Tarde" /></div>
             <div className="form__group">
               <label className="form__label">Modalidade</label>
-              <select className="form__input" value={values[F.MODALIDADE]} onChange={e => { const v = [...values]; v[F.MODALIDADE] = e.target.value; setValues(v); }}>
+              <select className="form__input" value={values[F.MODALIDADE]} onChange={e => updateField(F.MODALIDADE, e.target.value)}>
                 <option value="presencial">Presencial</option><option value="online">Online</option><option value="hibrida">Híbrida</option>
               </select>
             </div>

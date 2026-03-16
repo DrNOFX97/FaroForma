@@ -38,7 +38,8 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail }:
     }
   };
 
-  const filteredRows = rows.filter(row => {
+  const rowsWithIdx = rows.map((row, i) => ({ row, originalIndex: i + 1 }));
+  const filteredRows = rowsWithIdx.filter(({ row }) => {
     const term = search.toLowerCase();
     return row.some(cell => String(cell || '').toLowerCase().includes(term));
   });
@@ -46,7 +47,7 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail }:
   const handleExport = () => {
     const csvContent = [
       headers.join(','),
-      ...filteredRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ...filteredRows.map(({ row }) => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -58,8 +59,8 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail }:
     document.body.removeChild(link);
   };
 
-  const displayRows = filteredRows.reverse().map((row) => ({
-    originalIndex: rows.indexOf(row) + 1,
+  const displayRows = [...filteredRows].reverse().map(({ row, originalIndex }) => ({
+    originalIndex,
     cells: row
   }));
 

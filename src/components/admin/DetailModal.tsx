@@ -2,6 +2,24 @@ import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 
+const FORMADOR_LABELS: Record<number, string> = {
+  0: 'Data/Hora',
+  1: 'Nome',
+  2: 'Email',
+  3: 'Telefone',
+  4: 'Data de Nascimento',
+  5: 'NIF',
+  6: 'Áreas',
+  7: 'Habilitações',
+  8: 'CAP / CCP',
+  9: 'Experiência',
+  10: 'LinkedIn',
+  11: 'Dias Disponíveis',
+  12: 'Períodos',
+  13: 'Modalidade',
+  14: 'Motivação',
+};
+
 interface DetailModalProps {
   data: any;
   onClose: () => void;
@@ -37,11 +55,10 @@ export function DetailModal({ data, onClose }: DetailModalProps) {
         <div className="admin-modal-body">
           <div className="detail-grid">
             {isFormador ? (
-              // Formadores data is an array
               data.cells.map((val: any, idx: number) => (
                 <div key={idx} className="detail-item">
-                  <label>Campo {idx}</label>
-                  <div>{val || <span className="text-muted">—</span>}</div>
+                  <label>{FORMADOR_LABELS[idx] ?? `Campo ${idx}`}</label>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{val || <span className="text-muted">—</span>}</div>
                 </div>
               ))
             ) : (
@@ -49,7 +66,7 @@ export function DetailModal({ data, onClose }: DetailModalProps) {
               Object.entries(data).filter(([key]) => key !== 'originalIndex').map(([key, val]: [string, any]) => (
                 <div key={key} className="detail-item">
                   <label>{key.charAt(0).toUpperCase() + key.slice(1)}</label>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{typeof val === 'string' || typeof val === 'number' ? val : JSON.stringify(val)}</div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{typeof val === 'string' || typeof val === 'number' ? val : <pre style={{ margin: 0, fontSize: '0.8em' }}>{JSON.stringify(val, null, 2)}</pre>}</div>
                 </div>
               ))
             )}
