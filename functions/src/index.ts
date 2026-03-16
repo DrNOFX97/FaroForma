@@ -348,6 +348,30 @@ app.post('/api/student', publicLimiter, async (req: Request, res: Response) => {
 
 // ── Admin Routes ─────────────────────────────────────────────────────────────
 
+// TEMP — clear all data and reset headers on all three tabs
+app.post('/api/admin/reset-sheets', isAdmin as any, async (req: Request, res: Response) => {
+  const { sheets, spreadsheetId } = getSheetsClient();
+  const tabs = [
+    { name: 'Formadores', headers: ['Timestamp','Nome','Email','Telefone','DataNascimento','NIF','Areas','Habilitacoes','CAP_CCP','Experiencia','LinkedIn','Dias','Periodos','Modalidade','Motivacao'] },
+    { name: 'Alunos',     headers: ['Timestamp','Nome','Email','Telefone','Programa','Turma','DataInicio','PreferenciaContacto','Transporte','Notas'] },
+    { name: 'Contactos',  headers: ['Timestamp','Nome','Email','Telefone','Assunto','Mensagem'] },
+  ];
+  try {
+    for (const tab of tabs) {
+      await sheets.spreadsheets.values.clear({ spreadsheetId, range: `${tab.name}!A:Z` });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${tab.name}!A1`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [tab.headers] },
+      });
+    }
+    res.json({ message: 'Sheets reset: Formadores, Alunos, Contactos' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/admin/data', isAdmin as any, async (req: Request, res: Response) => {
   try {
     const [formadores, alunos, contactos] = await Promise.all([

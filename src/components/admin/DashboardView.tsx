@@ -1,7 +1,7 @@
 import {
   Users, GraduationCap, MessageSquare, TrendingUp,
   PieChart as PieChartIcon, Clock, MousePointer2,
-  Calendar, FileText, PlusCircle, ArrowRight, Activity, X
+  Calendar, FileText, PlusCircle, ArrowRight, Activity, X, Trash2
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -21,6 +21,23 @@ interface DashboardViewProps {
 export function DashboardView({ data, onNavigate }: DashboardViewProps) {
   const [analytics, setAnalytics] = useState<any>({ total: 0 });
   const [visitorPopup, setVisitorPopup] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const handleResetSheets = async () => {
+    if (!confirm('⚠️ ATENÇÃO: Isto apaga TODOS os dados (Formadores, Alunos, Contactos) e recria apenas os headers.\n\nTens a certeza?')) return;
+    if (!confirm('Última confirmação — esta ação é irreversível.')) return;
+    setResetting(true);
+    try {
+      const token = await (await import('../../config/firebase')).auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/reset-sheets', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      alert(json.message || json.error);
+    } catch (e: any) {
+      alert('Erro: ' + e.message);
+    } finally {
+      setResetting(false);
+    }
+  };
 
   useEffect(() => {
     apiService.getAnalytics().then(setAnalytics).catch(console.error);
@@ -238,6 +255,7 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
                 <QuickAction icon={<PlusCircle size={16} />} label="Novo Curso" onClick={() => onNavigate?.('cursos')} />
                 <QuickAction icon={<FileText size={16} />} label="Ver Alunos" onClick={() => onNavigate?.('alunos')} />
                 <QuickAction icon={<ArrowRight size={16} />} label="Ver Contactos" onClick={() => onNavigate?.('contactos')} />
+                <QuickAction icon={<Trash2 size={16} />} label={resetting ? 'A limpar…' : 'Reset Sheets'} onClick={handleResetSheets} danger />
               </div>
             </div>
           </div>
@@ -331,9 +349,9 @@ function VisitorPopup({ total, onClose }: { total: number; onClose: () => void }
   );
 }
 
-function QuickAction({ icon, label, onClick }: any) {
+function QuickAction({ icon, label, onClick, danger }: any) {
   return (
-    <button className="quick-action-btn" onClick={onClick}>
+    <button className={`quick-action-btn${danger ? ' danger' : ''}`} onClick={onClick}>
       <div className="qa-icon">{icon}</div>
       <span>{label}</span>
     </button>
@@ -416,6 +434,9 @@ const DASHBOARD_STYLES = `
   .quick-actions-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem; }
   .quick-action-btn { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-2); color: var(--text); font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; text-align: left; }
   .quick-action-btn:hover { background: var(--bg-1); border-color: var(--accent); color: var(--accent); transform: translateX(4px); }
+  .quick-action-btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); }
+  .quick-action-btn.danger:hover { background: rgba(239,68,68,0.07); border-color: #ef4444; color: #ef4444; }
+  .quick-action-btn.danger .qa-icon { color: #ef4444; }
   .qa-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--bg-1); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); }
 
   @media (max-width: 1200px) {
