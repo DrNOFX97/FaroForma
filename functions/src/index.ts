@@ -348,6 +348,20 @@ app.post('/api/student', publicLimiter, async (req: Request, res: Response) => {
 
 // ── Admin Routes ─────────────────────────────────────────────────────────────
 
+// TEMP — diagnostic: show which spreadsheet ID is in use
+app.get('/api/admin/diag', isAdmin as any, async (req: Request, res: Response) => {
+  try {
+    const { sheets, spreadsheetId } = getSheetsClient();
+    const meta = await sheets.spreadsheets.get({ spreadsheetId, fields: 'spreadsheetId,properties/title,sheets/properties/title' });
+    res.json({
+      spreadsheetId,
+      title: meta.data.properties?.title,
+      tabs: meta.data.sheets?.map(s => s.properties?.title),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.get('/api/admin/data', isAdmin as any, async (req: Request, res: Response) => {
   try {
