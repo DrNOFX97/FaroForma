@@ -88,6 +88,7 @@ export function CMSView() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [previewLang, setPreviewLang] = useState<'pt' | 'en'>('pt');
 
   useEffect(() => {
     loadSection(activeTab);
@@ -167,11 +168,15 @@ export function CMSView() {
           <div className="cms-preview-panel glass">
             <div className="cms-preview-header">
               <span className="cms-preview-badge">Publicado</span>
-              <span className="cms-preview-title">Conteúdo atual no site</span>
+              <span className="cms-preview-title">Conteúdo atual</span>
+              <div className="preview-lang-toggle">
+                <button className={previewLang === 'pt' ? 'is-active' : ''} onClick={() => setPreviewLang('pt')}>PT</button>
+                <button className={previewLang === 'en' ? 'is-active' : ''} onClick={() => setPreviewLang('en')}>EN</button>
+              </div>
             </div>
             <div className="cms-preview-body">
               {savedData ? (
-                <SectionPreview section={activeTab} data={savedData} />
+                <SectionPreview section={activeTab} data={savedData} lang={previewLang} />
               ) : (
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Sem dados publicados.</span>
               )}
@@ -191,16 +196,15 @@ export function CMSView() {
   );
 }
 
-function SectionPreview({ section, data }: { section: Section; data: any }) {
+function SectionPreview({ section, data, lang }: { section: Section; data: any; lang: 'pt' | 'en' }) {
   if (!data) return null;
+  const L = lang;
 
   if (section === 'hero') return (
     <div className="preview-section">
       {data.backgroundImage && <img src={data.backgroundImage} alt="" className="preview-img" />}
-      <PreviewField label="Título PT" value={data.title?.pt} />
-      <PreviewField label="Título EN" value={data.title?.en} />
-      <PreviewField label="Subtítulo PT" value={data.subtitle?.pt} />
-      <PreviewField label="Subtítulo EN" value={data.subtitle?.en} />
+      <PreviewField label="Título" value={data.title?.[L]} />
+      <PreviewField label="Subtítulo" value={data.subtitle?.[L]} muted />
       <div className="preview-row">
         <PreviewChip label={data.buttonCursos || '—'} />
         <PreviewChip label={data.buttonServicos || '—'} />
@@ -214,15 +218,14 @@ function SectionPreview({ section, data }: { section: Section; data: any }) {
         {data.imageSala1 && <img src={data.imageSala1} alt="Sala 1" className="preview-img-thumb" />}
         {data.imageSala2 && <img src={data.imageSala2} alt="Sala 2" className="preview-img-thumb" />}
       </div>
-      <PreviewField label="Título PT" value={data.title?.pt} />
-      <PreviewField label="Título EN" value={data.title?.en} />
+      <PreviewField label="Título" value={data.title?.[L]} />
       {(data.features || []).length > 0 && (
         <div className="preview-list">
           <span className="preview-list-label">Destaques ({data.features.length})</span>
           {data.features.map((f: any, i: number) => (
             <div key={i} className="preview-list-item">
               <span className="preview-dot" />
-              <span>{f.title?.pt || '—'}</span>
+              <span>{f.title?.[L] || '—'}</span>
             </div>
           ))}
         </div>
@@ -240,7 +243,7 @@ function SectionPreview({ section, data }: { section: Section; data: any }) {
             {data.items.map((item: any, i: number) => (
               <div key={i} className="preview-list-item">
                 {(LucideIcons as any)[item.icon] && React.createElement((LucideIcons as any)[item.icon], { size: 13, style: { flexShrink: 0, color: 'var(--accent)' } })}
-                <span>{item.title?.pt || '—'}</span>
+                <span>{item.title?.[L] || '—'}</span>
               </div>
             ))}
           </div>
@@ -255,14 +258,14 @@ function SectionPreview({ section, data }: { section: Section; data: any }) {
         {data.image1 && <img src={data.image1} alt="" className="preview-img-thumb" />}
         {data.image2 && <img src={data.image2} alt="" className="preview-img-thumb" />}
       </div>
-      <PreviewField label="Título PT" value={data.title?.pt} />
-      <PreviewField label="Descrição PT" value={data.description?.pt} muted />
+      <PreviewField label="Título" value={data.title?.[L]} />
+      <PreviewField label="Descrição" value={data.description?.[L]} muted />
       {(data.subjects || []).length > 0 && (
         <div className="preview-list">
           <span className="preview-list-label">Disciplinas ({data.subjects.length})</span>
           <div className="preview-chips-wrap">
             {data.subjects.map((s: any, i: number) => (
-              <PreviewChip key={i} label={`${s.emoji || ''} ${s.label?.pt || '—'}`} />
+              <PreviewChip key={i} label={`${s.emoji || ''} ${s.label?.[L] || '—'}`} />
             ))}
           </div>
         </div>
@@ -273,7 +276,7 @@ function SectionPreview({ section, data }: { section: Section; data: any }) {
           {data.levels.map((l: any, i: number) => (
             <div key={i} className="preview-list-item">
               <span className="preview-dot" />
-              <span>{l.title?.pt || '—'}</span>
+              <span>{l.title?.[L] || '—'}</span>
             </div>
           ))}
         </div>
@@ -500,9 +503,12 @@ const CMS_STYLES = `
 
   /* Preview panel */
   .cms-preview-panel { border-radius: var(--radius-lg); overflow: hidden; }
-  .cms-preview-header { padding: 0.875rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.6rem; background: var(--bg-2); }
-  .cms-preview-badge { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(16,185,129,0.15); color: #10b981; padding: 2px 7px; border-radius: 100px; }
-  .cms-preview-title { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); }
+  .cms-preview-header { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.6rem; background: var(--bg-2); }
+  .cms-preview-badge { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(16,185,129,0.15); color: #10b981; padding: 2px 7px; border-radius: 100px; flex-shrink: 0; }
+  .cms-preview-title { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); flex: 1; }
+  .preview-lang-toggle { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+  .preview-lang-toggle button { padding: 3px 9px; font-size: 0.7rem; font-weight: 800; border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; }
+  .preview-lang-toggle button.is-active { background: var(--accent); color: #fff; }
   .cms-preview-body { padding: 1rem; }
 
   .preview-section { display: flex; flex-direction: column; gap: 0.875rem; }
