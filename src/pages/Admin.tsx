@@ -49,7 +49,7 @@ export default function Admin() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [lastViewedAt] = useState<Date>(() => {
+  const [lastViewedAt, setLastViewedAt] = useState<Date>(() => {
     const ts = localStorage.getItem('admin_notif_viewed');
     return ts && !isNaN(Date.parse(ts)) ? new Date(ts) : new Date(0);
   });
@@ -196,7 +196,11 @@ export default function Admin() {
 
   const openNotif = () => {
     setNotifOpen(o => {
-      if (!o) localStorage.setItem('admin_notif_viewed', new Date().toISOString());
+      if (!o) {
+        const now = new Date();
+        localStorage.setItem('admin_notif_viewed', now.toISOString());
+        setLastViewedAt(now);
+      }
       return !o;
     });
   };
