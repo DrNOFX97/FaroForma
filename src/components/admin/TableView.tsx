@@ -96,7 +96,9 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail }:
           <tbody>
             {displayRows.map((item, i) => (
               <tr key={i}>
-                {item.cells.map((cell: any, j: number) => <td key={j}>{cell}</td>)}
+                {item.cells.map((cell: any, j: number) => (
+                  <td key={j}><span className="cell-truncate" title={String(cell ?? '')}>{cell}</span></td>
+                ))}
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button className="admin-action-btn" onClick={() => {

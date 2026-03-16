@@ -110,7 +110,7 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
                 <td style={{ color: 'var(--text)', fontWeight: 600 }}>{item.cells[1]}</td>
                 <td>{item.cells[2]}</td>
                 <td>{item.cells[3]}</td>
-                <td title={item.cells[6]}>{item.cells[6]}</td>
+                <td><span className="cell-truncate" title={item.cells[6]}>{item.cells[6]}</span></td>
                 <td>{item.cells[11]}</td>
                 <td>{item.cells[12]}</td>
                 <td>{item.cells[13]}</td>
