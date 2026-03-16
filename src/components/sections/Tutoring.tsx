@@ -4,6 +4,7 @@ import AnimatedSection from '../ui/AnimatedSection';
 import { TUTORING_SUBJECTS as DEFAULT_SUBJECTS, TUTORING_LEVELS as DEFAULT_LEVELS } from '../../data/tutoring';
 import { useLanguage } from '../../context/LanguageContext';
 import { apiService } from '../../services/api';
+import * as LucideIcons from 'lucide-react';
 
 import img1 from '../../assets/images/explicacoes1.png';
 import img2 from '../../assets/images/explicacoes2.png';
@@ -67,12 +68,16 @@ export default function Tutoring() {
 
             {/* Levels */}
             <div className="tutoring__levels">
-              {levels.map((l: any, i: number) => (
-                <div key={i} className="tutoring__level">
-                  <div className="tutoring__level-title">{(l.title as any)[language]}</div>
-                  <div className="tutoring__level-desc">{(l.desc as any)[language]}</div>
-                </div>
-              ))}
+              {levels.map((l: any, i: number) => {
+                const IconComp = l.icon ? (LucideIcons as any)[l.icon] : null;
+                return (
+                  <div key={i} className="tutoring__level">
+                    {IconComp && <IconComp size={18} className="tutoring__level-icon" />}
+                    <div className="tutoring__level-title">{(l.title as any)[language]}</div>
+                    <div className="tutoring__level-desc">{(l.desc as any)[language]}</div>
+                  </div>
+                );
+              })}
             </div>
 
             <button

@@ -950,6 +950,11 @@ main {
   background: rgba(16, 185, 129, 0.06);
 }
 
+.tutoring__level-icon {
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
 .tutoring__level-title {
   font-weight: 700;
   font-size: 0.9rem;
