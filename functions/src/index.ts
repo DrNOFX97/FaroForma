@@ -141,7 +141,9 @@ async function getSheetData(tabName: string) {
     spreadsheetId,
     range: `${tabName}!A:Z`,
   });
-  return response.data.values || [];
+  const rows = response.data.values || [];
+  // Filter out blank rows (rows where every cell is empty/undefined)
+  return rows.filter(row => row.some(cell => cell !== '' && cell !== undefined && cell !== null));
 }
 
 async function appendToSheet(tabName: string, values: string[]) {
