@@ -16,9 +16,11 @@ interface TableViewProps {
   columns?: number[];
   /** Override display labels for specific column indices, e.g. { 0: 'Data/Hora' } */
   headerMap?: Record<number, string>;
+  /** Format cell values for specific column indices, e.g. { 0: v => new Date(v).toLocaleString() } */
+  cellFormat?: Record<number, (v: any) => string>;
 }
 
-export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, columns, headerMap }: TableViewProps) {
+export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, columns, headerMap, cellFormat }: TableViewProps) {
   const [search, setSearch] = useState('');
   const [deleting, setDeleting] = useState<number | null>(null);
 
@@ -121,14 +123,17 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
                 {columns ? (
                   <>
                     <td style={{ fontWeight: 700 }}>#{item.originalIndex}</td>
-                    {columns.map(ci => (
-                      <td key={ci}><span className="cell-truncate" title={String(item.cells[ci] ?? '')}>{item.cells[ci]}</span></td>
-                    ))}
+                    {columns.map(ci => {
+                      const raw = item.cells[ci];
+                      const display = cellFormat?.[ci] ? cellFormat[ci](raw) : raw;
+                      return <td key={ci}><span className="cell-truncate" title={String(raw ?? '')}>{display}</span></td>;
+                    })}
                   </>
                 ) : (
-                  item.cells.map((cell: any, j: number) => (
-                    <td key={j}><span className="cell-truncate" title={String(cell ?? '')}>{cell}</span></td>
-                  ))
+                  item.cells.map((cell: any, j: number) => {
+                    const display = cellFormat?.[j] ? cellFormat[j](cell) : cell;
+                    return <td key={j}><span className="cell-truncate" title={String(cell ?? '')}>{display}</span></td>;
+                  })
                 )}
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
