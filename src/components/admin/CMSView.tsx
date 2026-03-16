@@ -19,6 +19,68 @@ import toast from 'react-hot-toast';
 
 type Section = 'hero' | 'about' | 'services' | 'tutoring';
 
+const SECTION_DEFAULTS: Record<Section, any> = {
+  hero: {
+    title: {
+      pt: 'Formação em Faro\nque potencia o seu futuro.',
+      en: 'Training in Faro\nthat boosts your future.',
+    },
+    subtitle: {
+      pt: 'FaroForma oferece formações personalizadas, apoio administrativo e explicações do secundário à universidade. Excelência e proximidade em Faro.',
+      en: 'FaroForma offers tailored training, administrative support, and tutoring from secondary school to university. Excellence and proximity in Faro.',
+    },
+    buttonCursos: 'Ver Cursos',
+    buttonServicos: 'Ver Serviços',
+  },
+  about: {
+    title: {
+      pt: 'Um novo conceito de\naprendizagem em Faro',
+      en: 'A new concept of\nlearning in Faro',
+    },
+    features: [
+      { title: { pt: 'Abordagem centrada no cliente', en: 'Client-centric approach' }, desc: { pt: 'Soluções adaptadas às necessidades específicas de cada projeto.', en: 'Tailored solutions adapted to the specific needs of each project.' } },
+      { title: { pt: 'Equipa dedicada e qualificada', en: 'Dedicated and qualified team' }, desc: { pt: 'Profissionais apaixonados por formação e dedicados ao sucesso dos alunos.', en: 'Professionals passionate about training and dedicated to student success.' } },
+      { title: { pt: 'Localização privilegiada em Faro', en: 'Prime location in Faro' }, desc: { pt: 'No coração da cidade, de fácil acesso a toda a região.', en: 'In the heart of the city, with easy access to the entire region.' } },
+      { title: { pt: 'Resultados eficazes e duradouros', en: 'Effective and lasting results' }, desc: { pt: 'Metodologias comprovadas que geram valor real e mensurável.', en: 'Proven methodologies that generate real and measurable value.' } },
+    ],
+  },
+  services: {
+    items: [
+      { icon: 'GraduationCap', title: { pt: 'Formações Personalizadas em Faro', en: 'Customised Training in Faro' }, desc: { pt: 'Formações adaptadas às necessidades específicas dos nossos clientes em Faro, com conteúdos e metodologias personalizadas para máxima eficácia.', en: 'Training adapted to the specific needs of our clients in Faro, with personalised content and methodologies for maximum effectiveness.' } },
+      { icon: 'Users', title: { pt: 'Aluguer de Sala de Reuniões em Faro', en: 'Meeting Room Hire in Faro' }, desc: { pt: 'Espaços modernos e bem equipados para reuniões de negócios no centro de Faro, com acesso a todo o equipamento audiovisual necessário.', en: 'Modern and well-equipped spaces for business meetings in Faro city centre, with access to all necessary audiovisual equipment.' } },
+      { icon: 'Building2', title: { pt: 'Aluguer de Sala de Formação em Faro', en: 'Training Room Hire in Faro' }, desc: { pt: 'Salas confortáveis e tecnicamente preparadas em Faro para hospedar as suas formações e eventos educacionais com total apoio logístico.', en: 'Comfortable and technically prepared rooms in Faro to host your training sessions and educational events with full logistical support.' } },
+      { icon: 'Briefcase', title: { pt: 'Administração de Empresas em Faro', en: 'Business Administration in Faro' }, desc: { pt: 'Serviços especializados de administração em Faro que ajudam na organização eficiente das operações empresariais e na tomada de decisões.', en: 'Specialised administration services in Faro that help in the efficient organisation of business operations and decision-making.' } },
+      { icon: 'FileText', title: { pt: 'Serviços Administrativos em Faro', en: 'Administrative Services in Faro' }, desc: { pt: 'Apoio completo em gestão administrativa, documentação e processos burocráticos para empresas em Faro, poupando tempo e recursos.', en: 'Full support in administrative management, documentation and business bureaucratic processes in Faro, saving time and resources.' } },
+    ],
+  },
+  tutoring: {
+    title: {
+      pt: 'Explicações em Faro\npersonalizadas e eficazes',
+      en: 'Tutoring in Faro\npersonalised and effective',
+    },
+    description: {
+      pt: 'Oferecemos explicações desde o secundário até à universidade, com aulas personalizadas e metodologias adaptadas ao nível e objetivos de cada aluno. Os nossos professores são especialistas nas suas áreas.',
+      en: 'We offer tutoring from secondary school to university, with personalised classes and methodologies adapted to the level and goals of each student. Our teachers are specialists in their fields.',
+    },
+    subjects: [
+      { emoji: '∫', label: { pt: 'Matemática', en: 'Maths' } },
+      { emoji: '🇬🇧', label: { pt: 'Inglês', en: 'English' } },
+      { emoji: '🇫🇷', label: { pt: 'Francês', en: 'French' } },
+      { emoji: '🇪🇸', label: { pt: 'Espanhol', en: 'Spanish' } },
+      { emoji: '📊', label: { pt: 'Economia & Gestão', en: 'Economics & Management' } },
+      { emoji: '🔬', label: { pt: 'Ciências', en: 'Sciences' } },
+      { emoji: '📖', label: { pt: 'Português', en: 'Portuguese' } },
+      { emoji: '🌍', label: { pt: 'História & Geografia', en: 'History & Geography' } },
+    ],
+    levels: [
+      { title: { pt: 'Secundário', en: 'Secondary' }, desc: { pt: '10.º ao 12.º ano · Preparação para exames nacionais', en: 'Year 10 to 12 · Preparation for national exams' } },
+      { title: { pt: 'Universitário', en: 'University' }, desc: { pt: 'Apoio em unidades curriculares e dissertações', en: 'Support in curricular units and dissertations' } },
+      { title: { pt: 'Intensivos', en: 'Intensives' }, desc: { pt: 'Preparação focada para datas específicas', en: 'Focused preparation for specific dates' } },
+      { title: { pt: 'Online & Presencial', en: 'Online & In-person' }, desc: { pt: 'Flexibilidade para todas as necessidades', en: 'Flexibility for all needs' } },
+    ],
+  },
+};
+
 export function CMSView() {
   const [activeTab, setActiveTab] = useState<Section>('hero');
   const [data, setData] = useState<any>(null);
@@ -35,8 +97,10 @@ export function CMSView() {
     setLoading(true);
     try {
       const res = await apiService.getCMS(section);
-      setData(res);
-      setSavedData(res);
+      // Merge defaults with Firestore data so editor/preview always show current site content
+      const merged = { ...SECTION_DEFAULTS[section], ...res };
+      setData(merged);
+      setSavedData(merged);
     } catch (err) {
       toast.error('Erro ao carregar dados.');
     } finally {
