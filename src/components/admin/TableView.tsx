@@ -14,9 +14,11 @@ interface TableViewProps {
   onDetail: (row: any) => void;
   /** If provided, only these column indices are shown (ID + Ações always included). CSV still exports all columns. */
   columns?: number[];
+  /** Override display labels for specific column indices, e.g. { 0: 'Data/Hora' } */
+  headerMap?: Record<number, string>;
 }
 
-export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, columns }: TableViewProps) {
+export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, columns, headerMap }: TableViewProps) {
   const [search, setSearch] = useState('');
   const [deleting, setDeleting] = useState<number | null>(null);
 
@@ -102,12 +104,12 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
               {columns ? (
                 <>
                   <th>ID</th>
-                  {columns.map(ci => <th key={ci}>{headers[ci]}</th>)}
+                  {columns.map(ci => <th key={ci}>{headerMap?.[ci] ?? headers[ci]}</th>)}
                   <th>Ações</th>
                 </>
               ) : (
                 <>
-                  {headers.map((h: string, i: number) => <th key={i}>{h}</th>)}
+                  {headers.map((h: string, i: number) => <th key={i}>{headerMap?.[i] ?? h}</th>)}
                   <th>Ações</th>
                 </>
               )}

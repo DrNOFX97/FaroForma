@@ -339,7 +339,7 @@ export default function Admin() {
                 {activeTab === 'dashboard' && <DashboardView data={data} onNavigate={setActiveTab} />}
                 {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingRow} onDetail={setDetailRow} />}
                 {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} columns={[1, 3, 4]} />}
-                {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} />}
+                {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} headerMap={{ 0: 'Data/Hora' }} />}
                 {activeTab === 'agenda' && <AgendaView data={data} />}
                 {activeTab === 'cursos' && <CoursesView />}
                 {activeTab === 'config' && <ConfigView />}
