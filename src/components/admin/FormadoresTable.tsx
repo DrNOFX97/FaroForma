@@ -90,28 +90,22 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
       <div className="admin-table-scroll">
         <table className="admin-table">
           <colgroup>
-            <col style={{ width: '4%' }} />   {/* ID */}
-            <col style={{ width: '14%' }} />  {/* Nome */}
-            <col style={{ width: '16%' }} />  {/* Email */}
-            <col style={{ width: '10%' }} />  {/* Telefone */}
-            <col style={{ width: '18%' }} />  {/* Áreas */}
-            <col style={{ width: '10%' }} />  {/* Dias */}
-            <col style={{ width: '9%' }} />   {/* Períodos */}
-            <col style={{ width: '9%' }} />   {/* Modalidade */}
-            <col style={{ width: '10%' }} />  {/* Data */}
-            <col style={{ width: '8%' }} />   {/* Ações */}
+            <col style={{ width: '6%' }} />   {/* ID */}
+            <col style={{ width: '22%' }} />  {/* Nome */}
+            <col style={{ width: '14%' }} />  {/* Tel */}
+            <col style={{ width: '28%' }} />  {/* Áreas */}
+            <col style={{ width: '14%' }} />  {/* Dias */}
+            <col style={{ width: '10%' }} />  {/* Período */}
+            <col style={{ width: '6%' }} />   {/* Ações */}
           </colgroup>
           <thead>
             <tr>
               <th>ID</th>
               <th>Nome</th>
-              <th>Email</th>
-              <th>Telefone</th>
+              <th>Tel</th>
               <th>Áreas</th>
               <th>Dias</th>
-              <th>Períodos</th>
-              <th>Modalidade</th>
-              <th>Data Registo</th>
+              <th>Período</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -120,13 +114,10 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
               <tr key={i}>
                 <td style={{ fontWeight: 700 }}>#{item.originalIndex}</td>
                 <td style={{ color: 'var(--text)', fontWeight: 600 }}>{item.cells[1]}</td>
-                <td>{item.cells[2]}</td>
                 <td>{item.cells[3]}</td>
                 <td><span className="cell-truncate" title={item.cells[6]}>{item.cells[6]}</span></td>
                 <td>{item.cells[11]}</td>
                 <td>{item.cells[12]}</td>
-                <td>{item.cells[13]}</td>
-                <td>{new Date(item.cells[0]).toLocaleDateString()}</td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button className="admin-action-btn" onClick={() => onDetail(item)} title="Ver Detalhes">
