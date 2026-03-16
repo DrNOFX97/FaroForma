@@ -328,29 +328,6 @@ app.post('/api/student', publicLimiter, async (req, res) => {
         res.status(500).json({ error: 'Erro ao processar inscrição' });
     }
 });
-app.post('/api/admin/reset-sheets', isAdmin, async (req, res) => {
-    const { sheets, spreadsheetId } = getSheetsClient();
-    const tabs = [
-        { name: 'Formadores', headers: ['Timestamp', 'Nome', 'Email', 'Telefone', 'DataNascimento', 'NIF', 'Areas', 'Habilitacoes', 'CAP_CCP', 'Experiencia', 'LinkedIn', 'Dias', 'Periodos', 'Modalidade', 'Motivacao'] },
-        { name: 'Alunos', headers: ['Timestamp', 'Nome', 'Email', 'Telefone', 'Programa', 'Turma', 'DataInicio', 'PreferenciaContacto', 'Transporte', 'Notas'] },
-        { name: 'Contactos', headers: ['Timestamp', 'Nome', 'Email', 'Telefone', 'Assunto', 'Mensagem'] },
-    ];
-    try {
-        for (const tab of tabs) {
-            await sheets.spreadsheets.values.clear({ spreadsheetId, range: `${tab.name}!A:Z` });
-            await sheets.spreadsheets.values.update({
-                spreadsheetId,
-                range: `${tab.name}!A1`,
-                valueInputOption: 'RAW',
-                requestBody: { values: [tab.headers] },
-            });
-        }
-        res.json({ message: 'Sheets reset: Formadores, Alunos, Contactos' });
-    }
-    catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 app.get('/api/admin/data', isAdmin, async (req, res) => {
     try {
         const [formadores, alunos, contactos] = await Promise.all([
