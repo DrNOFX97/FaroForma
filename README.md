@@ -1,97 +1,133 @@
-# FaroForma — Centro de Formação e Explicações
+# FaroForma — Plataforma de Gestão Educativa
 
-A **FaroForma** é uma plataforma moderna e integrada para a gestão de inscrições de formadores, alunos e serviços administrativos. O projeto combina uma interface de utilizador (UI) de alta performance com um sistema de backoffice robusto, automatizando a sincronização de dados com o ecossistema Google Workspace.
+![Status](https://img.shields.io/badge/status-active-success.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Node](https://img.shields.io/badge/node-24.x-green.svg)
+![React](https://img.shields.io/badge/react-19.x-blue.svg)
+![Firebase](https://img.shields.io/badge/firebase-12.x-orange.svg)
+
+> **FaroForma** é uma plataforma moderna para gestão de um centro de formação em Faro, integrando um site público de alta performance com um backoffice administrativo robusto ("Command Center").
 
 ---
 
 ## 🚀 Funcionalidades Principais
 
-### Website Público
-*   **Landing Page Dinâmica:** Seções otimizadas para conversão (Hero, Serviços, Explicações).
-*   **Gestão de Imagens:** Carrosséis automáticos com transições suaves (intervalos de 7s).
-*   **Formulários Inteligentes:** Inscrição de Alunos, Candidaturas de Formadores e Contactos com validação em tempo real.
-*   **SEO Dinâmico:** Meta tags controladas remotamente via Backoffice.
+### 🌐 Frontend Público (SPA)
+*   **Design Responsivo:** Interface moderna construída com React 19, Framer Motion e Lucide Icons.
+*   **Multilanguage (i18n):** Suporte nativo para Português e Inglês em todas as páginas.
+*   **Conteúdo Dinâmico:** Secções Hero, Sobre, Serviços e Explicações geridas via CMS.
+*   **Inscrições Online:** Formulários de inscrição para alunos e formadores com validação em tempo real.
+*   **SEO Local:** Otimizado para "Formação em Faro" com meta-tags dinâmicas e JSON-LD.
 
-### Backoffice (Área Administrativa)
-*   **Acesso Restrito:** Autenticação via Google Login restrita ao administrador oficial.
-*   **Dashboard de Controlo:** Resumo estatístico de todas as entradas no sistema.
-*   **Gestão de Inscrições:** Visualização em tempo real e edição manual de candidaturas diretamente na base de dados.
-*   **Agenda Sala 1:** Mapa de ocupação semanal (Segunda a Sábado) com seleção inteligente de formadores e cursos.
-*   **Exportação Documental:** Geração de PDFs e impressão formatada do mapa de ocupação.
-*   **Configurações de Site:** Edição de títulos, descrições e contactos sem necessidade de novo deploy.
-
----
-
-## 🛠️ Stack Tecnológica
-
-### Frontend
-- **Framework:** [React 19](https://react.dev/) com **TypeScript**.
-- **Build Tool:** [Vite](https://vitejs.dev/).
-- **Animações:** [Framer Motion](https://www.framer.com/motion/).
-- **Ícones:** [Lucide React](https://lucide.dev/).
-- **Routing:** React Router 7.
-
-### Backend & Infraestrutura
-- **Runtime:** [Node.js 22](https://nodejs.org/).
-- **Hosting:** [Firebase Hosting](https://firebase.google.com/docs/hosting).
-- **Serverless:** [Firebase Functions (2nd Gen)](https://firebase.google.com/docs/functions) baseadas em Cloud Run.
-- **Base de Dados:** [Cloud Firestore](https://firebase.google.com/docs/firestore) para estado da app e [Google Sheets](https://www.google.com/sheets/about/) para registos permanentes.
-- **Segurança:** [Google Secret Manager](https://cloud.google.com/secret-manager).
-- **Email:** Nodemailer com Gmail SMTP.
+### 🎛️ Backoffice (Command Center)
+*   **Dashboard Visual:** Métricas em tempo real, gráficos de crescimento (Recharts) e feed de atividade recente.
+*   **CMS No-Code:** Editor completo para alterar textos, listas e imagens do site sem tocar em código.
+*   **Gestão de Agenda:** Interface visual (drag-and-drop style) para gestão de ocupação de múltiplas salas.
+*   **Media Manager:** Upload de imagens integrado com Firebase Storage.
+*   **Base de Dados Híbrida:** Sincronização bidirecional entre Firestore (Configurações/CMS) e Google Sheets (Dados de Inscrições).
+*   **Analytics Nativo:** Monitorização de tráfego e distribuição horária de visitantes.
 
 ---
 
-## 💻 Configuração e Desenvolvimento
+## 🛠️ Arquitetura Técnica
+
+O projeto segue uma arquitetura **Serverless** moderna, alojada no Google Cloud Platform via Firebase.
+
+### Stack Tecnológico
+*   **Frontend:** Vite, React 19, TypeScript, Framer Motion, React Hot Toast.
+*   **Backend:** Firebase Functions (Node.js 24), Express.js.
+*   **Database:** 
+    *   **Firestore:** Metadados, CMS, Analytics, Configurações.
+    *   **Google Sheets:** "Database" principal para registos de alunos e formadores (facilita a gestão administrativa).
+*   **Storage:** Firebase Storage (Imagens e Documentos).
+*   **Auth:** Firebase Auth (Google Sign-In) restrito a administradores.
+
+### Estrutura do Projeto
+```bash
+/
+├── functions/          # Backend (Cloud Functions)
+│   ├── src/
+│   │   ├── index.ts    # API Entrypoint (Express)
+│   │   └── ...
+├── src/                # Frontend (React)
+│   ├── components/
+│   │   ├── admin/      # Componentes do Backoffice (CMS, Agenda, Tables)
+│   │   ├── sections/   # Secções do Site Público
+│   │   └── ui/         # Componentes Genéricos
+│   ├── config/         # Configuração Firebase
+│   ├── context/        # Contexto Global (Idioma)
+│   ├── data/           # Fallback Data (Dados estáticos de segurança)
+│   ├── pages/          # Rotas Principais (Admin, Home)
+│   └── services/       # API Client Centralizado
+└── ...
+```
+
+---
+
+## 📦 Instalação e Desenvolvimento
 
 ### Pré-requisitos
-*   Node.js v22 ou superior.
-*   Firebase CLI instalado (`npm install -g firebase-tools`).
-*   Arquivo `.env` configurado na raiz.
+*   Node.js 24+
+*   Conta Firebase com projeto criado (Plano Blaze necessário para Functions).
+*   Google Service Account (JSON) para acesso às Sheets API.
 
-### Instalação Local
+### 1. Clonar o Repositório
 ```bash
-# Instalar dependências do frontend
+git clone https://github.com/DrNOFX97/FaroForma.git
+cd FaroForma
+```
+
+### 2. Configurar Variáveis de Ambiente
+Crie um ficheiro `.env` na raiz com as chaves do Firebase:
+```env
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+```
+
+### 3. Instalar Dependências
+```bash
+# Frontend
 npm install
 
-# Instalar dependências das funções
+# Backend
 cd functions && npm install && cd ..
+```
 
-# Iniciar servidor de desenvolvimento
+### 4. Executar Localmente
+```bash
 npm run dev
 ```
 
-### Build e Deploy
-```bash
-# Build de produção
-npm run build
-cd functions && npm run build && cd ..
+---
 
-# Enviar para produção (Firebase)
-firebase deploy --project faroformapt
+## 🚀 Deploy (Produção)
+
+O projeto utiliza Firebase Hosting e Cloud Functions. O comando de deploy compila ambos os ambientes.
+
+```bash
+npm run build && cd functions && npm run build && cd .. && firebase deploy --project faroformapt
 ```
 
 ---
 
-## 🔒 Configuração de Ambiente
+## 🛡️ Segurança
 
-O projeto utiliza **Secrets** para proteger dados sensíveis. Certifique-se de que os seguintes valores estão configurados no Secret Manager do Google Cloud:
-
-1.  `GOOGLE_SERVICE_ACCOUNT_JSON`: Chave da conta de serviço para acesso ao Sheets/Firestore.
-2.  `SPREADSHEET_ID`: ID da Google Sheet onde os dados são guardados.
-3.  `GMAIL_USER`: Email de envio (`faroforma@gmail.com`).
-4.  `GMAIL_APP_PASSWORD`: Senha de aplicação de 16 caracteres gerada no Google.
+*   **RBAC:** Acesso ao `/admin` protegido por verificação de email (whitelist) no backend.
+*   **Firestore Rules:** Regras estritas para leitura pública (apenas CMS) e escrita restrita (apenas Admin).
+*   **Validação:** Zod schemas no backend para validar todos os inputs de formulários.
 
 ---
 
-## 📐 Arquitetura de Dados
+## 📄 Licença
 
-O sistema opera com um fluxo de **Sincronização Dupla**:
-1.  **Google Sheets:** Atua como o repositório de longa duração e interface amigável para consulta externa.
-2.  **Firestore:** Atua como a base de dados de alta velocidade para o Backoffice e configurações dinâmicas do site.
+Este projeto está licenciado sob a licença MIT - consulte o ficheiro [LICENSE.md](LICENSE.md) para mais detalhes.
 
 ---
 
-## 📄 Licença e Créditos
-
-© 2026 **FaroForma**. Todos os direitos reservados.
-Desenvolvido com foco em performance, segurança e automatização.
+<p align="center">
+  Desenvolvido com ❤️ para <strong>FaroForma</strong>.
+</p>

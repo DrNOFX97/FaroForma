@@ -177,6 +177,29 @@ async function updateSheetRow(tabName, rowIndex, values) {
         requestBody: { values: [values] },
     });
 }
+async function deleteSheetRow(tabName, rowIndex) {
+    const { sheets, spreadsheetId } = getSheetsClient();
+    const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+    const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === tabName);
+    const sheetId = sheet?.properties?.sheetId;
+    if (sheetId === undefined)
+        throw new Error(`Sheet ${tabName} not found`);
+    await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+            requests: [{
+                    deleteDimension: {
+                        range: {
+                            sheetId,
+                            dimension: 'ROWS',
+                            startIndex: rowIndex,
+                            endIndex: rowIndex + 1,
+                        },
+                    },
+                }],
+        },
+    });
+}
 function escHtml(str) {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -306,6 +329,30 @@ app.get('/api/admin/data', isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Erro ao obter dados' });
     }
 });
+app.post('/api/admin/update-row', isAdmin, async (req, res) => {
+    const { tabName, rowIndex, values } = req.body;
+    if (!tabName || rowIndex === undefined || !Array.isArray(values))
+        return res.status(400).json({ error: 'Dados inválidos' });
+    try {
+        await updateSheetRow(tabName, rowIndex, values);
+        res.json({ message: 'Atualizado com sucesso' });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao atualizar' });
+    }
+});
+app.delete('/api/admin/delete-row', isAdmin, async (req, res) => {
+    const { tabName, rowIndex } = req.body;
+    if (!tabName || rowIndex === undefined)
+        return res.status(400).json({ error: 'Dados inválidos' });
+    try {
+        await deleteSheetRow(tabName, rowIndex);
+        res.json({ message: 'Eliminado com sucesso' });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao eliminar linha' });
+    }
+});
 app.post('/api/admin/update-formador', isAdmin, async (req, res) => {
     const { rowIndex, values } = req.body;
     if (rowIndex === undefined || !Array.isArray(values))
@@ -423,6 +470,61 @@ app.post('/api/admin/admins', isAdmin, async (req, res) => {
     }
     catch (err) {
         res.status(500).json({ error: 'Erro ao guardar administradores' });
+    }
+});
+app.post('/api/track-visit', async (req, res) => {
+    const now = new Date();
+    const dateKey = now.toISOString().split('T')[0];
+    const hourKey = now.getHours().toString();
+    try {
+        const docRef = admin.firestore().collection('analytics').doc(dateKey);
+        await admin.firestore().runTransaction(async (t) => {
+            const doc = await t.get(docRef);
+            if (!doc.exists) {
+                t.set(docRef, { total: 1, hourly: { [hourKey]: 1 } });
+            }
+            else {
+                const data = doc.data() || {};
+                const newTotal = (data.total || 0) + 1;
+                const newHourly = { ...data.hourly };
+                newHourly[hourKey] = (newHourly[hourKey] || 0) + 1;
+                t.update(docRef, { total: newTotal, hourly: newHourly });
+            }
+        });
+        res.json({ success: true });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao registar visita' });
+    }
+});
+app.get('/api/admin/analytics', isAdmin, async (req, res) => {
+    const dateKey = new Date().toISOString().split('T')[0];
+    try {
+        const doc = await admin.firestore().collection('analytics').doc(dateKey).get();
+        res.json(doc.exists ? doc.data() : { total: 0, hourly: {} });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao obter analytics' });
+    }
+});
+app.get('/api/cms/:section', async (req, res) => {
+    const section = req.params.section;
+    try {
+        const doc = await admin.firestore().collection('cms').doc(section).get();
+        res.json(doc.exists ? doc.data() : {});
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao obter secção CMS' });
+    }
+});
+app.post('/api/cms/:section', isAdmin, async (req, res) => {
+    const section = req.params.section;
+    try {
+        await admin.firestore().collection('cms').doc(section).set(req.body, { merge: true });
+        res.json({ message: 'Secção atualizada com sucesso' });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao guardar secção CMS' });
     }
 });
 app.get('/health', (req, res) => res.send('OK'));

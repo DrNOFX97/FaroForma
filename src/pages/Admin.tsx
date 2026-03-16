@@ -17,7 +17,13 @@ import {
   Lock,
   AlertCircle,
   Award,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Bell,
+  Search as SearchIcon,
+  Menu,
+  FileText
 } from 'lucide-react';
 
 import { apiService } from '../services/api';
@@ -28,8 +34,10 @@ import { TableView } from '../components/admin/TableView';
 import { AgendaView } from '../components/admin/AgendaView';
 import { CoursesView } from '../components/admin/CoursesView';
 import { ConfigView } from '../components/admin/ConfigView';
+import { CMSView } from '../components/admin/CMSView';
 import { DetailModal } from '../components/admin/DetailModal';
 import { EditFormadorModal } from '../components/admin/EditFormadorModal';
+import { EditRowModal } from '../components/admin/EditRowModal';
 
 export default function Admin() {
   const [user, setUser] = useState<User | null>(null);
@@ -38,7 +46,12 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [data, setData] = useState<RawData | null>(null);
   const [fetching, setFetching] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Modals
   const [editingRow, setEditingRow] = useState<any | null>(null);
+  const [editingGenericRow, setEditingGenericRow] = useState<any | null>(null);
   const [detailRow, setDetailRow] = useState<any | null>(null);
 
   useEffect(() => {
@@ -58,9 +71,8 @@ export default function Admin() {
         if (err.message === 'ACCESS_DENIED') {
           setError('Acesso negado. Apenas administradores autorizados têm permissão.');
         } else {
-          setError('Erro de rede: ' + err.message);
+          setError('Erro de ligação: ' + err.message);
         }
-        await signOut(auth);
       } finally {
         setLoading(false);
       }
@@ -70,17 +82,11 @@ export default function Admin() {
 
   const fetchData = async () => {
     setFetching(true);
-    setError('');
     try {
       const json = await apiService.getAdminData();
       setData(json);
     } catch (err: any) {
-      if (err.message === 'ACCESS_DENIED') {
-        setError('Acesso negado. Apenas administradores autorizados têm permissão.');
-        await signOut(auth);
-      } else {
-        setError('Erro de rede: ' + err.message);
-      }
+      console.error(err);
     } finally {
       setFetching(false);
     }
@@ -90,11 +96,8 @@ export default function Admin() {
     setError('');
     try {
       await signInWithPopup(auth, googleProvider);
-      // onAuthStateChanged trata o resto
     } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError('Erro ao fazer login: ' + err.message);
-      }
+      setError('Erro ao fazer login: ' + err.message);
     }
   };
 
@@ -121,59 +124,98 @@ export default function Admin() {
     );
   }
 
+  const unreadCount = (data?.alunos?.length || 0) + (data?.contactos?.length || 0);
+
   return (
-    <div className="admin-layout">
-      {/* Header instead of Sidebar */}
-      <header className="admin-header-top glass">
-        <div className="container admin-header-inner">
-          <div className="admin-logo">
+    <div className={`admin-layout ${sidebarCollapsed ? 'is-sidebar-collapsed' : ''}`}>
+      {/* Sidebar Navigation */}
+      <aside className={`admin-sidebar ${sidebarCollapsed ? 'is-collapsed' : ''} ${mobileMenuOpen ? 'is-mobile-open' : ''}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
             <span className="gradient-text">FaroForma</span>
             <span className="admin-badge">Admin</span>
           </div>
+          <button className="collapse-btn" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
+            {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
+        </div>
 
-          <nav className="admin-nav-top">
-            <NavItem active={activeTab === 'dashboard'} icon={<LayoutDashboard size={18} />} label="Dashboard" onClick={() => setActiveTab('dashboard')} />
-            <NavItem active={activeTab === 'formadores'} icon={<Users size={18} />} label="Formadores" onClick={() => setActiveTab('formadores')} />
-            <NavItem active={activeTab === 'alunos'} icon={<GraduationCap size={18} />} label="Alunos" onClick={() => setActiveTab('alunos')} />
-            <NavItem active={activeTab === 'contactos'} icon={<MessageSquare size={18} />} label="Contactos" onClick={() => setActiveTab('contactos')} />
-            <NavItem active={activeTab === 'agenda'} icon={<CalendarIcon size={18} />} label="Agenda" onClick={() => setActiveTab('agenda')} />
-            <NavItem active={activeTab === 'cursos'} icon={<Award size={18} />} label="Cursos" onClick={() => setActiveTab('cursos')} />
-            <NavItem active={activeTab === 'config'} icon={<Settings size={18} />} label="Definições" onClick={() => setActiveTab('config')} />
-          </nav>
+        <nav className="sidebar-nav">
+          <div className="nav-group-label">Geral</div>
+          <SidebarItem active={activeTab === 'dashboard'} icon={<LayoutDashboard size={20} />} label="Dashboard" onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
+          <SidebarItem active={activeTab === 'agenda'} icon={<CalendarIcon size={20} />} label="Agenda & Salas" onClick={() => { setActiveTab('agenda'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
 
-          <div className="admin-header-right">
+          <div className="nav-group-label">Gestão de Dados</div>
+          <SidebarItem active={activeTab === 'formadores'} icon={<Users size={20} />} label="Formadores" onClick={() => { setActiveTab('formadores'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
+          <SidebarItem active={activeTab === 'alunos'} icon={<GraduationCap size={20} />} label="Alunos" onClick={() => { setActiveTab('alunos'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
+          <SidebarItem active={activeTab === 'contactos'} icon={<MessageSquare size={20} />} label="Contactos" onClick={() => { setActiveTab('contactos'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
+
+          <div className="nav-group-label">Conteúdo Site</div>
+          <SidebarItem active={activeTab === 'cursos'} icon={<Award size={20} />} label="Cursos" onClick={() => { setActiveTab('cursos'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
+          <SidebarItem active={activeTab === 'cms'} icon={<FileText size={20} />} label="Editor de Páginas" onClick={() => { setActiveTab('cms'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
+
+          <div className="nav-group-label">Configurações</div>
+          <SidebarItem active={activeTab === 'config'} icon={<Settings size={20} />} label="SEO & Definições" onClick={() => { setActiveTab('config'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
+        </nav>
+
+        <div className="sidebar-footer">
+          <button className="sidebar-item" onClick={logout} style={{ color: '#ef4444' }}>
+            <LogOut size={20} />
+            {!sidebarCollapsed && <span>Terminar Sessão</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Shell */}
+      <div className="admin-main-wrapper">
+        <header className="admin-topbar">
+          <div className="topbar-left">
+            <button className="btn btn--icon mobile-only" onClick={() => setMobileMenuOpen(true)} style={{ display: 'none' }}>
+              <Menu size={20} />
+            </button>
+            <div className="search-pill">
+              <SearchIcon size={16} />
+              <span>Pesquisar em todo o sistema...</span>
+            </div>
+          </div>
+
+          <div className="topbar-right">
+            <div className="notification-bell">
+              <Bell size={20} />
+              {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+            </div>
             <div className="admin-user-pill">
               <img src={user.photoURL || ''} alt="" className="admin-avatar" />
               <span>{user.displayName?.split(' ')[0]}</span>
             </div>
-            <button className="admin-logout-btn" onClick={logout} title="Sair">
-              <LogOut size={18} />
-            </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="admin-main-alt">
-        <div className="container">
-          <div className="admin-content-title">
-            <h2>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
+        <main className="admin-content-area">
+          <div className="admin-content-title" style={{ marginBottom: '2.5rem' }}>
+            <h2 style={{ fontSize: '2rem', fontWeight: 800 }}>
+              {activeTab === 'config' ? 'SEO & Definições' : 
+               activeTab === 'cms' ? 'Editor de Páginas (CMS)' :
+               activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+            </h2>
           </div>
 
-          <div className="admin-content">
+          <div className="admin-view-container">
             <AnimatePresence mode="wait">
               <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                {activeTab === 'dashboard' && <DashboardView data={data} error={error} />}
+                {activeTab === 'dashboard' && <DashboardView data={data} />}
                 {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingRow} onDetail={setDetailRow} />}
-                {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} onDetail={setDetailRow} />}
-                {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} onDetail={setDetailRow} />}
+                {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} />}
+                {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} />}
                 {activeTab === 'agenda' && <AgendaView data={data} />}
                 {activeTab === 'cursos' && <CoursesView />}
                 {activeTab === 'config' && <ConfigView />}
+                {activeTab === 'cms' && <CMSView />}
               </motion.div>
             </AnimatePresence>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
 
       <AnimatePresence>
         {editingRow && (
@@ -181,6 +223,14 @@ export default function Admin() {
             row={editingRow} 
             onClose={() => setEditingRow(null)} 
             onSuccess={() => { setEditingRow(null); fetchData(); }}
+          />
+        )}
+        {editingGenericRow && (
+          <EditRowModal 
+            row={editingGenericRow}
+            headers={editingGenericRow.type === 'alunos' ? (data?.alunos?.[0] || []) : (data?.contactos?.[0] || [])}
+            onClose={() => setEditingGenericRow(null)}
+            onSuccess={() => { setEditingGenericRow(null); fetchData(); }}
           />
         )}
         {detailRow && (
@@ -196,116 +246,229 @@ export default function Admin() {
   );
 }
 
-// ── Components ─────────────────────────────────────────────────────────────────
-
-function NavItem({ active, icon, label, onClick }: any) {
+function SidebarItem({ active, icon, label, onClick, collapsed }: any) {
   return (
-    <button className={`admin-nav-item ${active ? 'is-active' : ''}`} onClick={onClick}>
-      {icon}<span>{label}</span>
+    <button className={`sidebar-item ${active ? 'is-active' : ''}`} onClick={onClick} title={collapsed ? label : ''}>
+      {icon}
+      {!collapsed && <span>{label}</span>}
     </button>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
-
 const ADMIN_STYLES = `
-  .admin-layout { min-height: 100vh; background: var(--bg); }
+  :root {
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 80px;
+    --topbar-height: 64px;
+  }
+
+  .admin-layout { 
+    display: flex; 
+    min-height: 100vh; 
+    background: var(--bg); 
+    color: var(--text);
+  }
   
-  .admin-header-top { position: fixed; top: 0; left: 0; right: 0; height: 72px; z-index: 100; border-bottom: 1px solid var(--border); backdrop-filter: blur(16px); background: rgba(var(--bg-rgb), 0.8); }
-  .admin-header-inner { height: 100%; display: flex; align-items: center; justify-content: space-between; }
+  /* Sidebar */
+  .admin-sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: var(--bg-1);
+    border-right: 1px solid var(--border);
+    position: fixed;
+    left: 0;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+  }
   
-  .admin-logo { font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
+  .admin-sidebar.is-collapsed {
+    width: var(--sidebar-collapsed-width);
+  }
+
+  .sidebar-header {
+    height: var(--topbar-height);
+    display: flex;
+    align-items: center;
+    padding: 0 1.25rem;
+    border-bottom: 1px solid var(--border);
+    justify-content: space-between;
+  }
+
+  .sidebar-logo {
+    font-weight: 800;
+    font-size: 1.1rem;
+    white-space: nowrap;
+    opacity: 1;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .is-collapsed .sidebar-logo { opacity: 0; pointer-events: none; }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 1rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    overflow-y: auto;
+  }
+
+  .nav-group-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    padding: 1.25rem 0.75rem 0.5rem;
+  }
+  .is-collapsed .nav-group-label { display: none; }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+  }
+
+  .sidebar-item:hover { background: var(--bg-2); color: var(--text); }
+  .sidebar-item.is-active { background: rgba(16, 185, 129, 0.1); color: var(--accent); }
+  
+  .sidebar-footer {
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  /* Main Wrapper */
+  .admin-main-wrapper {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    min-width: 0;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .is-sidebar-collapsed .admin-main-wrapper {
+    margin-left: var(--sidebar-collapsed-width);
+  }
+
+  .admin-topbar {
+    height: var(--topbar-height);
+    background: rgba(var(--bg-rgb), 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 900;
+  }
+
+  .topbar-left { display: flex; align-items: center; gap: 1rem; }
+  .topbar-right { display: flex; align-items: center; gap: 1.5rem; }
+
+  .admin-content-area {
+    padding: 2.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Components & Utilities */
+  .collapse-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-1);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .collapse-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .search-pill {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 300px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  .notification-bell {
+    position: relative;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .notification-bell:hover { color: var(--text); }
+  .notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-1);
+  }
+
   .admin-badge { font-size: 0.6rem; background: var(--accent); color: white; padding: 1px 5px; border-radius: 4px; text-transform: uppercase; }
-  
-  .admin-nav-top { display: flex; gap: 0.5rem; }
-  .admin-nav-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.85rem; border-radius: var(--radius); color: var(--text-muted); font-weight: 600; font-size: 0.85rem; transition: all 0.2s; cursor: pointer; border: none; background: transparent; }
-  .admin-nav-item:hover { background: var(--bg-1); color: var(--text); }
-  .admin-nav-item.is-active { background: rgba(16, 185, 129, 0.1); color: var(--accent); }
-  
-  .admin-header-right { display: flex; align-items: center; gap: 1rem; }
-  .admin-user-pill { display: flex; align-items: center; gap: 0.6rem; padding: 0.35rem 0.75rem; background: var(--bg-1); border: 1px solid var(--border); border-radius: 100px; font-size: 0.8rem; font-weight: 600; }
-  .admin-avatar { width: 20px; height: 20px; border-radius: 50%; }
-  
-  .admin-logout-btn { color: #ef4444; background: none; border: none; cursor: pointer; display: flex; align-items: center; opacity: 0.7; transition: opacity 0.2s; }
-  .admin-logout-btn:hover { opacity: 1; }
+  .admin-avatar { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); }
+  .admin-user-pill { display: flex; align-items: center; gap: 0.75rem; font-weight: 600; font-size: 0.9rem; }
 
-  .admin-tabs { display: flex; gap: 0.5rem; background: var(--bg-1); padding: 0.4rem; border-radius: var(--radius); border: 1px solid var(--border); width: fit-content; }
-  .admin-tab { padding: 0.5rem 1.5rem; border-radius: calc(var(--radius) - 2px); border: none; background: transparent; color: var(--text-muted); font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
-  .admin-tab:hover { color: var(--text); }
-  .admin-tab.is-active { background: var(--bg); color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  /* Table styling enhancements */
+  .admin-table-container { border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-1); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+  .admin-table th { background: var(--bg-2); padding: 1rem; font-weight: 700; color: var(--text); border-bottom: 2px solid var(--border); }
+  .admin-table td { padding: 1rem; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+  .admin-table tr:hover td { background: rgba(16, 185, 129, 0.03); color: var(--text); }
 
-  .admin-main-alt { padding-top: 104px; padding-bottom: 4rem; }
-  .admin-content-title { margin-bottom: 2rem; }
-  .admin-content-title h2 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; }
-
-  .admin-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 3rem; }
-  .stat-card { padding: 1.75rem; border-radius: var(--radius-lg); border: 1px solid var(--border); background: var(--bg-1); }
-  .stat-card__header { display: flex; justify-content: space-between; color: var(--text-muted); margin-bottom: 1rem; font-weight: 600; font-size: 0.9rem; }
-  .stat-card__val { font-size: 2.25rem; font-weight: 800; }
-  
-  .admin-loading { height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .admin-loading { height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
   .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-  .spinner--small { width: 20px; height: 20px; border-width: 2px; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .admin-table-container { border-radius: var(--radius-lg); overflow: hidden; }
-  .admin-table-scroll { overflow-x: auto; }
-  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left; }
-  .admin-table th { background: var(--bg-1); padding: 1rem; font-weight: 700; color: var(--text); border-bottom: 2px solid var(--border); white-space: nowrap; }
-  .admin-table td { padding: 1rem; border-bottom: 1px solid var(--border); color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .admin-table tr:hover td { background: rgba(16, 185, 129, 0.05); color: var(--text); }
-  
-  .admin-action-btn { padding: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
-  .admin-action-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .admin-login-page { height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 0% 0%, var(--bg-1) 0%, var(--bg) 50%); }
+  .admin-login-card { padding: 3rem; width: 100%; max-width: 440px; text-align: center; }
+  .admin-icon-box { width: 64px; height: 64px; background: rgba(16, 185, 129, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; }
+  .admin-error { background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 1rem; border-radius: var(--radius); margin-bottom: 2rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; justify-content: center; }
 
-  .admin-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 2rem; backdrop-filter: blur(4px); }
-  .admin-modal { background: var(--bg); width: 100%; max-width: 720px; border-radius: var(--radius-xl); border: 1px solid var(--border); display: flex; flex-direction: column; max-height: 90vh; box-shadow: 0 30px 60px rgba(0,0,0,0.3); }
-  .admin-modal--large { max-width: 1100px; }
-  .admin-modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-  .admin-modal-header h3 { font-size: 1.25rem; font-weight: 700; }
-  .admin-close-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 50%; transition: all 0.2s; }
-  .admin-close-btn:hover { background: var(--bg-1); color: var(--text); }
-  .admin-modal-body { padding: 2rem; overflow-y: auto; }
-  .admin-modal-footer { padding: 1.25rem 2rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 1rem; background: var(--bg-1); }
-
-  .detail-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
-  .detail-item { display: flex; flex-direction: column; gap: 0.25rem; }
-  .detail-item label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-  .detail-item div { font-size: 1rem; color: var(--text); line-height: 1.5; }
-
-  .agenda-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-top: 1rem; }
-  .agenda-day { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
-  .agenda-day-header { font-weight: 800; font-size: 0.9rem; text-align: center; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); color: var(--accent); }
-  .agenda-slot { display: flex; flex-direction: column; gap: 0.4rem; }
-  .agenda-slot label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-  .agenda-select { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem; font-size: 0.8rem; color: var(--text); width: 100%; cursor: pointer; }
-  .agenda-select:focus { border-color: var(--accent); outline: none; }
-  .agenda-select:disabled { opacity: 0.5; cursor: not-allowed; }
-  .agenda-slot--full { flex: 1; display: flex; flex-direction: column; justify-content: center; }
-
-  /* Print Specific Styling */
-  .print-sheet { background: white; color: black; padding: 25mm; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 297mm; margin: 0 auto; min-height: 210mm; font-family: sans-serif; display: flex; flex-direction: column; }
-  .print-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid black; padding-bottom: 1rem; margin-bottom: 2rem; }
-  .print-logo { font-size: 1.5rem; font-weight: 900; letter-spacing: -1px; }
-  .print-title { font-size: 1.25rem; font-weight: 700; }
-  .print-date { font-size: 0.8rem; opacity: 0.7; }
-  .print-table { width: 100%; border-collapse: collapse; flex: 1; }
-  .print-table th, .print-table td { border: 1px solid #ddd; padding: 1rem; text-align: left; vertical-align: top; }
-  .print-table th { background: #f8f8f8; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; }
-  .print-day-cell { background: #fafafa; font-weight: 800; width: 120px; }
-  .print-entry { display: flex; flex-direction: column; gap: 0.2rem; }
-  .print-entry strong { font-size: 0.95rem; color: black; }
-  .print-entry span { font-size: 0.8rem; color: #666; }
-  .print-full-cell { background: rgba(0,0,0,0.02); }
-  .print-footer { margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1rem; font-size: 0.75rem; text-align: center; opacity: 0.5; }
-
-  @media print {
-    body * { visibility: hidden; }
-    .print-sheet, .print-sheet * { visibility: visible; }
-    .print-sheet { position: absolute; left: 0; top: 0; width: 100%; height: 100%; box-shadow: none; padding: 10mm; }
-    .admin-modal-overlay { background: none; padding: 0; position: static; }
-    .admin-modal-header, .admin-modal-footer { display: none !important; }
-    .admin-modal { border: none; box-shadow: none; background: white; max-width: none; max-height: none; }
-    .admin-modal-body { padding: 0; background: white !important; }
+  @media (max-width: 768px) {
+    .mobile-only { display: flex !important; }
+    .search-pill { display: none; }
+    .admin-sidebar { left: -100%; width: 280px !important; }
+    .admin-sidebar.is-mobile-open { left: 0; }
+    .admin-main-wrapper { margin-left: 0 !important; }
+    .admin-content-area { padding: 1.5rem; }
   }
 `;

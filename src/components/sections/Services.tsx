@@ -1,13 +1,22 @@
-import { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
-import { SERVICES } from '../../data/services';
+import { ArrowRight, GraduationCap } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+import { SERVICES as DEFAULT_SERVICES } from '../../data/services';
 import { useLanguage } from '../../context/LanguageContext';
+import { apiService } from '../../services/api';
 
 export default function Services() {
   const { language } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    apiService.getCMS('services').then(setData).catch(() => {});
+  }, []);
+
+  const services = data?.items || DEFAULT_SERVICES;
 
   return (
     <section className="section" id="servicos">
@@ -35,7 +44,7 @@ export default function Services() {
         </motion.div>
 
         <div className="services__grid">
-          {SERVICES.map((s, i) => (
+          {services.map((s: any, i: number) => (
             <motion.div
               key={i}
               className="service-card"
@@ -44,12 +53,22 @@ export default function Services() {
               transition={{ duration: 0.6, delay: i * 0.08 + 0.15, ease: [0.4, 0, 0.2, 1] }}
             >
               <div className="service-card__glow" />
-              <div className="service-card__icon">{s.icon}</div>
-              <h3 className="service-card__title">{s.title[language]}</h3>
-              <p className="service-card__desc">{s.desc[language]}</p>
-              <div className="service-card__arrow">
-                {language === 'pt' ? 'Saber mais' : 'Learn more'} <ArrowRight size={14} />
+              <div className="service-card__icon">
+                {s.icon && (LucideIcons as any)[s.icon] ? (
+                  React.createElement((LucideIcons as any)[s.icon], { size: 24 })
+                ) : (
+                  s.icon && typeof s.icon !== 'string' ? s.icon : <GraduationCap size={24} />
+                )}
               </div>
+              <h3 className="service-card__title">{(s.title as any)[language]}</h3>
+              <p className="service-card__desc">{(s.desc as any)[language]}</p>
+              <button 
+                className="service-card__arrow"
+                onClick={() => document.querySelector('#contactos')?.scrollIntoView({ behavior: 'smooth' })}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                {language === 'pt' ? 'Saber mais' : 'Learn more'} <ArrowRight size={14} />
+              </button>
             </motion.div>
           ))}
         </div>

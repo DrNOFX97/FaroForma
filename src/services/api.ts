@@ -1,4 +1,5 @@
-import { auth } from '../config/firebase';
+import { auth, storage } from '../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const API_BASE = '/api';
 
@@ -54,7 +55,43 @@ export const apiService = {
     return res.json();
   },
 
+  async trackVisit() {
+    try {
+      await fetch(`${API_BASE}/track-visit`, { method: 'POST' });
+    } catch (e) { /* silent fail */ }
+  },
+
   // Admin
+  async getAnalytics() {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/admin/analytics`, { headers });
+    if (!res.ok) throw new Error('Erro ao obter analytics');
+    return res.json();
+  },
+
+  async getCMS(section: string) {
+    const res = await fetch(`${API_BASE}/cms/${section}`);
+    if (!res.ok) throw new Error('Erro ao obter conteúdo');
+    return res.json();
+  },
+
+  async updateCMS(section: string, data: any) {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/cms/${section}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Erro ao guardar conteúdo');
+    return res.json();
+  },
+
+  async uploadFile(path: string, file: File) {
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+  },
+
   async getAdminData(): Promise<RawData> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/data`, { headers });
@@ -71,6 +108,28 @@ export const apiService = {
       body: JSON.stringify({ rowIndex, values })
     });
     if (!res.ok) throw new Error('Erro ao atualizar formador');
+    return res.json();
+  },
+
+  async updateRow(tabName: string, rowIndex: number, values: any[]) {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/admin/update-row`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ tabName, rowIndex, values })
+    });
+    if (!res.ok) throw new Error('Erro ao atualizar registo');
+    return res.json();
+  },
+
+  async deleteRow(tabName: string, rowIndex: number) {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/admin/delete-row`, {
+      method: 'DELETE',
+      headers,
+      body: JSON.stringify({ tabName, rowIndex })
+    });
+    if (!res.ok) throw new Error('Erro ao eliminar registo');
     return res.json();
   },
 

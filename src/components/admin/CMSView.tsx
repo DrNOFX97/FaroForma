@@ -1,0 +1,333 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Save, 
+  Layout, 
+  Info, 
+  Briefcase, 
+  GraduationCap, 
+  Plus, 
+  Trash2, 
+  ChevronUp, 
+  ChevronDown,
+  Image as ImageIcon
+} from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+import { apiService } from '../../services/api';
+import { ImageUploader } from './ImageUploader';
+import toast from 'react-hot-toast';
+
+type Section = 'hero' | 'about' | 'services' | 'tutoring';
+
+export function CMSView() {
+  const [activeTab, setActiveTab] = useState<Section>('hero');
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    loadSection(activeTab);
+  }, [activeTab]);
+
+  const loadSection = async (section: Section) => {
+    setLoading(true);
+    try {
+      const res = await apiService.getCMS(section);
+      setData(res);
+    } catch (err) {
+      toast.error('Erro ao carregar dados.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveSection = async () => {
+    setSaving(true);
+    try {
+      await apiService.updateCMS(activeTab, data);
+      toast.success('Alterações publicadas com sucesso!');
+    } catch (err) {
+      toast.error('Erro ao publicar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateField = (path: string[], value: any) => {
+    const newData = { ...data };
+    let current = newData;
+    for (let i = 0; i < path.length - 1; i++) {
+      if (!current[path[i]]) current[path[i]] = {};
+      current = current[path[i]];
+    }
+    current[path[path.length - 1]] = value;
+    setData(newData);
+  };
+
+  if (loading && !data) return <div className="glass" style={{ padding: '4rem', textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }}></div></div>;
+
+  return (
+    <div className="cms-container">
+      <div className="cms-tabs">
+        <TabItem active={activeTab === 'hero'} icon={<Layout size={18} />} label="Hero" onClick={() => setActiveTab('hero')} />
+        <TabItem active={activeTab === 'about'} icon={<Info size={18} />} label="Sobre Nós" onClick={() => setActiveTab('about')} />
+        <TabItem active={activeTab === 'services'} icon={<Briefcase size={18} />} label="Serviços" onClick={() => setActiveTab('services')} />
+        <TabItem active={activeTab === 'tutoring'} icon={<GraduationCap size={18} />} label="Explicações" onClick={() => setActiveTab('tutoring')} />
+      </div>
+
+      <div className="cms-content">
+        <AnimatePresence mode="wait">
+          <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            {activeTab === 'hero' && <HeroEditor data={data} onChange={updateField} />}
+            {activeTab === 'about' && <AboutEditor data={data} onChange={updateField} />}
+            {activeTab === 'services' && <ListEditor title="Lista de Serviços" items={data?.items || []} onChange={(items: any[]) => updateField(['items'], items)} type="service" />}
+            {activeTab === 'tutoring' && <TutoringEditor data={data} onChange={updateField} />}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <div className="cms-footer">
+        <button className="btn btn--primary btn--lg" onClick={saveSection} disabled={saving}>
+          {saving ? 'A publicar...' : <><Save size={18} /> Publicar no Site</>}
+        </button>
+      </div>
+
+      <style>{CMS_STYLES}</style>
+    </div>
+  );
+}
+
+function TabItem({ active, icon, label, onClick }: any) {
+  return (
+    <button className={`cms-tab ${active ? 'is-active' : ''}`} onClick={onClick}>
+      {icon}<span>{label}</span>
+    </button>
+  );
+}
+
+function HeroEditor({ data, onChange }: any) {
+  return (
+    <div className="editor-card glass">
+      <h4>Conteúdo do Cabeçalho (Hero)</h4>
+      <div className="editor-grid" style={{ gridTemplateColumns: '1fr 2fr' }}>
+        <ImageUploader label="Imagem de Fundo (Opcional)" value={data?.backgroundImage} folder="hero" onChange={(v: string) => onChange(['backgroundImage'], v)} />
+        <div className="editor-stack">
+          <I18nField label="Título Principal" value={data?.title} onChange={(v: any) => onChange(['title'], v)} isTextArea />
+          <I18nField label="Subtítulo" value={data?.subtitle} onChange={(v: any) => onChange(['subtitle'], v)} isTextArea />
+          <div className="i18n-inputs">
+            <div className="form__group">
+              <label className="form__label">Texto Botão Cursos</label>
+              <input className="form__input" value={data?.buttonCursos || ''} onChange={e => onChange(['buttonCursos'], e.target.value)} />
+            </div>
+            <div className="form__group">
+              <label className="form__label">Texto Botão Serviços</label>
+              <input className="form__input" value={data?.buttonServicos || ''} onChange={e => onChange(['buttonServicos'], e.target.value)} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AboutEditor({ data, onChange }: any) {
+  return (
+    <div className="editor-stack">
+      <div className="editor-card glass">
+        <h4>Imagens e Textos Gerais</h4>
+        <div className="editor-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+          <ImageUploader label="Imagem da Sala 1" value={data?.imageSala1} folder="about" onChange={(v: string) => onChange(['imageSala1'], v)} />
+          <ImageUploader label="Imagem da Sala 2" value={data?.imageSala2} folder="about" onChange={(v: string) => onChange(['imageSala2'], v)} />
+        </div>
+        <div style={{ marginTop: '2rem' }}>
+          <I18nField label="Título da Secção" value={data?.title} onChange={(v: any) => onChange(['title'], v)} />
+        </div>
+      </div>
+      <ListEditor title="Destaques (Features)" items={data?.features || []} onChange={(items: any[]) => onChange(['features'], items)} type="feature" />
+    </div>
+  );
+}
+
+function TutoringEditor({ data, onChange }: any) {
+  return (
+    <div className="editor-stack">
+      <div className="editor-card glass">
+        <h4>Conteúdo e Imagens</h4>
+        <div className="editor-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+          <ImageUploader label="Imagem 1" value={data?.image1} folder="tutoring" onChange={(v: string) => onChange(['image1'], v)} />
+          <ImageUploader label="Imagem 2" value={data?.image2} folder="tutoring" onChange={(v: string) => onChange(['image2'], v)} />
+        </div>
+        <div style={{ marginTop: '2rem' }}>
+          <I18nField label="Título Principal" value={data?.title} onChange={(v: any) => onChange(['title'], v)} />
+          <I18nField label="Descrição" value={data?.description} onChange={(v: any) => onChange(['description'], v)} isTextArea />
+        </div>
+      </div>
+      <ListEditor title="Disciplinas / Matérias" items={data?.subjects || []} onChange={(items: any[]) => onChange(['subjects'], items)} type="subject" />
+      <ListEditor title="Níveis de Ensino" items={data?.levels || []} onChange={(items: any[]) => onChange(['levels'], items)} type="level" />
+    </div>
+  );
+}
+
+function ListEditor({ title, items, onChange, type }: any) {
+  const addItem = () => {
+    const newItem = type === 'subject' 
+      ? { label: { pt: '', en: '' }, emoji: '📚' }
+      : { title: { pt: '', en: '' }, desc: { pt: '', en: '' }, icon: 'GraduationCap' };
+    onChange([...items, newItem]);
+  };
+
+  const removeItem = (idx: number) => {
+    onChange(items.filter((_: any, i: number) => i !== idx));
+  };
+
+  const move = (idx: number, dir: number) => {
+    if (idx + dir < 0 || idx + dir >= items.length) return;
+    const newItems = [...items];
+    [newItems[idx], newItems[idx+dir]] = [newItems[idx+dir], newItems[idx]];
+    onChange(newItems);
+  };
+
+  return (
+    <div className="editor-card glass">
+      <div className="card-header-with-action">
+        <h4>{title}</h4>
+        <button className="btn btn--outline btn--small" onClick={addItem}><Plus size={14} /> Adicionar Item</button>
+      </div>
+      <div className="items-list">
+        {items.map((item: any, idx: number) => (
+          <div key={idx} className="list-item-card glass">
+            <div className="item-actions">
+              <button onClick={() => move(idx, -1)} disabled={idx === 0}><ChevronUp size={14} /></button>
+              <button onClick={() => move(idx, 1)} disabled={idx === items.length - 1}><ChevronDown size={14} /></button>
+              <button onClick={() => removeItem(idx)} className="delete"><Trash2 size={14} /></button>
+            </div>
+            <div className="item-content">
+              {type === 'subject' ? (
+                <div className="subject-row">
+                  <input className="emoji-input" value={item.emoji} onChange={e => {
+                    const ni = [...items]; ni[idx].emoji = e.target.value; onChange(ni);
+                  }} />
+                  <I18nField value={item.label} onChange={(v: any) => {
+                    const ni = [...items]; ni[idx].label = v; onChange(ni);
+                  }} hideLabel />
+                </div>
+              ) : (
+                <div className="complex-item-grid">
+                  <IconSelector value={item.icon} onChange={(v: string) => {
+                    const ni = [...items]; ni[idx].icon = v; onChange(ni);
+                  }} />
+                  <div className="fields" style={{ flex: 1 }}>
+                    <I18nField label="Título" value={item.title} onChange={(v: any) => {
+                      const ni = [...items]; ni[idx].title = v; onChange(ni);
+                    }} />
+                    <I18nField label="Descrição" value={item.desc} onChange={(v: any) => {
+                      const ni = [...items]; ni[idx].desc = v; onChange(ni);
+                    }} isTextArea />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function I18nField({ label, value, onChange, isTextArea, hideLabel }: any) {
+  return (
+    <div className="i18n-group">
+      {!hideLabel && <label className="form__label">{label}</label>}
+      <div className="i18n-inputs">
+        <div className="lang-field">
+          <span className="lang-tag">PT</span>
+          {isTextArea ? (
+            <textarea className="form__textarea" value={value?.pt || ''} onChange={e => onChange({...value, pt: e.target.value})} rows={2} />
+          ) : (
+            <input className="form__input" value={value?.pt || ''} onChange={e => onChange({...value, pt: e.target.value})} />
+          )}
+        </div>
+        <div className="lang-field">
+          <span className="lang-tag">EN</span>
+          {isTextArea ? (
+            <textarea className="form__textarea" value={value?.en || ''} onChange={e => onChange({...value, en: e.target.value})} rows={2} />
+          ) : (
+            <input className="form__input" value={value?.en || ''} onChange={e => onChange({...value, en: e.target.value})} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IconSelector({ value, onChange }: any) {
+  const [open, setOpen] = useState(false);
+  const commonIcons = ['GraduationCap', 'Users', 'Briefcase', 'Building2', 'FileText', 'Award', 'Target', 'MessageCircle', 'ShieldCheck', 'Globe'];
+
+  return (
+    <div className="icon-selector-wrap">
+      <button className="icon-preview-btn" onClick={() => setOpen(!open)}>
+        {(LucideIcons as any)[value] ? 
+          React.createElement((LucideIcons as any)[value], { size: 24 }) : 
+          <ImageIcon size={24} />
+        }
+      </button>
+      {open && (
+        <div className="icon-dropdown glass">
+          {commonIcons.map(name => (
+            <button key={name} onClick={() => { onChange(name); setOpen(false); }} className={value === name ? 'is-active' : ''}>
+              {React.createElement((LucideIcons as any)[name], { size: 18 })}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const CMS_STYLES = `
+  .cms-container { display: flex; flex-direction: column; gap: 2rem; }
+  .cms-tabs { display: flex; gap: 0.5rem; background: var(--bg-1); padding: 0.4rem; border-radius: var(--radius); border: 1px solid var(--border); width: fit-content; }
+  .cms-tab { padding: 0.6rem 1.25rem; border-radius: calc(var(--radius) - 2px); border: none; background: transparent; color: var(--text-muted); font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem; }
+  .cms-tab:hover { color: var(--text); background: var(--bg-2); }
+  .cms-tab.is-active { background: var(--bg); color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+  .editor-stack { display: flex; flex-direction: column; gap: 2rem; }
+  .editor-card { padding: 2rem; border-radius: var(--radius-lg); }
+  .editor-card h4 { margin: 0 0 1.5rem; font-size: 1rem; font-weight: 700; color: var(--text); }
+  .card-header-with-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .card-header-with-action h4 { margin: 0; }
+
+  .editor-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+  .i18n-group { display: flex; flex-direction: column; gap: 0.75rem; flex: 1; }
+  .i18n-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .lang-field { position: relative; }
+  .lang-tag { position: absolute; right: 10px; top: 10px; font-size: 0.6rem; font-weight: 800; color: var(--text-dim); background: var(--bg-2); padding: 2px 4px; border-radius: 4px; z-index: 1; pointer-events: none; }
+
+  .items-list { display: flex; flex-direction: column; gap: 1rem; }
+  .list-item-card { padding: 1.5rem; border-radius: var(--radius); display: flex; gap: 1.5rem; position: relative; }
+  .item-actions { display: flex; flex-direction: column; gap: 0.5rem; border-right: 1px solid var(--border); padding-right: 1rem; }
+  .item-actions button { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; transition: all 0.2s; }
+  .item-actions button:hover:not(:disabled) { color: var(--text); background: var(--bg-2); }
+  .item-actions button.delete:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+  .item-content { flex: 1; }
+
+  .complex-item-grid { display: flex; gap: 1.5rem; }
+  .icon-selector-wrap { position: relative; }
+  .icon-preview-btn { width: 64px; height: 64px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-2); color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .icon-preview-btn:hover { border-color: var(--accent); }
+  .icon-dropdown { position: absolute; top: 72px; left: 0; width: 200px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; padding: 0.75rem; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  .icon-dropdown button { padding: 8px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+  .icon-dropdown button:hover { background: var(--bg-2); color: var(--text); }
+  .icon-dropdown button.is-active { background: rgba(16, 185, 129, 0.1); color: var(--accent); border-color: var(--accent); }
+
+  .subject-row { display: grid; grid-template-columns: 64px 1fr; gap: 1rem; align-items: flex-start; }
+  .emoji-input { height: 44px; font-size: 1.5rem; text-align: center; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); width: 100%; }
+
+  .cms-footer { position: sticky; bottom: 0; background: var(--bg); padding: 1.5rem 0; border-top: 1px solid var(--border); margin-top: 2rem; display: flex; justify-content: flex-end; z-index: 50; }
+
+  @media (max-width: 1024px) {
+    .i18n-inputs { grid-template-columns: 1fr; }
+    .editor-grid { grid-template-columns: 1fr !important; }
+  }
+`;

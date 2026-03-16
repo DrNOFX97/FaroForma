@@ -5,6 +5,7 @@ import FormadoresInscricao from './pages/FormadoresInscricao';
 import Admin from './pages/Admin';
 import { Toaster } from 'react-hot-toast';
 import { getSiteMeta, DEFAULT_SITE_META } from './config/siteMeta';
+import { apiService } from './services/api';
 
 export type Page = 'home' | 'formadores' | 'admin';
 
@@ -20,6 +21,7 @@ export default function App() {
 
   useEffect(() => {
     getSiteMeta().then(setMeta);
+    apiService.trackVisit();
   }, []);
 
   useEffect(() => {

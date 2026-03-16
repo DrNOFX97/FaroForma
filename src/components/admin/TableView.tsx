@@ -1,21 +1,42 @@
 import { useState } from 'react';
-import { Search, FileDown } from 'lucide-react';
+import { Search, FileDown, Pencil, Trash2 } from 'lucide-react';
+import { apiService } from '../../services/api';
+import { TableSkeleton } from './TableSkeleton';
+import toast from 'react-hot-toast';
 
 interface TableViewProps {
   type: string;
   data: any[][];
   fetching: boolean;
+  onRefresh: () => void;
+  onEdit: (row: any) => void;
   onDetail: (row: any) => void;
 }
 
-export function TableView({ type, data, fetching, onDetail }: TableViewProps) {
+export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail }: TableViewProps) {
   const [search, setSearch] = useState('');
+  const [deleting, setDeleting] = useState<number | null>(null);
 
-  if (fetching) return <div className="glass" style={{ padding: '2rem' }}>A carregar dados...</div>;
+  if (fetching) return <TableSkeleton />;
   if (!data || data.length <= 1) return <div className="glass" style={{ padding: '2rem' }}>Sem dados em <strong>{type}</strong>.</div>;
 
   const headers = data[0];
   const rows = data.slice(1);
+
+  const handleDelete = async (index: number) => {
+    const tabName = type.charAt(0).toUpperCase() + type.slice(1); // alunos -> Alunos
+    if (!confirm(`Tem a certeza que deseja eliminar o registo #${index} de ${type}?`)) return;
+    setDeleting(index);
+    try {
+      await apiService.deleteRow(tabName, index);
+      toast.success('Registo eliminado!');
+      onRefresh();
+    } catch (err) {
+      toast.error('Erro ao eliminar.');
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const filteredRows = rows.filter(row => {
     const term = search.toLowerCase();
@@ -67,8 +88,8 @@ export function TableView({ type, data, fetching, onDetail }: TableViewProps) {
         <table className="admin-table">
           <thead>
             <tr>
-              {headers.map((h, i) => <th key={i} scope="col">{h}</th>)}
-              <th scope="col">Ações</th>
+              {headers.map((h, i) => <th key={i}>{h}</th>)}
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -76,15 +97,31 @@ export function TableView({ type, data, fetching, onDetail }: TableViewProps) {
               <tr key={i}>
                 {item.cells.map((cell: any, j: number) => <td key={j}>{cell}</td>)}
                 <td>
-                  <button className="admin-action-btn" onClick={() => {
-                    const obj: any = { originalIndex: item.originalIndex };
-                    headers.forEach((h: string, idx: number) => {
-                      obj[h] = item.cells[idx];
-                    });
-                    onDetail(obj);
-                  }} title="Ver Detalhes">
-                    <Search size={16} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="admin-action-btn" onClick={() => {
+                      const obj: any = { originalIndex: item.originalIndex, cells: item.cells };
+                      headers.forEach((h: string, idx: number) => {
+                        obj[h] = item.cells[idx];
+                      });
+                      onDetail(obj);
+                    }} title="Ver Detalhes">
+                      <Search size={16} />
+                    </button>
+                    <button className="admin-action-btn" onClick={() => {
+                      onEdit({ originalIndex: item.originalIndex, cells: item.cells, type });
+                    }} title="Editar">
+                      <Pencil size={16} />
+                    </button>
+                    <button 
+                      className="admin-action-btn" 
+                      onClick={() => handleDelete(item.originalIndex)} 
+                      title="Eliminar"
+                      style={{ color: '#ef4444' }}
+                      disabled={deleting === item.originalIndex}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

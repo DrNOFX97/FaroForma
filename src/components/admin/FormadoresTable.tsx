@@ -1,6 +1,8 @@
+import { Search, Pencil, FileDown, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Search, Pencil, FileDown } from 'lucide-react';
-import { F } from '../../config/sheetsSchema';
+import { apiService } from '../../services/api';
+import { TableSkeleton } from './TableSkeleton';
+import toast from 'react-hot-toast';
 
 interface FormadoresTableProps {
   data: any[][];
@@ -10,26 +12,39 @@ interface FormadoresTableProps {
   onDetail: (row: any) => void;
 }
 
-export function FormadoresTable({ data, fetching, onEdit, onDetail }: FormadoresTableProps) {
+export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }: FormadoresTableProps) {
   const [search, setSearch] = useState('');
+  const [deleting, setDeleting] = useState<number | null>(null);
   
-  if (fetching) return <div className="glass" style={{ padding: '2rem' }}>A carregar dados...</div>;
+  if (fetching) return <TableSkeleton />;
   if (!data || data.length <= 1) return <div className="glass" style={{ padding: '2rem' }}>Sem candidaturas para mostrar.</div>;
 
   const headers = data[0];
   const rows = data.slice(1);
 
+  const handleDelete = async (index: number) => {
+    if (!confirm(`Tem a certeza que deseja eliminar o registo #${index}?`)) return;
+    setDeleting(index);
+    try {
+      await apiService.deleteRow('Formadores', index);
+      toast.success('Registo eliminado!');
+      onRefresh();
+    } catch (err) {
+      toast.error('Erro ao eliminar.');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   const filteredRows = rows.filter(row => {
     const term = search.toLowerCase();
-    const nome = String(row[F.NOME] || '').toLowerCase();
-    const telefone = String(row[F.TELEFONE] || '').toLowerCase();
-    const nif = String(row[F.NIF] || '').toLowerCase();
+    const nome = String(row[1] || '').toLowerCase();
+    const telefone = String(row[3] || '').toLowerCase();
+    const nif = String(row[5] || '').toLowerCase();
     return nome.includes(term) || telefone.includes(term) || nif.includes(term);
   });
 
   const handleExport = () => {
-    // Exporting only filtered rows or all rows? Usually users expect to export what they see.
-    // Let's export the filtered set.
     const csvContent = [
       headers.join(','),
       ...filteredRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
@@ -44,7 +59,7 @@ export function FormadoresTable({ data, fetching, onEdit, onDetail }: Formadores
     document.body.removeChild(link);
   };
 
-  const indexedRows = filteredRows.map((row) => ({
+  const indexedRows = filteredRows.map((row) => ({ 
     originalIndex: rows.indexOf(row) + 1,
     cells: row 
   })).reverse();
@@ -74,30 +89,30 @@ export function FormadoresTable({ data, fetching, onEdit, onDetail }: Formadores
         <table className="admin-table">
           <thead>
             <tr>
-              <th scope="col">ID</th>
-              <th scope="col">Nome</th>
-              <th scope="col">Email</th>
-              <th scope="col">Telefone</th>
-              <th scope="col">Áreas</th>
-              <th scope="col">Dias</th>
-              <th scope="col">Períodos</th>
-              <th scope="col">Modalidade</th>
-              <th scope="col">Data Registo</th>
-              <th scope="col">Ações</th>
+              <th>ID</th>
+              <th>Nome</th>
+              <th>Email</th>
+              <th>Telefone</th>
+              <th>Áreas</th>
+              <th>Dias</th>
+              <th>Períodos</th>
+              <th>Modalidade</th>
+              <th>Data Registo</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
             {indexedRows.map((item, i) => (
               <tr key={i}>
                 <td style={{ fontWeight: 700 }}>#{item.originalIndex}</td>
-                <td style={{ color: 'var(--text)', fontWeight: 600 }}>{item.cells[F.NOME]}</td>
-                <td>{item.cells[F.EMAIL]}</td>
-                <td>{item.cells[F.TELEFONE]}</td>
-                <td title={item.cells[F.AREAS]}>{item.cells[F.AREAS]}</td>
-                <td>{item.cells[F.DIAS]}</td>
-                <td>{item.cells[F.PERIODOS]}</td>
-                <td>{item.cells[F.MODALIDADE]}</td>
-                <td>{new Date(item.cells[F.TIMESTAMP]).toLocaleDateString()}</td>
+                <td style={{ color: 'var(--text)', fontWeight: 600 }}>{item.cells[1]}</td>
+                <td>{item.cells[2]}</td>
+                <td>{item.cells[3]}</td>
+                <td title={item.cells[6]}>{item.cells[6]}</td>
+                <td>{item.cells[11]}</td>
+                <td>{item.cells[12]}</td>
+                <td>{item.cells[13]}</td>
+                <td>{new Date(item.cells[0]).toLocaleDateString()}</td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button className="admin-action-btn" onClick={() => onDetail(item)} title="Ver Detalhes">
@@ -105,6 +120,15 @@ export function FormadoresTable({ data, fetching, onEdit, onDetail }: Formadores
                     </button>
                     <button className="admin-action-btn" onClick={() => onEdit(item)} title="Editar">
                       <Pencil size={16} />
+                    </button>
+                    <button 
+                      className="admin-action-btn" 
+                      onClick={() => handleDelete(item.originalIndex)} 
+                      title="Eliminar"
+                      style={{ color: '#ef4444' }}
+                      disabled={deleting === item.originalIndex}
+                    >
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </td>
