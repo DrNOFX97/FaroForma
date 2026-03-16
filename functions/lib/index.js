@@ -159,7 +159,11 @@ async function getSheetData(tabName) {
         range: `${tabName}!A:Z`,
     });
     const rows = response.data.values || [];
-    return rows.filter(row => row.some(cell => cell !== '' && cell !== undefined && cell !== null));
+    return rows.filter(row => row.some(cell => {
+        if (cell === undefined || cell === null)
+            return false;
+        return String(cell).trim() !== '';
+    }));
 }
 async function appendToSheet(tabName, values) {
     const { sheets, spreadsheetId } = getSheetsClient();
@@ -333,15 +337,6 @@ app.get('/api/admin/data', isAdmin, async (req, res) => {
     }
     catch (err) {
         res.status(500).json({ error: 'Erro ao obter dados' });
-    }
-});
-app.post('/api/admin/seed-headers', isAdmin, async (req, res) => {
-    try {
-        await updateSheetRow('Alunos', 0, ['Timestamp', 'Nome', 'Email', 'Telefone', 'Programa', 'Turma', 'DataInicio', 'PreferenciaContacto', 'Transporte', 'Notas']);
-        res.json({ message: 'Alunos headers updated' });
-    }
-    catch (err) {
-        res.status(500).json({ error: err.message });
     }
 });
 app.post('/api/admin/update-row', isAdmin, async (req, res) => {

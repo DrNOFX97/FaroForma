@@ -1,7 +1,7 @@
 import {
   Users, GraduationCap, MessageSquare, TrendingUp,
   PieChart as PieChartIcon, Clock, MousePointer2,
-  Calendar, FileText, PlusCircle, ArrowRight, Activity, X, Wrench
+  Calendar, FileText, PlusCircle, ArrowRight, Activity, X
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -21,22 +21,6 @@ interface DashboardViewProps {
 export function DashboardView({ data, onNavigate }: DashboardViewProps) {
   const [analytics, setAnalytics] = useState<any>({ total: 0 });
   const [visitorPopup, setVisitorPopup] = useState(false);
-  const [seedingHeaders, setSeedingHeaders] = useState(false);
-
-  const handleSeedHeaders = async () => {
-    if (!confirm('Actualizar headers da tab Alunos no Google Sheets?')) return;
-    setSeedingHeaders(true);
-    try {
-      const token = await (await import('../../config/firebase')).auth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/seed-headers', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-      const json = await res.json();
-      alert(json.message || json.error);
-    } catch (e: any) {
-      alert('Erro: ' + e.message);
-    } finally {
-      setSeedingHeaders(false);
-    }
-  };
 
   useEffect(() => {
     apiService.getAnalytics().then(setAnalytics).catch(console.error);
@@ -254,7 +238,6 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
                 <QuickAction icon={<PlusCircle size={16} />} label="Novo Curso" onClick={() => onNavigate?.('cursos')} />
                 <QuickAction icon={<FileText size={16} />} label="Ver Alunos" onClick={() => onNavigate?.('alunos')} />
                 <QuickAction icon={<ArrowRight size={16} />} label="Ver Contactos" onClick={() => onNavigate?.('contactos')} />
-                <QuickAction icon={<Wrench size={16} />} label={seedingHeaders ? 'A corrigir…' : 'Corrigir Headers Alunos'} onClick={handleSeedHeaders} />
               </div>
             </div>
           </div>

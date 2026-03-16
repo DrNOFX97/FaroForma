@@ -359,15 +359,6 @@ app.get('/api/admin/data', isAdmin as any, async (req: Request, res: Response) =
   }
 });
 
-// TEMP — update Alunos headers to match new 10-column schema
-app.post('/api/admin/seed-headers', isAdmin as any, async (req: Request, res: Response) => {
-  try {
-    await updateSheetRow('Alunos', 0, ['Timestamp','Nome','Email','Telefone','Programa','Turma','DataInicio','PreferenciaContacto','Transporte','Notas']);
-    res.json({ message: 'Alunos headers updated' });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 app.post('/api/admin/update-row', isAdmin as any, async (req: Request, res: Response) => {
   const { tabName, rowIndex, values } = req.body;
