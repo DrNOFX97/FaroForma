@@ -1,15 +1,16 @@
-import { 
-  Users, GraduationCap, MessageSquare, TrendingUp, 
+import {
+  Users, GraduationCap, MessageSquare, TrendingUp,
   PieChart as PieChartIcon, Clock, MousePointer2,
-  Calendar, FileText, PlusCircle, ArrowRight, Activity
+  Calendar, FileText, PlusCircle, ArrowRight, Activity, X
 } from 'lucide-react';
-import { 
+import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
 import { apiService } from '../../services/api';
 import type { RawData } from '../../services/api';
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DashboardViewProps {
   data: RawData | null;
@@ -18,6 +19,7 @@ interface DashboardViewProps {
 
 export function DashboardView({ data, onNavigate }: DashboardViewProps) {
   const [analytics, setAnalytics] = useState<any>({ total: 0 });
+  const [visitorPopup, setVisitorPopup] = useState(false);
 
   useEffect(() => {
     apiService.getAnalytics().then(setAnalytics).catch(console.error);
@@ -119,11 +121,17 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
     <div className="command-center">
       {/* Top Stats */}
       <div className="stats-row">
-        <StatCard label="Formadores" val={stats.formadores} icon={<Users size={20} />} trend={trends.formadores.label} trendPositive={trends.formadores.positive} color="emerald" />
-        <StatCard label="Alunos" val={stats.alunos} icon={<GraduationCap size={20} />} trend={trends.alunos.label} trendPositive={trends.alunos.positive} color="blue" />
-        <StatCard label="Visitantes Hoje" val={stats.visitantes} icon={<MousePointer2 size={20} />} trend="Hoje" trendPositive={true} color="amber" />
-        <StatCard label="Contactos" val={stats.contactos} icon={<MessageSquare size={20} />} trend={trends.contactos.label} trendPositive={trends.contactos.positive} color="violet" />
+        <StatCard label="Formadores" val={stats.formadores} icon={<Users size={18} />} trend={trends.formadores.label} trendPositive={trends.formadores.positive} color="emerald" onClick={() => onNavigate?.('formadores')} />
+        <StatCard label="Alunos" val={stats.alunos} icon={<GraduationCap size={18} />} trend={trends.alunos.label} trendPositive={trends.alunos.positive} color="blue" onClick={() => onNavigate?.('alunos')} />
+        <StatCard label="Visitantes Hoje" val={stats.visitantes} icon={<MousePointer2 size={18} />} trend="Hoje" trendPositive={true} color="amber" onClick={() => setVisitorPopup(true)} />
+        <StatCard label="Contactos" val={stats.contactos} icon={<MessageSquare size={18} />} trend={trends.contactos.label} trendPositive={trends.contactos.positive} color="violet" onClick={() => onNavigate?.('contactos')} />
       </div>
+
+      <AnimatePresence>
+        {visitorPopup && (
+          <VisitorPopup total={stats.visitantes} onClose={() => setVisitorPopup(false)} />
+        )}
+      </AnimatePresence>
 
       <div className="dashboard-main-grid">
         {/* Left: Charts */}
@@ -234,9 +242,9 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
   );
 }
 
-function StatCard({ label, val, icon, trend, trendPositive, color }: any) {
+function StatCard({ label, val, icon, trend, trendPositive, color, onClick }: any) {
   return (
-    <div className={`stat-card-v2 ${color}`}>
+    <button className={`stat-card-v2 ${color}`} onClick={onClick} title={`Ver ${label}`}>
       <div className="stat-card-icon">{icon}</div>
       <div className="stat-card-info">
         <span className="stat-label">{label}</span>
@@ -249,7 +257,41 @@ function StatCard({ label, val, icon, trend, trendPositive, color }: any) {
           )}
         </div>
       </div>
-    </div>
+    </button>
+  );
+}
+
+function VisitorPopup({ total, onClose }: { total: number; onClose: () => void }) {
+  return (
+    <motion.div className="admin-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+      <motion.div
+        className="glass visitor-popup"
+        initial={{ scale: 0.92, opacity: 0, y: 16 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 16 }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="visitor-popup-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="stat-card-icon amber" style={{ width: 36, height: 36, borderRadius: 10 }}><MousePointer2 size={16} /></div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '1rem' }}>Visitantes Hoje</h4>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sessões únicas registadas</span>
+            </div>
+          </div>
+          <button className="admin-close-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+        <div className="visitor-popup-body">
+          <div className="visitor-big-stat">
+            <span className="visitor-number">{total}</span>
+            <span className="visitor-unit">visitas hoje</span>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
+            Contagem via Firebase Analytics.<br />Actualiza em cada acesso ao dashboard.
+          </p>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -264,24 +306,33 @@ function QuickAction({ icon, label, onClick }: any) {
 
 const DASHBOARD_STYLES = `
   .command-center { display: flex; flex-direction: column; gap: 2rem; }
-  
-  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; }
-  .stat-card-v2 { padding: 1.5rem; border-radius: var(--radius-lg); background: var(--bg-1); border: 1px solid var(--border); display: flex; align-items: center; gap: 1.25rem; transition: transform 0.2s; }
-  .stat-card-v2:hover { transform: translateY(-4px); }
-  .stat-card-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--bg-2); color: var(--accent); }
-  
+
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; }
+  .stat-card-v2 { padding: 0.875rem 1rem; border-radius: var(--radius-lg); background: var(--bg-1); border: 1px solid var(--border); display: flex; align-items: center; gap: 0.875rem; transition: all 0.2s; cursor: pointer; text-align: left; width: 100%; }
+  .stat-card-v2:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); border-color: var(--accent); }
+  .stat-card-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--bg-2); color: var(--accent); flex-shrink: 0; }
+
   .stat-card-v2.emerald .stat-card-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
   .stat-card-v2.blue .stat-card-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
   .stat-card-v2.amber .stat-card-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
   .stat-card-v2.violet .stat-card-icon { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
 
-  .stat-card-info { display: flex; flex-direction: column; gap: 0.25rem; }
-  .stat-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.02em; }
-  .stat-value-row { display: flex; align-items: baseline; gap: 0.75rem; }
-  .stat-value { font-size: 1.75rem; font-weight: 800; }
-  .stat-trend { font-size: 0.75rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .stat-card-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .stat-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; }
+  .stat-value-row { display: flex; align-items: baseline; gap: 0.5rem; }
+  .stat-value { font-size: 1.5rem; font-weight: 800; }
+  .stat-trend { font-size: 0.7rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
   .stat-trend.positive { color: #10b981; background: rgba(16, 185, 129, 0.1); }
   .stat-trend.negative { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+
+  /* Visitor Popup */
+  .visitor-popup { width: 100%; max-width: 320px; border-radius: var(--radius-xl); overflow: hidden; }
+  .visitor-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.25rem 1rem; border-bottom: 1px solid var(--border); }
+  .visitor-popup-body { padding: 1.5rem 1.25rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+  .visitor-big-stat { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+  .visitor-number { font-size: 3rem; font-weight: 800; color: #f59e0b; line-height: 1; }
+  .visitor-unit { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-card-icon.amber { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
 
   .dashboard-main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 2rem; }
   .dashboard-column { display: flex; flex-direction: column; gap: 2rem; }
