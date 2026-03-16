@@ -328,20 +328,6 @@ app.post('/api/student', publicLimiter, async (req, res) => {
         res.status(500).json({ error: 'Erro ao processar inscrição' });
     }
 });
-app.get('/api/admin/diag', isAdmin, async (req, res) => {
-    try {
-        const { sheets, spreadsheetId } = getSheetsClient();
-        const meta = await sheets.spreadsheets.get({ spreadsheetId, fields: 'spreadsheetId,properties/title,sheets/properties/title' });
-        res.json({
-            spreadsheetId,
-            title: meta.data.properties?.title,
-            tabs: meta.data.sheets?.map(s => s.properties?.title),
-        });
-    }
-    catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 app.get('/api/admin/data', isAdmin, async (req, res) => {
     try {
         const [formadores, alunos, contactos] = await Promise.all([
