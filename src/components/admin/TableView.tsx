@@ -3,6 +3,7 @@ import { Search, FileDown, Pencil, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { TableSkeleton } from './TableSkeleton';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 interface TableViewProps {
   type: string;
@@ -47,18 +48,11 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
   });
 
   const handleExport = () => {
-    const csvContent = [
-      headers.join(','),
-      ...filteredRows.map(({ row }) => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `FaroForma_${type.charAt(0).toUpperCase() + type.slice(1)}_${new Date().toLocaleDateString()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const sheetData = [headers, ...filteredRows.map(({ row }) => row)];
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, type.charAt(0).toUpperCase() + type.slice(1));
+    XLSX.writeFile(wb, `FaroForma_${type.charAt(0).toUpperCase() + type.slice(1)}_${new Date().toLocaleDateString('pt-PT').replace(/\//g, '-')}.xlsx`);
   };
 
   const displayRows = [...filteredRows].reverse().map(({ row, originalIndex }) => ({
@@ -84,7 +78,7 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
           </div>
         </div>
         <button className="btn btn--outline btn--small" onClick={handleExport}>
-          <FileDown size={16} /> Exportar CSV ({filteredRows.length})
+          <FileDown size={16} /> Exportar Excel ({filteredRows.length})
         </button>
       </div>
       <div className="admin-table-scroll">

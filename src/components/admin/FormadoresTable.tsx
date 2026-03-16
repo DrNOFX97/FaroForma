@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { apiService } from '../../services/api';
 import { TableSkeleton } from './TableSkeleton';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 interface FormadoresTableProps {
   data: any[][];
@@ -47,18 +48,11 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
   });
 
   const handleExport = () => {
-    const csvContent = [
-      headers.join(','),
-      ...filteredRows.map(({ row }) => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `FaroForma_Formadores_${new Date().toLocaleDateString()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const sheetData = [headers, ...filteredRows.map(({ row }) => row)];
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Formadores');
+    XLSX.writeFile(wb, `FaroForma_Formadores_${new Date().toLocaleDateString('pt-PT').replace(/\//g, '-')}.xlsx`);
   };
 
   const indexedRows = [...filteredRows].reverse().map(({ row, originalIndex }) => ({
@@ -84,7 +78,7 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
           </div>
         </div>
         <button className="btn btn--outline btn--small" onClick={handleExport}>
-          <FileDown size={16} /> Exportar CSV ({filteredRows.length})
+          <FileDown size={16} /> Exportar Excel ({filteredRows.length})
         </button>
       </div>
       <div className="admin-table-scroll">
