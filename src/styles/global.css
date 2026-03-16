@@ -1453,6 +1453,35 @@ main {
 .registration__field--full {
   grid-column: 1 / -1;
 }
+.registration__field--checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.875rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color 0.2s;
+}
+.registration__field--checkbox:hover {
+  border-color: var(--border-accent);
+}
+.registration__field--checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.registration__field--checkbox span {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.registration__field--checkbox input[type="checkbox"]:checked ~ span {
+  color: var(--text);
+}
 .registration__actions {
   margin-top: 1.5rem;
   display: flex;

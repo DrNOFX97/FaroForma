@@ -38,8 +38,10 @@ export default function StudentRegistration() {
     email: '',
     phone: '',
     program: PROGRAMS[0],
+    turma: '',
     startDate: '',
     contactPreference: CONTACT_PREFERENCES[0],
+    needsTransport: false,
     notes: '',
   };
 
@@ -72,6 +74,12 @@ export default function StudentRegistration() {
           return next;
         });
       }
+    };
+
+  const handleCheckbox =
+    (field: keyof typeof INITIAL_FORM) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setForm(prev => ({ ...prev, [field]: event.target.checked }));
     };
 
   const fillWithGoogle = async () => {
@@ -176,6 +184,15 @@ export default function StudentRegistration() {
                   </select>
                 </label>
                 <label className="registration__field">
+                  {language === 'pt' ? 'Turma (opcional)' : 'Class / Group (optional)'}
+                  <input
+                    type="text"
+                    value={form.turma}
+                    onChange={handleChange('turma')}
+                    placeholder={language === 'pt' ? 'Ex: Turma A, Manhã, Online…' : 'E.g. Group A, Morning, Online…'}
+                  />
+                </label>
+                <label className="registration__field">
                   {t('student.form.start')}*
                   <input
                     type="date"
@@ -195,6 +212,18 @@ export default function StudentRegistration() {
                       </option>
                     ))}
                   </select>
+                </label>
+                <label className="registration__field registration__field--full registration__field--checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.needsTransport}
+                    onChange={handleCheckbox('needsTransport')}
+                  />
+                  <span>
+                    {language === 'pt'
+                      ? <>Necessito de transporte <strong>(+2,50 € por viagem/dia)</strong></>
+                      : <>I need transport <strong>(+€2.50 per trip/day)</strong></>}
+                  </span>
                 </label>
                 <label className="registration__field registration__field--full">
                   {language === 'pt' ? 'Como podemos ajudar?' : 'How can we help?'}

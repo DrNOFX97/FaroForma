@@ -104,8 +104,10 @@ const StudentSchema = z.object({
   email: z.string().email(),
   phone: z.string().min(1),
   program: z.string().min(1),
+  turma: z.string().optional().default(''),
   startDate: z.string().min(1),
   contactPreference: z.string().min(1),
+  needsTransport: z.boolean().optional().default(false),
   notes: z.string().optional().default(''),
 });
 
@@ -308,12 +310,13 @@ app.post('/api/student', publicLimiter, async (req: Request, res: Response) => {
 
   const d = parsed.data;
   try {
-    await appendToSheet('Alunos', [new Date().toISOString(), d.fullName, d.email, d.phone, d.program, d.startDate, d.contactPreference, d.notes]);
+    const transportLabel = d.needsTransport ? 'Sim (+2,50 €/viagem/dia)' : 'Não';
+    await appendToSheet('Alunos', [new Date().toISOString(), d.fullName, d.email, d.phone, d.program, d.turma, d.startDate, d.contactPreference, transportLabel, d.notes]);
 
     await sendMail({
       to: d.email,
       subject: 'FaroForma — Inscrição recebida',
-      html: `<p>Olá <strong>${escHtml(d.fullName)}</strong>,</p><p>Recebemos a sua inscrição para <strong>${escHtml(d.program)}</strong>. Entraremos em contacto brevemente através do seu meio de contacto preferido.</p><p>Obrigado por escolher a FaroForma.</p>`,
+      html: `<p>Olá <strong>${escHtml(d.fullName)}</strong>,</p><p>Recebemos a sua inscrição para <strong>${escHtml(d.program)}</strong>${d.turma ? ` (${escHtml(d.turma)})` : ''}. Entraremos em contacto brevemente através do seu meio de contacto preferido.</p>${d.needsTransport ? `<p>Confirmamos que solicitou transporte com taxa adicional de <strong>2,50 € por viagem/dia</strong>.</p>` : ''}<p>Obrigado por escolher a FaroForma.</p>`,
     }).catch(() => {});
 
     await notifyAdmins(
@@ -324,8 +327,10 @@ app.post('/api/student', publicLimiter, async (req: Request, res: Response) => {
         <tr><td><strong>Email</strong></td><td>${escHtml(d.email)}</td></tr>
         <tr><td><strong>Telefone</strong></td><td>${escHtml(d.phone)}</td></tr>
         <tr><td><strong>Programa</strong></td><td>${escHtml(d.program)}</td></tr>
+        ${d.turma ? `<tr><td><strong>Turma</strong></td><td>${escHtml(d.turma)}</td></tr>` : ''}
         <tr><td><strong>Início pretendido</strong></td><td>${escHtml(d.startDate)}</td></tr>
         <tr><td><strong>Contacto preferido</strong></td><td>${escHtml(d.contactPreference)}</td></tr>
+        <tr><td><strong>Transporte</strong></td><td>${transportLabel}</td></tr>
       </table>
       ${d.notes ? `<p><strong>Notas:</strong><br>${escHtml(d.notes)}</p>` : ''}
       <p><a href="https://faroforma.pt/admin">Aceder ao Backoffice</a></p>`
