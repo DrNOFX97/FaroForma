@@ -17,9 +17,10 @@ import { F } from '../../config/sheetsSchema';
 interface DashboardViewProps {
   data: RawData | null;
   onNavigate?: (tab: string) => void;
+  unread?: { formadores: number; alunos: number; contactos: number };
 }
 
-export function DashboardView({ data, onNavigate }: DashboardViewProps) {
+export function DashboardView({ data, onNavigate, unread }: DashboardViewProps) {
   const [analytics, setAnalytics] = useState<any>({ total: 0 });
   const [visitorPopup, setVisitorPopup] = useState(false);
   const [auditLog, setAuditLog] = useState<any[]>([]);
@@ -63,6 +64,17 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
     formadores: getMonthTrend(data?.formadores),
     alunos: getMonthTrend(data?.alunos),
     contactos: getMonthTrend(data?.contactos),
+  };
+
+  // Helper to decide card status (Unread vs Trend)
+  const getCardStatus = (key: 'formadores' | 'alunos' | 'contactos') => {
+    const u = unread?.[key] || 0;
+    const trend = trends[key];
+    
+    if (u > 0) {
+      return { label: `${u} por ler`, positive: true, isUnread: true };
+    }
+    return { label: trend.label, positive: trend.positive, isUnread: false };
   };
 
   // ── Activity Feed ──────────────────────────────────────────────────────────
@@ -121,15 +133,19 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
   const trendData = getTrendData();
   const areaData = getAreaData();
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+  
+  const stForm = getCardStatus('formadores');
+  const stAlu = getCardStatus('alunos');
+  const stCont = getCardStatus('contactos');
 
   return (
     <div className="command-center">
       {/* Top Stats */}
       <div className="stats-row">
-        <StatCard label="Formadores" val={stats.formadores} icon={<Users size={18} />} trend={trends.formadores.label} trendPositive={trends.formadores.positive} color="emerald" loading={!data} onClick={() => onNavigate?.('formadores')} />
-        <StatCard label="Alunos" val={stats.alunos} icon={<GraduationCap size={18} />} trend={trends.alunos.label} trendPositive={trends.alunos.positive} color="blue" loading={!data} onClick={() => onNavigate?.('alunos')} />
+        <StatCard label="Formadores" val={stats.formadores} icon={<Users size={18} />} trend={stForm.label} trendPositive={stForm.positive} isUnread={stForm.isUnread} color="emerald" loading={!data} onClick={() => onNavigate?.('formadores')} />
+        <StatCard label="Alunos" val={stats.alunos} icon={<GraduationCap size={18} />} trend={stAlu.label} trendPositive={stAlu.positive} isUnread={stAlu.isUnread} color="blue" loading={!data} onClick={() => onNavigate?.('alunos')} />
         <StatCard label="Visitantes Hoje" val={stats.visitantes} icon={<MousePointer2 size={18} />} trend="Hoje" trendPositive={true} color="amber" onClick={() => setVisitorPopup(true)} />
-        <StatCard label="Contactos" val={stats.contactos} icon={<MessageSquare size={18} />} trend={trends.contactos.label} trendPositive={trends.contactos.positive} color="violet" loading={!data} onClick={() => onNavigate?.('contactos')} />
+        <StatCard label="Contactos" val={stats.contactos} icon={<MessageSquare size={18} />} trend={stCont.label} trendPositive={stCont.positive} isUnread={stCont.isUnread} color="violet" loading={!data} onClick={() => onNavigate?.('contactos')} />
       </div>
 
       <AnimatePresence>
@@ -317,7 +333,7 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
   );
 }
 
-function StatCard({ label, val, icon, trend, trendPositive, color, onClick, loading }: any) {
+function StatCard({ label, val, icon, trend, trendPositive, color, onClick, loading, isUnread }: any) {
   return (
     <button className={`stat-card-v2 ${color}${loading ? ' is-loading' : ''}`} onClick={onClick} title={`Ver ${label}`}>
       <div className="stat-card-icon">{icon}</div>
@@ -328,7 +344,7 @@ function StatCard({ label, val, icon, trend, trendPositive, color, onClick, load
             <>
               <span className="stat-value">{val}</span>
               {trend !== '—' && (
-                <span className={`stat-trend ${trendPositive ? 'positive' : 'negative'}`} title="vs mês anterior">
+                <span className={`stat-trend ${isUnread ? 'unread' : (trendPositive ? 'positive' : 'negative')}`} title={isUnread ? 'Por ler' : 'vs mês anterior'}>
                   {trend}
                 </span>
               )}
@@ -336,6 +352,10 @@ function StatCard({ label, val, icon, trend, trendPositive, color, onClick, load
           )}
         </div>
       </div>
+      <style>{`
+        .stat-trend.unread { background: #f97316; color: white; animation: pulse-unread 2s infinite; }
+        @keyframes pulse-unread { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+      `}</style>
     </button>
   );
 }

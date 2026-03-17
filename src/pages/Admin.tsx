@@ -60,6 +60,43 @@ export default function Admin() {
   const notifRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchRef = useRef<HTMLDivElement>(null);
+  
+  // Track last seen timestamps for dashboard badges
+  const [lastSeen, setLastSeen] = useState<Record<string, number>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('admin_last_seen') || '{}');
+    } catch { return {}; }
+  });
+
+  // Update last seen when tab changes
+  useEffect(() => {
+    if (['formadores', 'alunos', 'contactos'].includes(activeTab)) {
+      setLastSeen(prev => {
+        const next = { ...prev, [activeTab]: Date.now() };
+        localStorage.setItem('admin_last_seen', JSON.stringify(next));
+        return next;
+      });
+    }
+  }, [activeTab]);
+
+  // Calculate unread counts for dashboard
+  const unreadCounts = useMemo(() => {
+    if (!data) return { formadores: 0, alunos: 0, contactos: 0 };
+    
+    const countNew = (rows: any[] | undefined, tsIdx: number, lastTs: number) => {
+      if (!rows) return 0;
+      return rows.slice(1).filter(r => {
+        const d = new Date(r[tsIdx]);
+        return !isNaN(d.getTime()) && d.getTime() > lastTs;
+      }).length;
+    };
+
+    return {
+      formadores: countNew(data.formadores, F.TIMESTAMP, lastSeen.formadores || 0),
+      alunos: countNew(data.alunos, A.TIMESTAMP, lastSeen.alunos || 0),
+      contactos: countNew(data.contactos, C.TIMESTAMP, lastSeen.contactos || 0),
+    };
+  }, [data, lastSeen]);
 
   // Modals
   const [editingRow, setEditingRow] = useState<any | null>(null);
@@ -358,7 +395,7 @@ export default function Admin() {
           <div className="admin-view-container">
             <AnimatePresence mode="wait">
               <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                {activeTab === 'dashboard' && <DashboardView data={data} onNavigate={setActiveTab} />}
+                {activeTab === 'dashboard' && <DashboardView data={data} onNavigate={setActiveTab} unread={unreadCounts} />}
                 {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingRow} onDetail={setDetailRow} />}
                 {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} columns={[1, 3, 4]} />}
                 {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} headerMap={{ 0: 'Data/Hora' }} cellFormat={{ 0: v => { const d = new Date(v); return isNaN(d.getTime()) ? v : `${d.toLocaleDateString('pt-PT')} ${d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}`; } }} />}

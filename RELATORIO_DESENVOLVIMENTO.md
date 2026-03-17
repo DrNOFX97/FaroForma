@@ -8,8 +8,8 @@
 
 | Métrica | Valor |
 | :--- | :--- |
-| **Total de Horas Estimadas** | ~65 Horas |
-| **Total de Commits** | 85 |
+| **Total de Horas Estimadas** | ~67 Horas |
+| **Total de Commits** | 86 |
 | **Sessões de Trabalho** | 15 sessões distintas |
 | **Período de Atividade** | 7 dias (11–17 Mar 2026) |
 | **Tempo de commit medido** | ~25h de atividade directa |
@@ -22,19 +22,21 @@
 
 ## 2. Justificação Técnica por Bloco (65h)
 
-### Bloco A — Infraestrutura e Backend (16h)
+### Bloco A — Infraestrutura e Backend (18h)
 - Firebase Functions Gen2 (Node.js 24, europe-west1) com Express
 - Google Sheets API via Service Account (Secret Manager)
 - Sistema de email transacional: confirmações + notificações admin (Gmail SMTP / ImprovMX)
 - Middleware `isAdmin` com verificação dinâmica de emails no Firestore (cache 5min)
 - Rate limiting por IP (5 req/hora) nos endpoints públicos
-- Gestão de segredos: 4 variáveis em Cloud Secret Manager
+- Gestão de segredos: 5 variáveis em Cloud Secret Manager (incluindo `GEMINI_API_KEY`)
+- **Auto-tradução PT→EN via Gemini 1.5 Flash:** `autoTranslate()` percorre recursivamente objectos `{ pt, en }` e preenche o campo EN quando vazio — aplicado em `/api/admin/config`, `/api/admin/courses` e `/api/cms/:section`
+- **Log de auditoria estruturado** (`createAuditLog`): regista email, nome, acção, alvo e detalhes em `Firestore audit_log` para todas as mutações admin
 
 ### Bloco B — Backoffice Completo (28h)
 - **Dashboard:** Analytics em tempo real (Recharts), popup de visitantes com log horário e gráfico
 - **Tabelas CRUD:** Alunos, Formadores, Contactos — pesquisa, edição inline, eliminação, exportação Excel (SheetJS)
 - **Bulk delete** com checkboxes e confirmação; **paginação** 25 registos/página
-- **Log de auditoria** de ações admin (Firestore `admin_logs`)
+- **Log de auditoria** de ações admin (Firestore `audit_log`) com utilizador, acção, alvo e detalhes
 - **Email✓ status** por registo: confirmação capturada em coluna dedicada na Sheet
 - **Agenda de Salas** (2 salas): agendamento semanal, exportação PDF profissional (jsPDF/html2canvas)
 - **CMS Interno:** Hero, Sobre, Serviços, Explicações — edição PT/EN com preview ao vivo
@@ -73,14 +75,15 @@
 | Qui 14 Mar | 9 | Cursos dinâmicos, agenda multi-sala, cleanup, segurança |
 | Sex 15 Mar | 9 | Modularização admin, CMS, acessibilidade, email dinâmico |
 | Sáb 16 Mar | 29 | Dashboard visual, analytics, CMS avançado, auditoria, 8 bug fixes |
-| Dom 17 Mar | 4 | Audit log, bulk delete, paginação, email status, features 9–12 |
-| **Total** | **85** | |
+| Dom 17 Mar | 5 | Audit log, bulk delete, paginação, email status; auto-tradução Gemini; audit log estruturado |
+| **Total** | **86** | |
 
 ---
 
 ## 4. Log Completo de Commits (Git)
 
 ```
+2026-03-17  feat(backend): auto-translate PT→EN via Gemini 1.5 Flash + structured audit log
 2026-03-17  feat(admin): audit log, bulk delete, pagination, email status tracking
 2026-03-17  fix: resolve UX bugs 5-8
 2026-03-17  fix: resolve 4 audit bugs
@@ -161,4 +164,4 @@
 ---
 
 *Documento gerado com base em análise de logs de desenvolvimento (git log --format="%ai|%s").*
-*Tempo de commit medido: ~25h activas. Total estimado incluindo planeamento, debug e testes: ~65h.*
+*Tempo de commit medido: ~25h activas. Total estimado incluindo planeamento, debug e testes: ~67h.*

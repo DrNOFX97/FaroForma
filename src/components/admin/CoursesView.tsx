@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Award, Pencil, X, Save, Search, 
@@ -32,6 +32,21 @@ const ICONS = [
   { id: 'Monitor', icon: Monitor, label: 'Digital' },
 ];
 
+const DEFAULT_HIGHLIGHTS = [
+  { icon: 'MessageCircle', text: { pt: '', en: '' } },
+  { icon: 'Users', text: { pt: '', en: '' } },
+  { icon: 'Award', text: { pt: '', en: '' } },
+];
+
+const INITIAL_NEW_COURSE = {
+  title: { pt: '', en: '' },
+  subtitle: { pt: '', en: '' },
+  status: { pt: '', en: '' },
+  description: { pt: '', en: '' },
+  highlights: DEFAULT_HIGHLIGHTS,
+  schedule: []
+};
+
 export function CoursesView() {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +60,7 @@ export function CoursesView() {
   const fetchCourses = async () => {
     try {
       const data = await apiService.getAdminCourses();
-      setCourses(data);
+      setCourses(data || []);
     } catch (err) {
       console.error(err);
       toast.error('Erro ao carregar cursos.');
@@ -82,13 +97,16 @@ export function CoursesView() {
     ), { duration: Infinity, icon: '🗑️' });
   };
 
-  if (loading) return <div className="glass" style={{ padding: '2rem', display: 'flex', justifyContent: 'center' }}><div className="spinner"></div></div>;
+  const filteredCourses = useMemo(() => {
+    const q = search.toLowerCase();
+    return courses.filter(c => {
+      const titlePt = typeof c.title === 'string' ? c.title : (c.title?.pt || '');
+      const titleEn = typeof c.title === 'string' ? '' : (c.title?.en || '');
+      return !q || titlePt.toLowerCase().includes(q) || titleEn.toLowerCase().includes(q);
+    });
+  }, [courses, search]);
 
-  const defaultHighlights = [
-    { icon: 'MessageCircle', text: { pt: '', en: '' } },
-    { icon: 'Users', text: { pt: '', en: '' } },
-    { icon: 'Award', text: { pt: '', en: '' } },
-  ];
+  if (loading) return <div className="glass" style={{ padding: '4rem', display: 'flex', justifyContent: 'center' }}><div className="spinner"></div></div>;
 
   return (
     <div className="admin-courses-view">
@@ -97,14 +115,7 @@ export function CoursesView() {
           <Award size={24} className="text-accent" />
           <h3 style={{ margin: 0 }}>Gestão de Cursos</h3>
         </div>
-        <button className="btn btn--primary" onClick={() => setEditingCourse({ 
-          title: { pt: '', en: '' }, 
-          subtitle: { pt: '', en: '' }, 
-          status: { pt: '', en: '' }, 
-          description: { pt: '', en: '' }, 
-          highlights: defaultHighlights, 
-          schedule: [] 
-        })}>
+        <button className="btn btn--primary" onClick={() => setEditingCourse(INITIAL_NEW_COURSE)}>
           <Plus size={18} /> Novo Curso
         </button>
       </div>
@@ -123,7 +134,7 @@ export function CoursesView() {
             />
           </div>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-            {courses.filter(c => !search || c.title?.pt?.toLowerCase().includes(search.toLowerCase()) || c.title?.en?.toLowerCase().includes(search.toLowerCase())).length} curso(s)
+            {filteredCourses.length} curso(s)
           </span>
         </div>
         <div className="admin-table-scroll">
@@ -136,22 +147,24 @@ export function CoursesView() {
               </tr>
             </thead>
             <tbody>
-              {courses
-                .filter(c => !search || c.title?.pt?.toLowerCase().includes(search.toLowerCase()) || c.title?.en?.toLowerCase().includes(search.toLowerCase()))
-                .map((course) => (
-                <tr key={course.id}>
-                  <td style={{ fontWeight: 600 }}>{course.title?.pt}</td>
-                  <td>
-                    <span className="status-badge">{course.status?.pt || 'Sem estado'}</span>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="admin-action-btn" onClick={() => setEditingCourse(course)} title="Editar"><Pencil size={16} /></button>
-                      <button className="admin-action-btn" onClick={() => handleDelete(course.id, course.title?.pt || '')} title="Remover" style={{ color: '#ef4444' }}><Trash2 size={16} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredCourses.map((course) => {
+                const title = typeof course.title === 'string' ? course.title : (course.title?.pt || 'Sem título');
+                const status = typeof course.status === 'string' ? course.status : (course.status?.pt || '—');
+                return (
+                  <tr key={course.id}>
+                    <td style={{ fontWeight: 600 }}>{title}</td>
+                    <td>
+                      <span className="status-badge">{status}</span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="admin-action-btn" onClick={() => setEditingCourse(course)} title="Editar"><Pencil size={16} /></button>
+                        <button className="admin-action-btn" onClick={() => handleDelete(course.id, title)} title="Remover" style={{ color: '#ef4444' }}><Trash2 size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {courses.length === 0 && <tr><td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>Nenhum curso registado no Firestore.</td></tr>}
             </tbody>
           </table>
@@ -186,52 +199,77 @@ export function CoursesView() {
 }
 
 function CourseEditModal({ course, onClose, onSave }: any) {
-  const [data, setData] = useState({ 
-    ...course,
-    title: course.title || { pt: '', en: '' },
-    subtitle: course.subtitle || { pt: '', en: '' },
-    status: course.status || { pt: '', en: '' },
-    description: course.description || { pt: '', en: '' },
-    highlights: course.highlights?.length === 3 ? course.highlights : [
-      { icon: 'MessageCircle', text: { pt: '', en: '' } },
-      { icon: 'Users', text: { pt: '', en: '' } },
-      { icon: 'Award', text: { pt: '', en: '' } },
-    ],
-    schedule: course.schedule || []
-  });
+  // Safe initialization to prevent crashes/infinite loops with legacy data
+  const initialData = useMemo(() => {
+    const c = course || {};
+    const safeI18n = (val: any) => typeof val === 'string' ? { pt: val, en: '' } : { pt: val?.pt || '', en: val?.en || '' };
+    
+    return {
+      id: c.id || null,
+      title: safeI18n(c.title),
+      subtitle: safeI18n(c.subtitle),
+      status: safeI18n(c.status),
+      description: safeI18n(c.description),
+      highlights: (Array.isArray(c.highlights) && c.highlights.length === 3) 
+        ? c.highlights.map((h: any) => ({
+            icon: h.icon || 'Check',
+            text: safeI18n(h.text)
+          }))
+        : DEFAULT_HIGHLIGHTS,
+      schedule: (Array.isArray(c.schedule) ? c.schedule : []).map((s: any) => ({
+        ...s,
+        turma: safeI18n(s.turma),
+        periodo: s.periodo || 'manha',
+        horario: Array.isArray(s.horario) ? s.horario : (s.horário ? [s.horário] : []),
+        dias: Array.isArray(s.dias) ? s.dias : (s.dias?.pt ? [s.dias.pt] : (typeof s.dias === 'string' ? [s.dias] : [])),
+        diasExtra: safeI18n(s.diasExtra)
+      }))
+    };
+  }, [course]);
+
+  const [data, setData] = useState(initialData);
 
   const addScheduleRow = () => {
-    setData({
-      ...data,
-      schedule: [...data.schedule, { 
+    setData(prev => ({
+      ...prev,
+      schedule: [...prev.schedule, { 
         turma: { pt: '', en: '' }, 
         periodo: 'manha', 
         horario: [], 
         dias: [], 
         diasExtra: { pt: '', en: '' } 
       }]
-    });
+    }));
   };
 
   const updateSchedule = (idx: number, field: string, val: any) => {
-    const ns = [...data.schedule];
-    ns[idx] = { ...ns[idx], [field]: val };
-    setData({ ...data, schedule: ns });
+    setData(prev => {
+      const ns = [...prev.schedule];
+      ns[idx] = { ...ns[idx], [field]: val };
+      return { ...prev, schedule: ns };
+    });
   };
 
   const toggleMulti = (idx: number, field: 'horario' | 'dias', val: string) => {
-    const ns = [...data.schedule];
-    const current = ns[idx][field] || [];
-    const next = current.includes(val) ? current.filter((v: string) => v !== val) : [...current, val];
-    ns[idx][field] = next;
-    setData({ ...data, schedule: ns });
+    setData(prev => {
+      const ns = [...prev.schedule];
+      const current = Array.isArray(ns[idx][field]) ? ns[idx][field] : [];
+      const next = current.includes(val) ? current.filter((v: string) => v !== val) : [...current, val];
+      ns[idx][field] = next;
+      return { ...prev, schedule: ns };
+    });
   };
 
-  const updateHighlight = (idx: number, field: string, val: any) => {
-    const nh = [...data.highlights];
-    if (field === 'icon') nh[idx].icon = val;
-    else nh[idx].text = { ...nh[idx].text, [field]: val };
-    setData({ ...data, highlights: nh });
+  const updateHighlight = (idx: number, field: 'pt' | 'icon', val: string) => {
+    setData(prev => {
+      const nh = [...prev.highlights];
+      if (field === 'icon') {
+        nh[idx] = { ...nh[idx], icon: val };
+      } else {
+        nh[idx] = { ...nh[idx], text: { pt: val, en: '' } };
+      }
+      return { ...prev, highlights: nh };
+    });
   };
 
   return (
@@ -246,18 +284,28 @@ function CourseEditModal({ course, onClose, onSave }: any) {
         </div>
         
         <div className="admin-modal-body" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
-          {/* SECÇÃO 1: Info Base */}
           <div className="dm-section">
             <span className="dm-section-label">Informação Base</span>
             <div className="form__grid" style={{ marginTop: '1rem' }}>
-              <div className="form__group"><label className="form__label">Título</label><input className="form__input" value={data.title.pt} onChange={e => setData({...data, title: {...data.title, pt: e.target.value}})} /></div>
-              <div className="form__group"><label className="form__label">Subtítulo</label><input className="form__input" value={data.subtitle.pt} onChange={e => setData({...data, subtitle: {...data.subtitle, pt: e.target.value}})} /></div>
-              <div className="form__group form__group--full"><label className="form__label">Estado/Badge</label><input className="form__input" value={data.status.pt} onChange={e => setData({...data, status: {...data.status, pt: e.target.value}})} placeholder="Ex: Inscrições Abertas" /></div>
-              <div className="form__group form__group--full"><label className="form__label">Descrição</label><textarea className="form__textarea" value={data.description.pt} onChange={e => setData({...data, description: {...data.description, pt: e.target.value}})} rows={2} /></div>
+              <div className="form__group">
+                <label className="form__label">Título</label>
+                <input className="form__input" value={data.title?.pt || ''} onChange={e => setData({...data, title: { pt: e.target.value, en: '' }})} />
+              </div>
+              <div className="form__group">
+                <label className="form__label">Subtítulo</label>
+                <input className="form__input" value={data.subtitle?.pt || ''} onChange={e => setData({...data, subtitle: { pt: e.target.value, en: '' }})} />
+              </div>
+              <div className="form__group form__group--full">
+                <label className="form__label">Estado/Badge</label>
+                <input className="form__input" value={data.status?.pt || ''} onChange={e => setData({...data, status: { pt: e.target.value, en: '' }})} placeholder="Ex: Inscrições Abertas" />
+              </div>
+              <div className="form__group form__group--full">
+                <label className="form__label">Descrição</label>
+                <textarea className="form__textarea" value={data.description?.pt || ''} onChange={e => setData({...data, description: { pt: e.target.value, en: '' }})} rows={2} />
+              </div>
             </div>
           </div>
 
-          {/* SECÇÃO 2: Destaques (3 Cartões) */}
           <div className="dm-section" style={{ marginTop: '2rem' }}>
             <span className="dm-section-label">Destaques do Curso (3 Cartões)</span>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginTop: '1rem' }}>
@@ -270,14 +318,13 @@ function CourseEditModal({ course, onClose, onSave }: any) {
                   </div>
                   <div className="form__group">
                     <label className="form__label" style={{ fontSize: '0.65rem' }}>Texto do Destaque</label>
-                    <input className="form__input" value={h.text.pt} onChange={e => updateHighlight(i, 'pt', e.target.value)} style={{ padding: '0.4rem', fontSize: '0.75rem' }} />
+                    <input className="form__input" value={h.text?.pt || ''} onChange={e => updateHighlight(i, 'pt', e.target.value)} style={{ padding: '0.4rem', fontSize: '0.75rem' }} />
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* SECÇÃO 3: Horários */}
           <div className="dm-section" style={{ marginTop: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <span className="dm-section-label" style={{ border: 'none', padding: 0 }}>Horários e Turmas</span>
@@ -288,59 +335,62 @@ function CourseEditModal({ course, onClose, onSave }: any) {
               <div className="glass" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Clique em adicionar para definir os horários.</div>
             )}
 
-            {data.schedule.map((s: any, i: number) => (
-              <div key={i} className="schedule-row-edit">
-                <button className="remove-row-btn" onClick={() => setData({...data, schedule: data.schedule.filter((_: any, idx: number) => idx !== i)})}><X size={18} /></button>
-                
-                <div className="form__grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-                  <div className="form__group">
-                    <label className="form__label">Nome da Turma</label>
-                    <input className="form__input" value={s.turma?.pt} onChange={e => updateSchedule(i, 'turma', { pt: e.target.value, en: '' })} placeholder="Ex: Turma A" />
+            {data.schedule.map((s: any, i: number) => {
+              const currentPeriod = PERIODS.find(p => p.id === s.periodo) || PERIODS[0];
+              return (
+                <div key={i} className="schedule-row-edit">
+                  <button className="remove-row-btn" onClick={() => setData(prev => ({...prev, schedule: prev.schedule.filter((_: any, idx: number) => idx !== i)}))}><X size={18} /></button>
+                  
+                  <div className="form__grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                    <div className="form__group">
+                      <label className="form__label">Nome da Turma</label>
+                      <input className="form__input" value={s.turma?.pt || ''} onChange={e => updateSchedule(i, 'turma', { pt: e.target.value, en: '' })} placeholder="Ex: Turma A" />
+                    </div>
+                    <div className="form__group">
+                      <label className="form__label">Período</label>
+                      <select className="form__input" value={s.periodo} onChange={e => updateSchedule(i, 'periodo', e.target.value)}>
+                        {PERIODS.map(p => <option key={p.id} value={p.id}>{p.pt}</option>)}
+                      </select>
+                    </div>
                   </div>
-                  <div className="form__group">
-                    <label className="form__label">Período</label>
-                    <select className="form__input" value={s.periodo} onChange={e => updateSchedule(i, 'periodo', e.target.value)}>
-                      {PERIODS.map(p => <option key={p.id} value={p.id}>{p.pt}</option>)}
-                    </select>
-                  </div>
-                </div>
 
-                <div style={{ marginTop: '1rem' }}>
-                  <label className="form__label">Horários Disponíveis (Confirme um ou vários)</label>
-                  <div className="multi-select-grid">
-                    {PERIODS.find(p => p.id === s.periodo)?.slots.map(slot => (
-                      <div key={slot} className={`check-item ${s.horario?.includes(slot) ? 'is-active' : ''}`} onClick={() => toggleMulti(i, 'horario', slot)}>
-                        {s.horario?.includes(slot) ? <Check size={14} /> : <div style={{ width: 14 }} />}
-                        <span>{slot}</span>
-                      </div>
-                    ))}
+                  <div style={{ marginTop: '1rem' }}>
+                    <label className="form__label">Horários Disponíveis (Confirme um ou vários)</label>
+                    <div className="multi-select-grid">
+                      {(currentPeriod.slots || []).map(slot => (
+                        <div key={slot} className={`check-item ${Array.isArray(s.horario) && s.horario.includes(slot) ? 'is-active' : ''}`} onClick={() => toggleMulti(i, 'horario', slot)}>
+                          {Array.isArray(s.horario) && s.horario.includes(slot) ? <Check size={14} /> : <div style={{ width: 14 }} />}
+                          <span>{slot}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '1rem' }}>
+                    <label className="form__label">Dias da Semana</label>
+                    <div className="multi-select-grid">
+                      {WEEKDAYS.map(d => (
+                        <div key={d.id} className={`check-item ${Array.isArray(s.dias) && s.dias.includes(d.pt) ? 'is-active' : ''}`} onClick={() => toggleMulti(i, 'dias', d.pt)}>
+                          {Array.isArray(s.dias) && s.dias.includes(d.pt) ? <Check size={14} /> : <div style={{ width: 14 }} />}
+                          <span>{d.pt}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="form__group" style={{ marginTop: '1rem' }}>
+                    <label className="form__label">Extra/Obs Dias</label>
+                    <input className="form__input" value={s.diasExtra?.pt || ''} onChange={e => updateSchedule(i, 'diasExtra', { pt: e.target.value, en: '' })} placeholder="Ex: Exceto feriados" />
                   </div>
                 </div>
-
-                <div style={{ marginTop: '1rem' }}>
-                  <label className="form__label">Dias da Semana</label>
-                  <div className="multi-select-grid">
-                    {WEEKDAYS.map(d => (
-                      <div key={d.id} className={`check-item ${s.dias?.includes(d.pt) ? 'is-active' : ''}`} onClick={() => toggleMulti(i, 'dias', d.pt)}>
-                        {s.dias?.includes(d.pt) ? <Check size={14} /> : <div style={{ width: 14 }} />}
-                        <span>{d.pt}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="form__group" style={{ marginTop: '1rem' }}>
-                  <label className="form__label">Extra/Obs Dias</label>
-                  <input className="form__input" value={s.diasExtra?.pt} onChange={e => updateSchedule(i, 'diasExtra', { pt: e.target.value, en: '' })} placeholder="Ex: Exceto feriados" />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         <div className="admin-modal-footer">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-            <Info size={14} /> Dados guardados automaticamente no Firestore
+            <Info size={14} /> Os textos serão traduzidos para inglês automaticamente ao guardar.
           </div>
           <div style={{ flex: 1 }} />
           <button className="btn" onClick={onClose}>Cancelar</button>
