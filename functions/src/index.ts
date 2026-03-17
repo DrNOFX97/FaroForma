@@ -9,6 +9,7 @@ import { z } from "zod";
 import * as admin from "firebase-admin";
 import { F, A, C } from "./sheetsSchema";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import crypto from "crypto";
 
 admin.initializeApp();
 
@@ -665,21 +666,32 @@ app.post('/api/track-visit', publicLimiter, async (req: Request, res: Response) 
   const hourKey = now.getHours().toString();
   const ts = now.toISOString();
 
+  // Extract and hash IP for GDPR-safe deduplication
+  const rawIp = ((req.headers['x-forwarded-for'] as string) || req.ip || '').split(',')[0].trim();
+  const ipHash = crypto.createHash('sha256').update(rawIp).digest('hex').slice(0, 12);
+  // Masked IP for display (e.g. "192.168.1.x")
+  const parts = rawIp.split('.');
+  const maskedIp = parts.length === 4 ? `${parts[0]}.${parts[1]}.${parts[2]}.x` : rawIp.slice(0, 8) + '…';
+
   try {
     const docRef = admin.firestore().collection('analytics').doc(dateKey);
     await admin.firestore().runTransaction(async (t) => {
       const doc = await t.get(docRef);
+      const entry = { ts, ip: maskedIp };
       if (!doc.exists) {
-        t.set(docRef, { total: 1, hourly: { [hourKey]: 1 }, log: [ts] });
+        t.set(docRef, { total: 1, unique: 1, hourly: { [hourKey]: 1 }, log: [entry], ipHashes: [ipHash] });
       } else {
         const data = doc.data() || {};
         const newTotal = (data.total || 0) + 1;
         const newHourly = { ...data.hourly };
         newHourly[hourKey] = (newHourly[hourKey] || 0) + 1;
-        const log: string[] = data.log || [];
-        // keep last 200 entries
-        const newLog = [...log, ts].slice(-200);
-        t.update(docRef, { total: newTotal, hourly: newHourly, log: newLog });
+        const log: any[] = data.log || [];
+        const newLog = [...log, entry].slice(-200);
+        const ipHashes: string[] = data.ipHashes || [];
+        const isNew = !ipHashes.includes(ipHash);
+        const newHashes = isNew ? [...ipHashes, ipHash].slice(-500) : ipHashes;
+        const newUnique = isNew ? (data.unique || 0) + 1 : (data.unique || 0);
+        t.update(docRef, { total: newTotal, unique: newUnique, hourly: newHourly, log: newLog, ipHashes: newHashes });
       }
     });
     res.json({ success: true });
@@ -692,7 +704,9 @@ app.get('/api/admin/analytics', isAdmin as any, async (req: Request, res: Respon
   const dateKey = new Date().toISOString().split('T')[0];
   try {
     const doc = await admin.firestore().collection('analytics').doc(dateKey).get();
-    res.json(doc.exists ? doc.data() : { total: 0, hourly: {} });
+    if (!doc.exists) { res.json({ total: 0, unique: 0, hourly: {} }); return; }
+    const { ipHashes: _stripped, ...safe } = doc.data() as any;
+    res.json(safe);
   } catch (err) {
     res.status(500).json({ error: 'Erro ao obter analytics' });
   }

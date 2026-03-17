@@ -33,9 +33,9 @@ const ICONS = [
 ];
 
 const DEFAULT_HIGHLIGHTS = [
-  { icon: 'MessageCircle', text: { pt: '', en: '' } },
-  { icon: 'Users', text: { pt: '', en: '' } },
-  { icon: 'Award', text: { pt: '', en: '' } },
+  { icon: 'Award', text: { pt: 'Certificado válido para fins de nacionalidade e residência.', en: 'Valid certificate for nationality and residence purposes.' } },
+  { icon: 'MessageCircle', text: { pt: 'Foco na comunicação oral para o dia a dia e trabalho.', en: 'Focus on oral communication for daily life and work.' } },
+  { icon: 'Users', text: { pt: 'Turmas pequenas com apoio personalizado à integração.', en: 'Small classes with personalized integration support.' } },
 ];
 
 const INITIAL_NEW_COURSE = {

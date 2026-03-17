@@ -150,7 +150,7 @@ export function DashboardView({ data, onNavigate, unread }: DashboardViewProps) 
 
       <AnimatePresence>
         {visitorPopup && (
-          <VisitorPopup total={stats.visitantes} hourly={analytics.hourly || {}} log={analytics.log || []} onClose={() => setVisitorPopup(false)} />
+          <VisitorPopup total={stats.visitantes} unique={analytics.unique ?? null} hourly={analytics.hourly || {}} log={analytics.log || []} onClose={() => setVisitorPopup(false)} />
         )}
       </AnimatePresence>
 
@@ -360,17 +360,20 @@ function StatCard({ label, val, icon, trend, trendPositive, color, onClick, load
   );
 }
 
-function VisitorPopup({ total, hourly, log, onClose }: { total: number; hourly: Record<string, number>; log: string[]; onClose: () => void }) {
+function VisitorPopup({ total, unique, hourly, log, onClose }: { total: number; unique: number | null; hourly: Record<string, number>; log: any[]; onClose: () => void }) {
   // Build 24-hour bar chart data
   const hourlyData = Array.from({ length: 24 }, (_, h) => ({
     h: `${h}h`,
     n: hourly[h.toString()] || 0,
   }));
 
-  // Format log entries newest-first
-  const logEntries = [...log].reverse().map(ts => {
+  // Normalise log entries (legacy: string, new: { ts, ip }) newest-first
+  const logEntries = [...log].reverse().map(entry => {
+    const ts = typeof entry === 'string' ? entry : entry?.ts;
+    const ip = typeof entry === 'object' ? entry?.ip : null;
     const d = new Date(ts);
-    return isNaN(d.getTime()) ? ts : d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const time = isNaN(d.getTime()) ? ts : d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return { time, ip };
   });
 
   const peakHour = hourlyData.reduce((a, b) => b.n > a.n ? b : a, { h: '—', n: 0 });
@@ -408,13 +411,13 @@ function VisitorPopup({ total, hourly, log, onClose }: { total: number; hourly: 
             </div>
             <div className="vp-divider" />
             <div className="vp-stat">
-              <span className="vp-stat-val">{peakHour.n > 0 ? peakHour.h : '—'}</span>
-              <span className="vp-stat-label">hora de pico</span>
+              <span className="vp-stat-val" style={{ color: '#10b981' }}>{unique !== null ? unique : '—'}</span>
+              <span className="vp-stat-label">IPs únicos</span>
             </div>
             <div className="vp-divider" />
             <div className="vp-stat">
-              <span className="vp-stat-val">{logEntries.length > 0 ? logEntries[0] : '—'}</span>
-              <span className="vp-stat-label">última visita</span>
+              <span className="vp-stat-val">{peakHour.n > 0 ? peakHour.h : '—'}</span>
+              <span className="vp-stat-label">hora de pico</span>
             </div>
           </div>
 
@@ -444,10 +447,11 @@ function VisitorPopup({ total, hourly, log, onClose }: { total: number; hourly: 
             {logEntries.length === 0 ? (
               <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', padding: '0.75rem 0' }}>Sem registos hoje.</div>
             ) : (
-              logEntries.map((t, i) => (
+              logEntries.map((entry, i) => (
                 <div key={i} className="vp-log-entry">
                   <span className="vp-log-dot" />
-                  <span className="vp-log-time">{t}</span>
+                  <span className="vp-log-time">{entry.time}</span>
+                  {entry.ip && <span className="vp-log-ip">{entry.ip}</span>}
                   {i === 0 && <span className="vp-log-badge">agora</span>}
                 </div>
               ))
@@ -511,7 +515,8 @@ const DASHBOARD_STYLES = `
   .vp-log-entry { display: flex; align-items: center; gap: 0.6rem; padding: 0.3rem 0.75rem; }
   .vp-log-entry:hover { background: var(--bg-1); }
   .vp-log-dot { width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; flex-shrink: 0; }
-  .vp-log-time { font-size: 0.8rem; font-family: monospace; color: var(--text); font-weight: 600; flex: 1; }
+  .vp-log-time { font-size: 0.8rem; font-family: monospace; color: var(--text); font-weight: 600; }
+  .vp-log-ip { font-size: 0.72rem; font-family: monospace; color: var(--text-muted); flex: 1; }
   .vp-log-badge { font-size: 0.62rem; font-weight: 700; background: rgba(245,158,11,0.15); color: #f59e0b; padding: 1px 6px; border-radius: 20px; }
 
   .dashboard-main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 2rem; }
