@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
 
 /* ─── Design Tokens ─────────────────────────────────────────────────── */
 :root {
@@ -23,8 +23,8 @@
   --text-muted: #94a3b8;
   --text-dim: #64748b;
 
-  --font-heading: 'Outfit', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-heading: 'Figtree', sans-serif;
+  --font-body: 'Figtree', sans-serif;
 
   --radius-sm: 6px;
   --radius: 12px;
