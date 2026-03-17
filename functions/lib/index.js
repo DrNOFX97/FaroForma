@@ -260,13 +260,19 @@ app.post('/api/inscricao-formadores', publicLimiter, async (req, res) => {
         row[sheetsSchema_1.F.PERIODOS] = d.periodos.join(', ');
         row[sheetsSchema_1.F.MODALIDADE] = d.modalidade;
         row[sheetsSchema_1.F.MOTIVACAO] = d.motivacao;
+        let emailConf = 'Não';
+        try {
+            await sendMail({
+                to: d.email,
+                subject: 'FaroForma — Candidatura recebida',
+                html: `<p>Olá <strong>${escHtml(d.nome)}</strong>,</p><p>Recebemos a sua candidatura como formador. Analisaremos o seu perfil e entraremos em contacto brevemente.</p><p>Obrigado pelo interesse em fazer parte da equipa FaroForma.</p>`,
+            });
+            emailConf = 'Sim';
+        }
+        catch { }
+        row[sheetsSchema_1.F.EMAIL_CONF] = emailConf;
         await appendToSheet('Formadores', row);
-        await sendMail({
-            to: d.email,
-            subject: 'FaroForma — Candidatura recebida',
-            html: `<p>Olá <strong>${escHtml(d.nome)}</strong>,</p><p>Recebemos a sua candidatura como formador. Analisaremos o seu perfil e entraremos em contacto brevemente.</p><p>Obrigado pelo interesse em fazer parte da equipa FaroForma.</p>`,
-        }).catch(() => { });
-        await notifyAdmins(`[Formador] Nova candidatura — ${d.nome}`, `<h2>Nova candidatura de formador</h2>
+        notifyAdmins(`[Formador] Nova candidatura — ${d.nome}`, `<h2>Nova candidatura de formador</h2>
       <table cellpadding="6" style="border-collapse:collapse">
         <tr><td><strong>Nome</strong></td><td>${escHtml(d.nome)}</td></tr>
         <tr><td><strong>Email</strong></td><td>${escHtml(d.email)}</td></tr>
@@ -279,7 +285,7 @@ app.post('/api/inscricao-formadores', publicLimiter, async (req, res) => {
         <tr><td><strong>Modalidade</strong></td><td>${escHtml(d.modalidade)}</td></tr>
       </table>
       ${d.motivacao ? `<p><strong>Motivação:</strong><br>${escHtml(d.motivacao)}</p>` : ''}
-      <p><a href="https://faroforma.pt/admin">Aceder ao Backoffice</a></p>`);
+      <p><a href="https://faroforma.pt/admin">Aceder ao Backoffice</a></p>`).catch(() => { });
         res.status(201).json({ message: 'Inscrição recebida com sucesso' });
     }
     catch (err) {
@@ -334,13 +340,19 @@ app.post('/api/student', publicLimiter, async (req, res) => {
         row[sheetsSchema_1.A.PREFERENCIA_CONTACTO] = d.contactPreference;
         row[sheetsSchema_1.A.TRANSPORTE] = transportLabel;
         row[sheetsSchema_1.A.NOTAS] = d.notes;
+        let emailConf = 'Não';
+        try {
+            await sendMail({
+                to: d.email,
+                subject: 'FaroForma — Inscrição recebida',
+                html: `<p>Olá <strong>${escHtml(d.fullName)}</strong>,</p><p>Recebemos a sua inscrição para <strong>${escHtml(d.program)}</strong>${d.turma ? ` (${escHtml(d.turma)})` : ''}. Entraremos em contacto brevemente através do seu meio de contacto preferido.</p>${d.needsTransport ? `<p>Confirmamos que solicitou transporte com taxa adicional de <strong>2,50 € por viagem/dia</strong>.</p>` : ''}<p>Obrigado por escolher a FaroForma.</p>`,
+            });
+            emailConf = 'Sim';
+        }
+        catch { }
+        row[sheetsSchema_1.A.EMAIL_CONF] = emailConf;
         await appendToSheet('Alunos', row);
-        await sendMail({
-            to: d.email,
-            subject: 'FaroForma — Inscrição recebida',
-            html: `<p>Olá <strong>${escHtml(d.fullName)}</strong>,</p><p>Recebemos a sua inscrição para <strong>${escHtml(d.program)}</strong>${d.turma ? ` (${escHtml(d.turma)})` : ''}. Entraremos em contacto brevemente através do seu meio de contacto preferido.</p>${d.needsTransport ? `<p>Confirmamos que solicitou transporte com taxa adicional de <strong>2,50 € por viagem/dia</strong>.</p>` : ''}<p>Obrigado por escolher a FaroForma.</p>`,
-        }).catch(() => { });
-        await notifyAdmins(`[Aluno] Nova inscrição — ${d.fullName}`, `<h2>Nova inscrição de aluno</h2>
+        notifyAdmins(`[Aluno] Nova inscrição — ${d.fullName}`, `<h2>Nova inscrição de aluno</h2>
       <table cellpadding="6" style="border-collapse:collapse">
         <tr><td><strong>Nome</strong></td><td>${escHtml(d.fullName)}</td></tr>
         <tr><td><strong>Email</strong></td><td>${escHtml(d.email)}</td></tr>
@@ -352,13 +364,19 @@ app.post('/api/student', publicLimiter, async (req, res) => {
         <tr><td><strong>Transporte</strong></td><td>${transportLabel}</td></tr>
       </table>
       ${d.notes ? `<p><strong>Notas:</strong><br>${escHtml(d.notes)}</p>` : ''}
-      <p><a href="https://faroforma.pt/admin">Aceder ao Backoffice</a></p>`);
+      <p><a href="https://faroforma.pt/admin">Aceder ao Backoffice</a></p>`).catch(() => { });
         res.status(201).json({ message: 'Inscrição recebida com sucesso' });
     }
     catch (err) {
         res.status(500).json({ error: 'Erro ao processar inscrição' });
     }
 });
+async function logAdminAction(email, action, details) {
+    try {
+        await admin.firestore().collection('admin_logs').add({ ts: new Date().toISOString(), email, action, details });
+    }
+    catch { }
+}
 app.get('/api/admin/data', isAdmin, async (req, res) => {
     try {
         const [formadores, alunos, contactos] = await Promise.all([
@@ -370,12 +388,39 @@ app.get('/api/admin/data', isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Erro ao obter dados' });
     }
 });
+app.get('/api/admin/audit-log', isAdmin, async (req, res) => {
+    try {
+        const snap = await admin.firestore().collection('admin_logs').orderBy('ts', 'desc').limit(50).get();
+        res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao obter log' });
+    }
+});
+app.post('/api/admin/sync-headers', isAdmin, async (req, res) => {
+    const { sheets, spreadsheetId } = getSheetsClient();
+    const tabs = [
+        { name: 'Formadores', headers: ['Timestamp', 'Nome', 'Email', 'Telefone', 'DataNascimento', 'NIF', 'Areas', 'Habilitacoes', 'CAP_CCP', 'Experiencia', 'LinkedIn', 'Dias', 'Periodos', 'Modalidade', 'Motivacao', 'EmailConfirmacao'] },
+        { name: 'Alunos', headers: ['Timestamp', 'Nome', 'Email', 'Telefone', 'Programa', 'Turma', 'DataInicio', 'PreferenciaContacto', 'Transporte', 'Notas', 'EmailConfirmacao'] },
+        { name: 'Contactos', headers: ['Timestamp', 'Nome', 'Email', 'Telefone', 'Assunto', 'Mensagem'] },
+    ];
+    try {
+        for (const tab of tabs) {
+            await sheets.spreadsheets.values.update({ spreadsheetId, range: `${tab.name}!A1`, valueInputOption: 'RAW', requestBody: { values: [tab.headers] } });
+        }
+        res.json({ message: 'Headers actualizados' });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 app.post('/api/admin/update-row', isAdmin, async (req, res) => {
     const { tabName, rowIndex, values } = req.body;
     if (!tabName || rowIndex === undefined || !Array.isArray(values))
         return res.status(400).json({ error: 'Dados inválidos' });
     try {
         await updateSheetRow(tabName, rowIndex, values);
+        await logAdminAction(req.user?.email || '?', 'update_row', { tabName, rowIndex });
         res.json({ message: 'Atualizado com sucesso' });
     }
     catch (err) {
@@ -388,10 +433,26 @@ app.delete('/api/admin/delete-row', isAdmin, async (req, res) => {
         return res.status(400).json({ error: 'Dados inválidos' });
     try {
         await deleteSheetRow(tabName, rowIndex);
+        await logAdminAction(req.user?.email || '?', 'delete_row', { tabName, rowIndex });
         res.json({ message: 'Eliminado com sucesso' });
     }
     catch (err) {
         res.status(500).json({ error: 'Erro ao eliminar linha' });
+    }
+});
+app.delete('/api/admin/bulk-delete', isAdmin, async (req, res) => {
+    const { tabName, rowIndices } = req.body;
+    if (!tabName || !Array.isArray(rowIndices) || rowIndices.length === 0)
+        return res.status(400).json({ error: 'Dados inválidos' });
+    try {
+        const sorted = [...rowIndices].sort((a, b) => b - a);
+        for (const idx of sorted)
+            await deleteSheetRow(tabName, idx);
+        await logAdminAction(req.user?.email || '?', 'bulk_delete', { tabName, count: sorted.length });
+        res.json({ message: `${sorted.length} registos eliminados` });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao eliminar registos' });
     }
 });
 app.post('/api/admin/update-formador', isAdmin, async (req, res) => {
@@ -400,6 +461,7 @@ app.post('/api/admin/update-formador', isAdmin, async (req, res) => {
         return res.status(400).json({ error: 'Dados inválidos' });
     try {
         await updateSheetRow('Formadores', rowIndex, values);
+        await logAdminAction(req.user?.email || '?', 'update_formador', { rowIndex });
         res.json({ message: 'Atualizado com sucesso' });
     }
     catch (err) {

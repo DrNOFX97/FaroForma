@@ -16,4 +16,28 @@ export const F = {
   PERIODOS:        12,
   MODALIDADE:      13,
   MOTIVACAO:       14,
+  EMAIL_CONF:      15,
+} as const;
+
+export const A = {
+  TIMESTAMP: 0,
+  NOME: 1,
+  EMAIL: 2,
+  TELEFONE: 3,
+  PROGRAMA: 4,
+  TURMA: 5,
+  DATA_INICIO: 6,
+  PREFERENCIA_CONTACTO: 7,
+  TRANSPORTE: 8,
+  NOTAS: 9,
+  EMAIL_CONF: 10,
+} as const;
+
+export const C = {
+  TIMESTAMP: 0,
+  NOME: 1,
+  EMAIL: 2,
+  TELEFONE: 3,
+  ASSUNTO: 4,
+  MENSAGEM: 5,
 } as const;

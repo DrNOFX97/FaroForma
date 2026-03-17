@@ -1,8 +1,9 @@
 import {
   Users, GraduationCap, MessageSquare, TrendingUp,
   PieChart as PieChartIcon, Clock, MousePointer2,
-  Calendar, FileText, PlusCircle, ArrowRight, Activity, X
+  Calendar, FileText, PlusCircle, ArrowRight, Activity, X, RefreshCw, Shield
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar
@@ -21,9 +22,11 @@ interface DashboardViewProps {
 export function DashboardView({ data, onNavigate }: DashboardViewProps) {
   const [analytics, setAnalytics] = useState<any>({ total: 0 });
   const [visitorPopup, setVisitorPopup] = useState(false);
+  const [auditLog, setAuditLog] = useState<any[]>([]);
 
   useEffect(() => {
     apiService.getAnalytics().then(setAnalytics).catch(console.error);
+    apiService.getAuditLog().then(setAuditLog).catch(() => {});
   }, []);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
@@ -238,6 +241,10 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
                 <QuickAction icon={<PlusCircle size={16} />} label="Novo Curso" onClick={() => onNavigate?.('cursos')} />
                 <QuickAction icon={<FileText size={16} />} label="Ver Alunos" onClick={() => onNavigate?.('alunos')} />
                 <QuickAction icon={<ArrowRight size={16} />} label="Ver Contactos" onClick={() => onNavigate?.('contactos')} />
+                <QuickAction icon={<RefreshCw size={16} />} label="Sincronizar Headers" onClick={async () => {
+                  try { await apiService.syncHeaders(); toast.success('Headers sincronizados!'); }
+                  catch { toast.error('Erro ao sincronizar headers.'); }
+                }} />
               </div>
             </div>
           </div>
@@ -272,6 +279,38 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
           </div>
         </div>
       </div>
+
+      {auditLog.length > 0 && (
+        <div className="glass card" style={{ padding: '1.75rem' }}>
+          <div className="card-header">
+            <div className="header-info">
+              <Shield size={18} className="text-accent" />
+              <h4>Log de Administração</h4>
+            </div>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Últimas {Math.min(auditLog.length, 10)} ações</span>
+          </div>
+          <div className="audit-log">
+            {auditLog.slice(0, 10).map((entry, i) => {
+              const label: Record<string, string> = {
+                update_row: 'Editou registo',
+                delete_row: 'Eliminou registo',
+                update_formador: 'Editou formador',
+                bulk_delete: 'Eliminação em massa',
+              };
+              const details = entry.details || {};
+              const sub = details.tabName ? `${details.tabName}${details.rowIndex !== undefined ? ` #${details.rowIndex}` : ''}${details.count !== undefined ? ` (${details.count} registos)` : ''}` : '';
+              return (
+                <div key={i} className="audit-entry">
+                  <span className="audit-ts">{new Date(entry.ts).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="audit-email">{entry.email?.split('@')[0]}</span>
+                  <span className={`audit-action-badge ${entry.action?.includes('delete') ? 'danger' : 'info'}`}>{label[entry.action] ?? entry.action}</span>
+                  {sub && <span className="audit-sub">{sub}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <style>{DASHBOARD_STYLES}</style>
     </div>
@@ -502,6 +541,17 @@ const DASHBOARD_STYLES = `
   .quick-action-btn { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-2); color: var(--text); font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; text-align: left; }
   .quick-action-btn:hover { background: var(--bg-1); border-color: var(--accent); color: var(--accent); transform: translateX(4px); }
   .qa-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--bg-1); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); }
+
+  /* Audit Log */
+  .audit-log { display: flex; flex-direction: column; gap: 0; margin-top: 1.25rem; }
+  .audit-entry { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .audit-entry:last-child { border-bottom: none; }
+  .audit-ts { font-size: 0.72rem; font-family: monospace; color: var(--text-muted); flex-shrink: 0; min-width: 90px; }
+  .audit-email { font-size: 0.78rem; font-weight: 700; color: var(--text); flex-shrink: 0; }
+  .audit-action-badge { font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; }
+  .audit-action-badge.danger { background: rgba(239,68,68,0.1); color: #ef4444; }
+  .audit-action-badge.info { background: rgba(59,130,246,0.1); color: #3b82f6; }
+  .audit-sub { font-size: 0.72rem; color: var(--text-muted); }
 
   @media (max-width: 1200px) {
     .dashboard-main-grid { grid-template-columns: 1fr; }

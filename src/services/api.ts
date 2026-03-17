@@ -214,5 +214,30 @@ export const apiService = {
     });
     if (!res.ok) throw new Error('Erro ao guardar administradores');
     return res.json();
+  },
+
+  async getAuditLog() {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/admin/audit-log`, { headers });
+    if (!res.ok) throw new Error('Erro ao obter log');
+    return res.json();
+  },
+
+  async bulkDelete(tabName: string, rowIndices: number[]) {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/admin/bulk-delete`, {
+      method: 'DELETE',
+      headers,
+      body: JSON.stringify({ tabName, rowIndices })
+    });
+    if (!res.ok) throw new Error('Erro ao eliminar registos');
+    return res.json();
+  },
+
+  async syncHeaders() {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/admin/sync-headers`, { method: 'POST', headers });
+    if (!res.ok) throw new Error('Erro ao sincronizar headers');
+    return res.json();
   }
 };
