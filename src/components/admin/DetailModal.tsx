@@ -1,46 +1,73 @@
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { X, Mail, Phone, Calendar, Hash, Linkedin, BookOpen, Award, Clock, Monitor, Layers, Star } from 'lucide-react';
-import { F } from '../../config/sheetsSchema';
+import { X, Mail, Phone, Calendar, Hash, Linkedin, BookOpen, Award, Clock, Monitor, Layers, Star, MessageSquare, GraduationCap, User } from 'lucide-react';
+import { F, A, C } from '../../config/sheetsSchema';
 
-/* ── Formador field map ─────────────────────────────────────────────────── */
-const SECTIONS = [
+/* ── Formador sections ──────────────────────────────────────────────────── */
+const F_SECTIONS = [
   {
     label: 'Contacto',
     fields: [
-      { idx: F.EMAIL,            label: 'Email',             icon: Mail },
-      { idx: F.TELEFONE,         label: 'Telefone',          icon: Phone },
-      { idx: F.LINKEDIN,         label: 'LinkedIn',         icon: Linkedin },
-      { idx: F.NIF,              label: 'NIF',               icon: Hash },
-      { idx: F.DATA_NASCIMENTO,  label: 'Data de Nascimento',icon: Calendar },
+      { idx: F.EMAIL,           label: 'Email',              icon: Mail },
+      { idx: F.TELEFONE,        label: 'Telefone',           icon: Phone },
+      { idx: F.LINKEDIN,        label: 'LinkedIn',           icon: Linkedin },
+      { idx: F.NIF,             label: 'NIF',                icon: Hash },
+      { idx: F.DATA_NASCIMENTO, label: 'Data de Nascimento', icon: Calendar },
+      { idx: F.EMAIL_CONF,      label: 'Email Confirmado',   icon: Mail },
     ],
   },
   {
     label: 'Disponibilidade',
     fields: [
-      { idx: F.DIAS,             label: 'Dias Disponíveis', icon: Calendar },
-      { idx: F.PERIODOS,         label: 'Períodos',         icon: Clock },
-      { idx: F.MODALIDADE,       label: 'Modalidade',       icon: Monitor },
+      { idx: F.DIAS,      label: 'Dias Disponíveis', icon: Calendar },
+      { idx: F.PERIODOS,  label: 'Períodos',         icon: Clock },
+      { idx: F.MODALIDADE,label: 'Modalidade',       icon: Monitor },
     ],
   },
   {
     label: 'Qualificações',
     fields: [
-      { idx: F.AREAS,            label: 'Áreas',            icon: Layers },
-      { idx: F.HABILITACOES,     label: 'Habilitações',     icon: BookOpen },
-      { idx: F.CAP_CCP,          label: 'CAP / CCP',        icon: Award },
-      { idx: F.EXPERIENCIA,      label: 'Experiência',      icon: Star },
+      { idx: F.AREAS,      label: 'Áreas',       icon: Layers },
+      { idx: F.HABILITACOES,label: 'Habilitações',icon: BookOpen },
+      { idx: F.CAP_CCP,    label: 'CAP / CCP',   icon: Award },
+      { idx: F.EXPERIENCIA,label: 'Experiência', icon: Star },
     ],
   },
 ];
 
-/* ── Generic label map for non-formador rows ───────────────────────────── */
-const GENERIC_LABELS: Record<string, string> = {
-  fullName: 'Nome', name: 'Nome', email: 'Email', phone: 'Telefone',
-  program: 'Programa', turma: 'Turma', startDate: 'Data Início',
-  contactPreference: 'Contacto Preferido', needsTransport: 'Transporte',
-  notes: 'Notas', cells: 'Dados',
-};
+/* ── Aluno sections ─────────────────────────────────────────────────────── */
+const A_SECTIONS = [
+  {
+    label: 'Contacto',
+    fields: [
+      { idx: A.EMAIL,                label: 'Email',              icon: Mail },
+      { idx: A.TELEFONE,             label: 'Telefone',           icon: Phone },
+      { idx: A.PREFERENCIA_CONTACTO, label: 'Contacto Preferido', icon: Phone },
+      { idx: A.EMAIL_CONF,           label: 'Email Confirmado',   icon: Mail },
+    ],
+  },
+  {
+    label: 'Inscrição',
+    fields: [
+      { idx: A.PROGRAMA,    label: 'Programa',    icon: GraduationCap },
+      { idx: A.TURMA,       label: 'Turma',       icon: Layers },
+      { idx: A.DATA_INICIO, label: 'Data Início', icon: Calendar },
+      { idx: A.TRANSPORTE,  label: 'Transporte',  icon: Monitor },
+    ],
+  },
+];
+
+/* ── Contacto sections ──────────────────────────────────────────────────── */
+const C_SECTIONS = [
+  {
+    label: 'Contacto',
+    fields: [
+      { idx: C.EMAIL,    label: 'Email',    icon: Mail },
+      { idx: C.TELEFONE, label: 'Telefone', icon: Phone },
+      { idx: C.ASSUNTO,  label: 'Assunto',  icon: MessageSquare },
+    ],
+  },
+];
 
 interface DetailModalProps {
   data: any;
@@ -48,8 +75,32 @@ interface DetailModalProps {
 }
 
 export function DetailModal({ data, onClose }: DetailModalProps) {
-  const isFormador = Array.isArray(data.cells);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  // _type is set by TableView; absent when called from FormadoresTable
+  const type: string = data._type || 'formadores';
+  const cells: any[] = data.cells || [];
+
+  const sections =
+    type === 'alunos'    ? A_SECTIONS :
+    type === 'contactos' ? C_SECTIONS :
+    F_SECTIONS;
+
+  // Tail field (long text rendered full-width)
+  const tailField =
+    type === 'alunos'    ? { idx: A.NOTAS,      label: 'Notas' } :
+    type === 'contactos' ? { idx: C.MENSAGEM,   label: 'Mensagem' } :
+    { idx: F.MOTIVACAO, label: 'Motivação' };
+
+  const typeLabel =
+    type === 'alunos'    ? 'Aluno'    :
+    type === 'contactos' ? 'Contacto' :
+    'Candidatura';
+
+  const typeIcon =
+    type === 'alunos'    ? <GraduationCap size={18} /> :
+    type === 'contactos' ? <MessageSquare size={18} /> :
+    <User size={18} />;
 
   useEffect(() => {
     modalRef.current?.focus();
@@ -84,76 +135,49 @@ export function DetailModal({ data, onClose }: DetailModalProps) {
         {/* Header */}
         <div className="dm-header">
           <div className="dm-header-info">
-            <div className="dm-avatar">
-              {isFormador ? (data.cells[F.NOME]?.[0] ?? '?') : (data.fullName?.[0] ?? data.name?.[0] ?? '?')}
-            </div>
+            <div className="dm-avatar">{cells[1]?.[0] ?? '?'}</div>
             <div>
-              <h3 id="dm-title" className="dm-name">
-                {isFormador ? data.cells[F.NOME] : (data.fullName || data.name || 'Registo')}
-              </h3>
+              <h3 id="dm-title" className="dm-name">{cells[1] || 'Registo'}</h3>
               <span className="dm-meta">
-                {isFormador
-                  ? `Candidatura #${data.originalIndex} · ${data.cells[F.TIMESTAMP] ? new Date(data.cells[F.TIMESTAMP]).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}`
-                  : `Registo #${data.originalIndex}`}
+                {typeLabel} #{data.originalIndex}
+                {cells[0] ? ` · ${new Date(cells[0]).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}
               </span>
             </div>
           </div>
-          <button className="dm-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span className={`dm-type-badge ${type}`}>{typeIcon}{typeLabel}</span>
+            <button className="dm-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button>
+          </div>
         </div>
 
         {/* Body */}
         <div className="dm-body">
-          {isFormador ? (
-            <>
-              {SECTIONS.map(section => {
-                const visible = section.fields.filter(f => data.cells[f.idx]);
-                if (!visible.length) return null;
-                return (
-                  <div key={section.label} className="dm-section">
-                    <span className="dm-section-label">{section.label}</span>
-                    <div className="dm-fields">
-                      {visible.map(({ idx, label, icon: Icon }) => (
-                        <div key={idx} className="dm-field">
-                          <Icon size={14} className="dm-field-icon" />
-                          <div className="dm-field-content">
-                            <span className="dm-field-label">{label}</span>
-                            <span className="dm-field-value">{data.cells[idx]}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Motivação full-width */}
-              {data.cells[F.MOTIVACAO] && (
-                <div className="dm-section">
-                  <span className="dm-section-label">Motivação</span>
-                  <div className="dm-textarea-value">{data.cells[F.MOTIVACAO]}</div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="dm-section">
-              <div className="dm-fields">
-                {Object.entries(data)
-                  .filter(([key]) => key !== 'originalIndex' && key !== 'cells')
-                  .map(([key, val]: [string, any]) => (
-                    <div key={key} className="dm-field">
+          {sections.map(section => {
+            const visible = section.fields.filter(f => cells[f.idx]);
+            if (!visible.length) return null;
+            return (
+              <div key={section.label} className="dm-section">
+                <span className="dm-section-label">{section.label}</span>
+                <div className="dm-fields">
+                  {visible.map(({ idx, label, icon: Icon }) => (
+                    <div key={idx} className="dm-field">
+                      <Icon size={14} className="dm-field-icon" />
                       <div className="dm-field-content">
-                        <span className="dm-field-label">{GENERIC_LABELS[key] ?? key}</span>
-                        <span className="dm-field-value">
-                          {typeof val === 'boolean'
-                            ? (val ? 'Sim' : 'Não')
-                            : typeof val === 'string' || typeof val === 'number'
-                              ? val || '—'
-                              : <pre style={{ margin: 0, fontSize: '0.8em' }}>{JSON.stringify(val, null, 2)}</pre>}
-                        </span>
+                        <span className="dm-field-label">{label}</span>
+                        <span className="dm-field-value">{cells[idx]}</span>
                       </div>
                     </div>
                   ))}
+                </div>
               </div>
+            );
+          })}
+
+          {/* Long-text tail field */}
+          {cells[tailField.idx] && (
+            <div className="dm-section">
+              <span className="dm-section-label">{tailField.label}</span>
+              <div className="dm-textarea-value">{cells[tailField.idx]}</div>
             </div>
           )}
         </div>
@@ -200,6 +224,16 @@ const DM_STYLES = `
   }
   .dm-name { margin: 0; font-size: 1rem; font-weight: 700; color: var(--text); }
   .dm-meta { font-size: 0.75rem; color: var(--text-muted); }
+
+  .dm-type-badge {
+    display: flex; align-items: center; gap: 0.35rem;
+    font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; padding: 3px 9px; border-radius: 20px;
+  }
+  .dm-type-badge.formadores { background: rgba(16,185,129,0.12); color: #10b981; }
+  .dm-type-badge.alunos     { background: rgba(59,130,246,0.12); color: #3b82f6; }
+  .dm-type-badge.contactos  { background: rgba(139,92,246,0.12); color: #8b5cf6; }
+
   .dm-close {
     width: 32px; height: 32px; border-radius: 8px; border: none;
     background: var(--bg); color: var(--text-muted); cursor: pointer;

@@ -230,9 +230,7 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button className="admin-action-btn" onClick={() => {
-                      const obj: any = { originalIndex: item.originalIndex, cells: item.cells };
-                      headers.forEach((h: string, idx: number) => { obj[h] = item.cells[idx]; });
-                      onDetail(obj);
+                      onDetail({ originalIndex: item.originalIndex, cells: item.cells, _type: type });
                     }} title="Ver Detalhes">
                       <Search size={16} />
                     </button>
