@@ -17,16 +17,20 @@ export const COURSE_INFO = {
   },
   highlights: [
     { 
-      text: { pt: 'Certificado válido para fins de nacionalidade e residência.', en: 'Valid certificate for nationality and residence purposes.' }, 
-      icon: 'Award' 
-    },
-    { 
-      text: { pt: 'Foco na comunicação oral para o dia a dia e trabalho.', en: 'Focus on oral communication for daily life and work.' }, 
+      text: { pt: 'Foco: Comunicação prática para o dia a dia, trabalho e integração em Portugal.', en: 'Focus: Practical communication for daily life, work, and integration in Portugal.' }, 
       icon: 'MessageCircle' 
     },
     { 
-      text: { pt: 'Turmas pequenas com apoio personalizado à integração.', en: 'Small classes with personalized integration support.' }, 
+      text: { pt: 'Vagas: Limitadas.', en: 'Spaces: Limited.' }, 
       icon: 'Users' 
+    },
+    { 
+      text: { pt: 'Certificação: Inclui certificado de frequência.', en: 'Certification: Includes certificate of attendance.' }, 
+      icon: 'Award' 
+    },
+    { 
+      text: { pt: 'Objetivo: Melhora a tua integração.', en: 'Objective: Improve your integration.' }, 
+      icon: 'Bullseye' 
     },
   ] as CourseHighlight[],
   schedule: [
