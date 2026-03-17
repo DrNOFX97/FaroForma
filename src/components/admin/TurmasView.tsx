@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Users, ChevronDown, ChevronRight, Download } from 'lucide-react';
+import { Users, ChevronDown, ChevronRight, Download, X, Save, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { A } from '../../config/sheetsSchema';
@@ -10,10 +11,42 @@ interface TurmasViewProps {
   onSaveCourse: (course: any) => Promise<void>;
 }
 
+interface EditingSlot {
+  courseId: string;
+  slotIdx: number;
+  slot: any;
+}
+
+const PERIODS = [
+  { id: 'manha', pt: 'Manhã' },
+  { id: 'tarde', pt: 'Tarde' },
+  { id: 'noite', pt: 'Noite' },
+  { id: 'sabado', pt: 'Sábado' },
+];
+
+const PERIOD_SLOTS: Record<string, string[]> = {
+  manha: ['09:00 – 12:00', '09:00 – 13:00', '10:00 – 13:00'],
+  tarde: ['14:00 – 17:00', '14:00 – 18:00', '15:00 – 18:00'],
+  noite: ['18:00 – 21:00', '19:00 – 22:00', '20:00 – 22:00'],
+  sabado: ['09:00 – 13:00', '14:00 – 18:00', '09:00 – 18:00 (Intensivo)'],
+};
+
+const WEEKDAYS = [
+  '2ª a 6ª feira', '2ª, 4ª e 6ª feira', '3ª e 5ª feira', 'Sábado',
+];
+
+const periodoLabel = (p: string) => {
+  if (p === 'manha') return 'Manhã';
+  if (p === 'tarde') return 'Tarde';
+  if (p === 'noite') return 'Noite';
+  if (p === 'sabado') return 'Sábado';
+  return p;
+};
+
 export function TurmasView({ courses: initialCourses, alunosData, onSaveCourse }: TurmasViewProps) {
   const [courses, setCourses] = useState<any[]>(initialCourses);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [saving, setSaving] = useState<string | null>(null);
+  const [editing, setEditing] = useState<EditingSlot | null>(null);
 
   useEffect(() => {
     setCourses(initialCourses);
@@ -24,25 +57,20 @@ export function TurmasView({ courses: initialCourses, alunosData, onSaveCourse }
   const getEnrolled = (courseTitlePt: string, turmaPt: string) =>
     alunos.filter(r => r[A.PROGRAMA] === courseTitlePt && r[A.TURMA] === turmaPt);
 
-  const handleCapacityBlur = async (courseId: string, slotIdx: number, rawVal: string) => {
-    const capacity = rawVal.trim() === '' ? undefined : Number(rawVal);
+  const handleSaveSlot = async (courseId: string, slotIdx: number, updatedSlot: any) => {
     const course = courses.find(c => c.id === courseId);
     if (!course) return;
-
     const updatedSchedule = [...(course.schedule || [])];
-    updatedSchedule[slotIdx] = { ...updatedSchedule[slotIdx], capacity };
+    updatedSchedule[slotIdx] = updatedSlot;
     const updatedCourse = { ...course, schedule: updatedSchedule };
-
     setCourses(prev => prev.map(c => c.id === courseId ? updatedCourse : c));
-    setSaving(`${courseId}-${slotIdx}`);
     try {
       await onSaveCourse(updatedCourse);
-      toast.success('Vagas guardadas');
+      toast.success('Turma guardada');
+      setEditing(null);
     } catch {
-      toast.error('Erro ao guardar vagas');
+      toast.error('Erro ao guardar turma');
       setCourses(initialCourses);
-    } finally {
-      setSaving(null);
     }
   };
 
@@ -59,11 +87,13 @@ export function TurmasView({ courses: initialCourses, alunosData, onSaveCourse }
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, turmaPt.slice(0, 31));
-    XLSX.writeFile(wb, `${courseTitlePt}_${turmaPt}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.writeFile(wb, `${courseTitlePt}_${turmaPt}_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
-  const toggleExpand = (key: string) =>
+  const toggleExpand = (key: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const coursesWithSchedule = courses.filter(c => Array.isArray(c.schedule) && c.schedule.length > 0);
 
@@ -89,7 +119,6 @@ export function TurmasView({ courses: initialCourses, alunosData, onSaveCourse }
 
         return (
           <div key={course.id} className="glass" style={{ marginBottom: '1.5rem', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-            {/* Course header */}
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <span style={{ fontWeight: 800, fontSize: '1rem' }}>{titlePt}</span>
@@ -97,16 +126,16 @@ export function TurmasView({ courses: initialCourses, alunosData, onSaveCourse }
                   {totalEnrolled} inscritos
                 </span>
               </div>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Clique numa linha para editar</span>
             </div>
 
-            {/* Turma rows */}
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-2)', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   <th style={{ padding: '0.6rem 1.5rem', textAlign: 'left' }}>Turma</th>
                   <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left' }}>Período / Horário</th>
                   <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left' }}>Dias</th>
-                  <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', width: 100 }}>Vagas</th>
+                  <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', width: 80 }}>Vagas</th>
                   <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', width: 80 }}>Inscritos</th>
                   <th style={{ padding: '0.6rem 1.5rem', textAlign: 'left', minWidth: 140 }}>Ocupação</th>
                   <th style={{ padding: '0.6rem 1rem', textAlign: 'right', width: 90 }}>Exportar</th>
@@ -122,47 +151,38 @@ export function TurmasView({ courses: initialCourses, alunosData, onSaveCourse }
                   const barColor = pct < 50 ? '#10b981' : pct < 90 ? '#f59e0b' : '#ef4444';
                   const isFull = capacity !== null && enrolled.length >= capacity;
                   const isExpanded = expanded[key];
-                  const isSaving = saving === key;
-
-                  const periodoLabel = (() => {
-                    const p = slot.periodo || '';
-                    if (p === 'manha') return 'Manhã';
-                    if (p === 'tarde') return 'Tarde';
-                    if (p === 'noite') return 'Noite';
-                    if (p === 'sabado') return 'Sábado';
-                    return p;
-                  })();
                   const horario = Array.isArray(slot.horario) ? slot.horario.join(', ') : (slot.horario || '');
                   const dias = Array.isArray(slot.dias) ? slot.dias.join(', ') : (slot.dias || '');
 
                   return (
                     <>
-                      <tr key={key} style={{ borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
+                      <tr
+                        key={key}
+                        style={{ borderBottom: '1px solid var(--border)', fontSize: '0.85rem', cursor: 'pointer', transition: 'background 0.15s' }}
+                        onClick={() => setEditing({ courseId: course.id, slotIdx, slot })}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(16,185,129,0.04)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = '')}
+                        title="Clique para editar esta turma"
+                      >
                         <td style={{ padding: '0.75rem 1.5rem', fontWeight: 700 }}>
-                          <button
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontWeight: 700, fontSize: '0.85rem', padding: 0 }}
-                            onClick={() => toggleExpand(key)}
-                            title="Ver alunos inscritos"
-                          >
-                            {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <button
+                              style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px', borderRadius: 4 }}
+                              onClick={e => toggleExpand(key, e)}
+                              title="Ver alunos inscritos"
+                            >
+                              {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                            </button>
                             {turmaPt}
-                            {isFull && <span style={{ fontSize: '0.65rem', background: '#ef4444', color: '#fff', padding: '1px 6px', borderRadius: 4, marginLeft: 4 }}>COMPLETA</span>}
-                          </button>
+                            {isFull && <span style={{ fontSize: '0.65rem', background: '#ef4444', color: '#fff', padding: '1px 6px', borderRadius: 4 }}>COMPLETA</span>}
+                          </div>
                         </td>
                         <td style={{ padding: '0.75rem 0.75rem', color: 'var(--text-muted)' }}>
-                          {periodoLabel}{horario ? ` · ${horario}` : ''}
+                          {periodoLabel(slot.periodo || '')}{horario ? ` · ${horario}` : ''}
                         </td>
                         <td style={{ padding: '0.75rem 0.75rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>{dias}</td>
-                        <td style={{ padding: '0.75rem 0.75rem', textAlign: 'center' }}>
-                          <input
-                            type="number"
-                            min="1"
-                            defaultValue={capacity ?? ''}
-                            placeholder="∞"
-                            onBlur={e => handleCapacityBlur(course.id, slotIdx, e.target.value)}
-                            style={{ width: 60, textAlign: 'center', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 6px', fontSize: '0.82rem', color: 'var(--text)', outline: 'none' }}
-                            title={isSaving ? 'A guardar...' : 'Vagas máximas (deixar vazio = ilimitado)'}
-                          />
+                        <td style={{ padding: '0.75rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          {capacity ?? '∞'}
                         </td>
                         <td style={{ padding: '0.75rem 0.75rem', textAlign: 'center', fontWeight: 700, color: enrolled.length > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>
                           {enrolled.length}
@@ -182,7 +202,7 @@ export function TurmasView({ courses: initialCourses, alunosData, onSaveCourse }
                         <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
                           <button
                             className="admin-action-btn"
-                            onClick={() => handleExport(titlePt, turmaPt)}
+                            onClick={e => { e.stopPropagation(); handleExport(titlePt, turmaPt); }}
                             title="Exportar lista de alunos"
                             disabled={enrolled.length === 0}
                           >
@@ -235,6 +255,192 @@ export function TurmasView({ courses: initialCourses, alunosData, onSaveCourse }
           </div>
         );
       })}
+
+      <AnimatePresence>
+        {editing && (
+          <SlotEditModal
+            courseId={editing.courseId}
+            slotIdx={editing.slotIdx}
+            slot={editing.slot}
+            onClose={() => setEditing(null)}
+            onSave={handleSaveSlot}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+function SlotEditModal({ courseId, slotIdx, slot, onClose, onSave }: {
+  courseId: string;
+  slotIdx: number;
+  slot: any;
+  onClose: () => void;
+  onSave: (courseId: string, slotIdx: number, updatedSlot: any) => Promise<void>;
+}) {
+  const [form, setForm] = useState({
+    turmaPt: slot.turma?.pt || slot.turma || '',
+    periodo: slot.periodo || 'manha',
+    horario: Array.isArray(slot.horario) ? slot.horario : (slot.horario ? [slot.horario] : []),
+    dias: Array.isArray(slot.dias) ? slot.dias : (slot.dias ? [slot.dias] : []),
+    diasExtra: slot.diasExtra?.pt || slot.diasExtra || '',
+    capacity: typeof slot.capacity === 'number' ? String(slot.capacity) : '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  const toggleHorario = (val: string) =>
+    setForm(prev => ({
+      ...prev,
+      horario: prev.horario.includes(val) ? prev.horario.filter((v: string) => v !== val) : [...prev.horario, val],
+    }));
+
+  const toggleDia = (val: string) =>
+    setForm(prev => ({
+      ...prev,
+      dias: prev.dias.includes(val) ? prev.dias.filter((v: string) => v !== val) : [...prev.dias, val],
+    }));
+
+  const handleSave = async () => {
+    if (!form.turmaPt.trim()) return;
+    setSaving(true);
+    const updatedSlot = {
+      ...slot,
+      turma: { pt: form.turmaPt.trim(), en: slot.turma?.en || '' },
+      periodo: form.periodo,
+      horario: form.horario,
+      dias: form.dias,
+      diasExtra: { pt: form.diasExtra, en: slot.diasExtra?.en || '' },
+      capacity: form.capacity.trim() === '' ? undefined : Number(form.capacity),
+    };
+    await onSave(courseId, slotIdx, updatedSlot);
+    setSaving(false);
+  };
+
+  const slots = PERIOD_SLOTS[form.periodo] || [];
+
+  return (
+    <motion.div
+      className="admin-modal-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        className="admin-modal glass"
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.92, opacity: 0 }}
+        style={{ maxWidth: 540 }}
+      >
+        <div className="admin-modal-header">
+          <h3 style={{ margin: 0 }}>Editar Turma</h3>
+          <button className="admin-close-btn" onClick={onClose}><X size={20} /></button>
+        </div>
+
+        <div className="admin-modal-body">
+          <div className="form__grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <div className="form__group">
+              <label className="form__label">Nome da Turma *</label>
+              <input
+                className="form__input"
+                value={form.turmaPt}
+                onChange={e => setForm(prev => ({ ...prev, turmaPt: e.target.value }))}
+                placeholder="Ex: Turma A"
+              />
+            </div>
+            <div className="form__group">
+              <label className="form__label">Vagas Máximas</label>
+              <input
+                className="form__input"
+                type="number"
+                min="1"
+                value={form.capacity}
+                onChange={e => setForm(prev => ({ ...prev, capacity: e.target.value }))}
+                placeholder="∞ ilimitado"
+              />
+            </div>
+          </div>
+
+          <div className="form__group" style={{ marginTop: '1rem' }}>
+            <label className="form__label">Período</label>
+            <select
+              className="form__input"
+              value={form.periodo}
+              onChange={e => setForm(prev => ({ ...prev, periodo: e.target.value, horario: [] }))}
+            >
+              {PERIODS.map(p => <option key={p.id} value={p.id}>{p.pt}</option>)}
+            </select>
+          </div>
+
+          <div style={{ marginTop: '1rem' }}>
+            <label className="form__label">Horários</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.4rem' }}>
+              {slots.map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleHorario(s)}
+                  style={{
+                    padding: '0.35rem 0.75rem', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer', border: '1px solid',
+                    borderColor: form.horario.includes(s) ? 'var(--accent)' : 'var(--border)',
+                    background: form.horario.includes(s) ? 'rgba(var(--accent-rgb),0.08)' : 'var(--bg-2)',
+                    color: form.horario.includes(s) ? 'var(--accent)' : 'var(--text-muted)',
+                    display: 'flex', alignItems: 'center', gap: '0.3rem',
+                  }}
+                >
+                  {form.horario.includes(s) && <Check size={12} />}
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginTop: '1rem' }}>
+            <label className="form__label">Dias da Semana</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.4rem' }}>
+              {WEEKDAYS.map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => toggleDia(d)}
+                  style={{
+                    padding: '0.35rem 0.75rem', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer', border: '1px solid',
+                    borderColor: form.dias.includes(d) ? 'var(--accent)' : 'var(--border)',
+                    background: form.dias.includes(d) ? 'rgba(var(--accent-rgb),0.08)' : 'var(--bg-2)',
+                    color: form.dias.includes(d) ? 'var(--accent)' : 'var(--text-muted)',
+                    display: 'flex', alignItems: 'center', gap: '0.3rem',
+                  }}
+                >
+                  {form.dias.includes(d) && <Check size={12} />}
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="form__group" style={{ marginTop: '1rem' }}>
+            <label className="form__label">Extra / Observações Dias</label>
+            <input
+              className="form__input"
+              value={form.diasExtra}
+              onChange={e => setForm(prev => ({ ...prev, diasExtra: e.target.value }))}
+              placeholder="Ex: Exceto feriados"
+            />
+          </div>
+        </div>
+
+        <div className="admin-modal-footer">
+          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button
+            className="btn btn--primary"
+            onClick={handleSave}
+            disabled={saving || !form.turmaPt.trim()}
+          >
+            <Save size={16} /> {saving ? 'A guardar…' : 'Guardar'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
