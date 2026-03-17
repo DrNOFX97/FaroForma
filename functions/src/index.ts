@@ -7,6 +7,7 @@ import { google } from "googleapis";
 import nodemailer from "nodemailer";
 import { z } from "zod";
 import * as admin from "firebase-admin";
+import { F, A, C } from "./sheetsSchema";
 
 admin.initializeApp();
 
@@ -245,11 +246,24 @@ app.post('/api/inscricao-formadores', publicLimiter, async (req: Request, res: R
   const timestamp = new Date().toISOString();
 
   try {
-    await appendToSheet('Formadores', [
-      timestamp, d.nome, d.email, d.telefone, d.dataNascimento, d.nif,
-      d.areas.join(', '), d.habilitacoes, d.capCcp, d.experiencia, d.linkedin,
-      d.dias.join(', '), d.periodos.join(', '), d.modalidade, d.motivacao,
-    ]);
+    const row: string[] = [];
+    row[F.TIMESTAMP] = timestamp;
+    row[F.NOME] = d.nome;
+    row[F.EMAIL] = d.email;
+    row[F.TELEFONE] = d.telefone;
+    row[F.DATA_NASCIMENTO] = d.dataNascimento;
+    row[F.NIF] = d.nif;
+    row[F.AREAS] = d.areas.join(', ');
+    row[F.HABILITACOES] = d.habilitacoes;
+    row[F.CAP_CCP] = d.capCcp;
+    row[F.EXPERIENCIA] = d.experiencia;
+    row[F.LINKEDIN] = d.linkedin;
+    row[F.DIAS] = d.dias.join(', ');
+    row[F.PERIODOS] = d.periodos.join(', ');
+    row[F.MODALIDADE] = d.modalidade;
+    row[F.MOTIVACAO] = d.motivacao;
+
+    await appendToSheet('Formadores', row);
 
     // Emails
     await sendMail({
@@ -288,7 +302,14 @@ app.post('/api/contact', publicLimiter, async (req: Request, res: Response) => {
 
   const d = parsed.data;
   try {
-    await appendToSheet('Contactos', [new Date().toISOString(), d.name, d.email, d.phone, d.subject, d.message]);
+    const row: string[] = [];
+    row[C.TIMESTAMP] = new Date().toISOString();
+    row[C.NOME] = d.name;
+    row[C.EMAIL] = d.email;
+    row[C.TELEFONE] = d.phone;
+    row[C.ASSUNTO] = d.subject;
+    row[C.MENSAGEM] = d.message;
+    await appendToSheet('Contactos', row);
     
     await notifyAdmins(
       `[Contacto] ${d.name} — ${d.subject || 'sem assunto'}`,
@@ -316,7 +337,18 @@ app.post('/api/student', publicLimiter, async (req: Request, res: Response) => {
   const d = parsed.data;
   try {
     const transportLabel = d.needsTransport ? 'Sim (+2,50 €/viagem/dia)' : 'Não';
-    await appendToSheet('Alunos', [new Date().toISOString(), d.fullName, d.email, d.phone, d.program, d.turma, d.startDate, d.contactPreference, transportLabel, d.notes]);
+    const row: string[] = [];
+    row[A.TIMESTAMP] = new Date().toISOString();
+    row[A.NOME] = d.fullName;
+    row[A.EMAIL] = d.email;
+    row[A.TELEFONE] = d.phone;
+    row[A.PROGRAMA] = d.program;
+    row[A.TURMA] = d.turma;
+    row[A.DATA_INICIO] = d.startDate;
+    row[A.PREFERENCIA_CONTACTO] = d.contactPreference;
+    row[A.TRANSPORTE] = transportLabel;
+    row[A.NOTAS] = d.notes;
+    await appendToSheet('Alunos', row);
 
     await sendMail({
       to: d.email,
@@ -509,7 +541,7 @@ app.post('/api/admin/admins', isAdmin as any, async (req: Request, res: Response
 
 // ── Analytics Route ──────────────────────────────────────────────────────────
 
-app.post('/api/track-visit', async (req: Request, res: Response) => {
+app.post('/api/track-visit', publicLimiter, async (req: Request, res: Response) => {
   const now = new Date();
   const dateKey = now.toISOString().split('T')[0];
   const hourKey = now.getHours().toString();

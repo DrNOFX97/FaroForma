@@ -17,21 +17,21 @@ export function ImageUploader({ label, value, folder, onChange }: ImageUploaderP
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Basic validation
     if (!file.type.startsWith('image/')) {
       toast.error('Por favor selecione uma imagem.');
+      e.target.value = '';
       return;
     }
 
     const MAX_MB = 5;
     if (file.size > MAX_MB * 1024 * 1024) {
       toast.error(`Imagem demasiado grande. Máximo ${MAX_MB}MB.`);
+      e.target.value = '';
       return;
     }
 
     setUploading(true);
     const toastId = toast.loading('A carregar imagem...');
-    
     try {
       const fileName = `${Date.now()}_${file.name}`;
       const url = await apiService.uploadFile(`${folder}/${fileName}`, file);
@@ -41,6 +41,7 @@ export function ImageUploader({ label, value, folder, onChange }: ImageUploaderP
       toast.error('Erro ao carregar imagem.', { id: toastId });
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -75,6 +76,8 @@ export function ImageUploader({ label, value, folder, onChange }: ImageUploaderP
 
         .upload-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; }
         .upload-placeholder span { opacity: 0.7; }
+        @keyframes animate-bounce-kf { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        .animate-bounce { animation: animate-bounce-kf 0.8s ease-in-out infinite; }
       `}</style>
     </div>
   );

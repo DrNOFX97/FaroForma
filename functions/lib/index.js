@@ -46,6 +46,7 @@ const googleapis_1 = require("googleapis");
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const zod_1 = require("zod");
 const admin = __importStar(require("firebase-admin"));
+const sheetsSchema_1 = require("./sheetsSchema");
 admin.initializeApp();
 const GOOGLE_SERVICE_ACCOUNT_JSON = (0, params_1.defineSecret)("GOOGLE_SERVICE_ACCOUNT_JSON");
 const SPREADSHEET_ID = (0, params_1.defineSecret)("SPREADSHEET_ID");
@@ -243,11 +244,23 @@ app.post('/api/inscricao-formadores', publicLimiter, async (req, res) => {
     const d = parsed.data;
     const timestamp = new Date().toISOString();
     try {
-        await appendToSheet('Formadores', [
-            timestamp, d.nome, d.email, d.telefone, d.dataNascimento, d.nif,
-            d.areas.join(', '), d.habilitacoes, d.capCcp, d.experiencia, d.linkedin,
-            d.dias.join(', '), d.periodos.join(', '), d.modalidade, d.motivacao,
-        ]);
+        const row = [];
+        row[sheetsSchema_1.F.TIMESTAMP] = timestamp;
+        row[sheetsSchema_1.F.NOME] = d.nome;
+        row[sheetsSchema_1.F.EMAIL] = d.email;
+        row[sheetsSchema_1.F.TELEFONE] = d.telefone;
+        row[sheetsSchema_1.F.DATA_NASCIMENTO] = d.dataNascimento;
+        row[sheetsSchema_1.F.NIF] = d.nif;
+        row[sheetsSchema_1.F.AREAS] = d.areas.join(', ');
+        row[sheetsSchema_1.F.HABILITACOES] = d.habilitacoes;
+        row[sheetsSchema_1.F.CAP_CCP] = d.capCcp;
+        row[sheetsSchema_1.F.EXPERIENCIA] = d.experiencia;
+        row[sheetsSchema_1.F.LINKEDIN] = d.linkedin;
+        row[sheetsSchema_1.F.DIAS] = d.dias.join(', ');
+        row[sheetsSchema_1.F.PERIODOS] = d.periodos.join(', ');
+        row[sheetsSchema_1.F.MODALIDADE] = d.modalidade;
+        row[sheetsSchema_1.F.MOTIVACAO] = d.motivacao;
+        await appendToSheet('Formadores', row);
         await sendMail({
             to: d.email,
             subject: 'FaroForma — Candidatura recebida',
@@ -279,7 +292,14 @@ app.post('/api/contact', publicLimiter, async (req, res) => {
         return res.status(400).json({ error: 'Dados inválidos' });
     const d = parsed.data;
     try {
-        await appendToSheet('Contactos', [new Date().toISOString(), d.name, d.email, d.phone, d.subject, d.message]);
+        const row = [];
+        row[sheetsSchema_1.C.TIMESTAMP] = new Date().toISOString();
+        row[sheetsSchema_1.C.NOME] = d.name;
+        row[sheetsSchema_1.C.EMAIL] = d.email;
+        row[sheetsSchema_1.C.TELEFONE] = d.phone;
+        row[sheetsSchema_1.C.ASSUNTO] = d.subject;
+        row[sheetsSchema_1.C.MENSAGEM] = d.message;
+        await appendToSheet('Contactos', row);
         await notifyAdmins(`[Contacto] ${d.name} — ${d.subject || 'sem assunto'}`, `<h2>Nova mensagem de contacto</h2>
       <table cellpadding="6" style="border-collapse:collapse">
         <tr><td><strong>Nome</strong></td><td>${escHtml(d.name)}</td></tr>
@@ -303,7 +323,18 @@ app.post('/api/student', publicLimiter, async (req, res) => {
     const d = parsed.data;
     try {
         const transportLabel = d.needsTransport ? 'Sim (+2,50 €/viagem/dia)' : 'Não';
-        await appendToSheet('Alunos', [new Date().toISOString(), d.fullName, d.email, d.phone, d.program, d.turma, d.startDate, d.contactPreference, transportLabel, d.notes]);
+        const row = [];
+        row[sheetsSchema_1.A.TIMESTAMP] = new Date().toISOString();
+        row[sheetsSchema_1.A.NOME] = d.fullName;
+        row[sheetsSchema_1.A.EMAIL] = d.email;
+        row[sheetsSchema_1.A.TELEFONE] = d.phone;
+        row[sheetsSchema_1.A.PROGRAMA] = d.program;
+        row[sheetsSchema_1.A.TURMA] = d.turma;
+        row[sheetsSchema_1.A.DATA_INICIO] = d.startDate;
+        row[sheetsSchema_1.A.PREFERENCIA_CONTACTO] = d.contactPreference;
+        row[sheetsSchema_1.A.TRANSPORTE] = transportLabel;
+        row[sheetsSchema_1.A.NOTAS] = d.notes;
+        await appendToSheet('Alunos', row);
         await sendMail({
             to: d.email,
             subject: 'FaroForma — Inscrição recebida',
@@ -482,7 +513,7 @@ app.post('/api/admin/admins', isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Erro ao guardar administradores' });
     }
 });
-app.post('/api/track-visit', async (req, res) => {
+app.post('/api/track-visit', publicLimiter, async (req, res) => {
     const now = new Date();
     const dateKey = now.toISOString().split('T')[0];
     const hourKey = now.getHours().toString();

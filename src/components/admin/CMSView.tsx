@@ -124,9 +124,27 @@ export function CMSView() {
   };
 
   const handleTabChange = (section: Section) => {
-    if (isDirty && !confirm('Tens alterações não guardadas. Continuar?')) return;
-    setIsDirty(false);
+    if (isDirty) {
+      toast((t) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Alterações não guardadas</span>
+          <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>Mudar de tab vai descartar as edições.</span>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+            <button
+              onClick={() => { toast.dismiss(t.id); setIsDirty(false); setActiveTab(section); loadSection(section); }}
+              style={{ padding: '4px 12px', borderRadius: '6px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}
+            >Descartar</button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              style={{ padding: '4px 12px', borderRadius: '6px', background: '#f3f4f6', color: '#374151', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}
+            >Cancelar</button>
+          </div>
+        </div>
+      ), { duration: Infinity, icon: '⚠️' });
+      return;
+    }
     setActiveTab(section);
+    loadSection(section);
   };
 
   const updateField = (path: string[], value: any) => {
