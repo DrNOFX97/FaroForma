@@ -187,6 +187,11 @@ export default function Courses() {
               >
                 <button type="button" className="modal-close" onClick={() => setModalOpen(false)} aria-label="Fechar">×</button>
                 <h3>{language === 'pt' ? 'Formulário de Inscrição' : 'Enrolment Form'}</h3>
+                
+                <div style={{ marginBottom: '1.5rem', background: 'rgba(16, 185, 129, 0.1)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--accent)', fontSize: '0.9rem', color: 'var(--text)' }}>
+                  <strong>{language === 'pt' ? 'Curso:' : 'Course:'}</strong> {courseData.title[language]}
+                </div>
+
                 {formSuccess ? (
                   <div className="modal-success">
                     <div className="success-icon"><Check size={32} /></div>
