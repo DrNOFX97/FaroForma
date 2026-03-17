@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { apiService } from '../../services/api';
 import { Clock, User, Activity, Search } from 'lucide-react';
 import { TableSkeleton } from './TableSkeleton';
 

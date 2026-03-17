@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Award, Pencil, X, Save, Search, 
-  Clock, Calendar, MessageCircle, Users, Bullseye, 
-  Check, ChevronDown, Plus, Trash2, Layers, Monitor, Info
+  Clock, MessageCircle, Users, Target, 
+  Check, Plus, Trash2, Layers, Monitor, Info
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiService } from '../../services/api';
@@ -26,7 +26,7 @@ const ICONS = [
   { id: 'MessageCircle', icon: MessageCircle, label: 'Conversa' },
   { id: 'Users', icon: Users, label: 'Pessoas' },
   { id: 'Award', icon: Award, label: 'Prémio' },
-  { id: 'Bullseye', icon: Bullseye, label: 'Foco' },
+  { id: 'Target', icon: Target, label: 'Foco' },
   { id: 'Clock', icon: Clock, label: 'Relógio' },
   { id: 'Layers', icon: Layers, label: 'Níveis' },
   { id: 'Monitor', icon: Monitor, label: 'Digital' },

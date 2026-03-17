@@ -1,0 +1,84 @@
+2026-03-17 01:12:18 | fix: resolve UX bugs 5-8
+2026-03-17 01:05:32 | fix: resolve 4 audit bugs
+2026-03-16 23:12:50 | feat(analytics): visitor popup with hourly bar chart and access log
+2026-03-16 22:41:39 | chore: remove temp diag endpoint; fix SPREADSHEET_ID secret to correct sheet
+2026-03-16 22:29:19 | chore: add temp diag endpoint to verify spreadsheet ID
+2026-03-16 22:25:11 | chore: remove temporary reset-sheets endpoint and button
+2026-03-16 22:20:49 | feat(admin): add Reset Sheets button to clear all data and restore headers
+2026-03-16 22:13:10 | chore: remove temporary seed-headers endpoint and button
+2026-03-16 22:06:04 | feat(dashboard): add Corrigir Headers Alunos button in quick actions
+2026-03-16 21:47:49 | feat(dashboard): modern Top Áreas legend with donut chart and progress bars
+2026-03-16 19:46:29 | fix(api): filter blank rows from Google Sheets data
+2026-03-16 19:34:44 | feat(admin): auto-sync with Google Sheets every 30s + sync indicator
+2026-03-16 19:11:26 | fix(admin): format timestamp as clean date/time in Contactos table
+2026-03-16 19:07:40 | fix(admin): rename timestamp column to Data/Hora in Contactos table
+2026-03-16 18:19:48 | feat(admin): export tables as .xlsx instead of CSV
+2026-03-16 18:16:32 | feat(admin): show only ID, Nome, Telefone, Programa in Alunos table
+2026-03-16 18:08:18 | feat(admin): redesign EditFormadorModal to match detail modal style
+2026-03-16 18:05:03 | feat(admin): redesign detail modal — modern popup with grouped sections
+2026-03-16 17:58:07 | feat(admin): show only ID, Nome, Tel, Áreas, Dias, Período in FormadoresTable
+2026-03-16 17:47:40 | feat(courses): add transport option to course enrolment modal
+2026-03-16 17:40:41 | feat(student): add turma selection and transport option to registration form
+2026-03-16 15:24:22 | fix(tutoring): render icon field on teaching levels from CMS
+2026-03-16 15:11:14 | feat(cms): add PT/EN language toggle to preview panel
+2026-03-16 15:06:42 | fix(cms): seed editor and preview with static defaults when Firestore is empty
+2026-03-16 14:56:48 | feat(cms): show currently published content as reference panel
+2026-03-16 14:35:44 | fix(admin): tables always fit page width on desktop
+2026-03-16 14:22:53 | fix(admin): tables fill full width on desktop with column truncation
+2026-03-16 14:15:35 | feat(dashboard): compact stat cards with navigation and visitor popup
+2026-03-16 13:46:53 | fix(admin): mark notifications as read on open
+2026-03-16 13:39:55 | fix(admin): audit fixes — bugs, UX, performance across 12 components
+2026-03-16 00:29:48 | chore: update node engine to 24 and refresh readme with new architecture
+2026-03-15 21:44:09 | feat(admin): modularization, api service, toasts, visual dashboard, and local SEO enhancements
+2026-03-15 19:11:58 | feat(a11y): add skip-to-content link
+2026-03-15 19:03:25 | fix: guard empty schedule array crash in Courses fetchCourse
+2026-03-15 19:02:26 | fix(a11y): add scope="col" to all admin table headers
+2026-03-15 18:56:42 | feat(admin): manage admin emails via backoffice
+2026-03-15 18:36:56 | feat(functions): admin notifications via Firestore email list + HTML escape
+2026-03-15 18:33:15 | perf(functions): Sheets auth client singleton
+2026-03-15 18:28:39 | refactor(admin): replace hardcoded Sheets column indices with named constants
+2026-03-15 16:31:36 | docs(claude): update CLAUDE.md to reflect current architecture
+2026-03-15 16:26:35 | feat(email): send from geral@faroforma.pt via ImprovMX forwarding
+2026-03-14 22:17:42 | feat: security, performance and accessibility improvements
+2026-03-14 14:55:34 | feat(admin): add dynamic courses, multi-room agenda and detailed registration views
+2026-03-14 14:11:48 | Move service account key to archive
+2026-03-14 13:50:51 | Organize important documents and legacy assets into dedicated folders
+2026-03-14 11:24:57 | Project Audit & Cleanup: Remove unused files, fix absolute URLs, normalize API responses, and sync env vars
+2026-03-14 11:23:45 | Project Audit & Cleanup: Remove unused files, fix absolute URLs, normalize API responses, and sync env vars
+2026-03-14 11:22:43 | Project Audit & Cleanup: Remove unused files, fix absolute URLs, normalize API responses, and sync env vars
+2026-03-14 00:21:24 | Force favicon refresh with versioning
+2026-03-14 00:14:27 | Update favicon to final version
+2026-03-13 23:54:45 | Final cleanup: Update documentation, sync reordered components and multi-language support
+2026-03-13 23:45:13 | Swap positions of Courses and Services in header and page
+2026-03-13 23:40:04 | Add custodio.guerreiro@gmail.com as authorized administrator
+2026-03-13 23:00:29 | Remove pass rate floating card from Tutoring section
+2026-03-13 22:58:12 | Implement smooth crossfade transitions for images in About and Tutoring sections
+2026-03-13 22:55:01 | Fix TypeScript errors and remove mock stats
+2026-03-13 21:56:15 | Implement British English (UK) translation and language switcher (fixed build)
+2026-03-13 21:55:54 | Implement British English (UK) translation and language switcher (fixed build)
+2026-03-13 21:28:07 | Update README.md with professional documentation and add GEMINI.md
+2026-03-13 13:28:30 | Secure Firebase config using environment variables
+2026-03-13 11:17:00 | Remove redundant website link and clean up unused icons
+2026-03-13 02:23:15 | Update favicon
+2026-03-13 02:22:37 | Update favicon
+2026-03-13 01:00:13 | Add success feedback to Agenda synchronization
+2026-03-13 00:59:55 | Add success feedback to Agenda synchronization
+2026-03-13 00:55:30 | Implement Agenda PDF export and Print with preview
+2026-03-13 00:55:03 | Implement Agenda PDF export and Print with preview
+2026-03-13 00:50:18 | Implement intelligent trainer and course dropdowns in Agenda
+2026-03-13 00:49:46 | Implement intelligent trainer and course dropdowns in Agenda
+2026-03-13 00:31:27 | Add Agenda Sala 1 tab to Admin backoffice (fixed build)
+2026-03-13 00:20:02 | Replace admin sidebar with top header
+2026-03-13 00:19:42 | Replace admin sidebar with top header
+2026-03-13 00:16:17 | Add dropdowns to trainer edit modal
+2026-03-12 23:44:40 | Change image rotation interval to 7 seconds in Tutoring and About sections
+2026-03-12 23:44:20 | Change image rotation interval to 7 seconds in Tutoring and About sections
+2026-03-12 23:42:09 | Reposition floating card in Tutoring section
+2026-03-12 23:38:38 | Fix Tutoring images and implement 3s carousel
+2026-03-12 23:24:56 | Fix unused import in Hero
+2026-03-12 23:23:22 | Configure Firebase Hosting & Functions, add Backoffice and adjust Hero
+2026-03-12 00:44:16 | chore: align svg favicon
+2026-03-12 00:40:54 | chore: update favicon
+2026-03-12 00:35:51 | feat: add registration flows and codex cookbook guide
+2026-03-11 21:38:18 | Set day (light) as default theme
+2026-03-11 21:32:03 | Initial commit — Centro CMG

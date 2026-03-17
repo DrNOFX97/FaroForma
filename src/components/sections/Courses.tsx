@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { 
-  MessageCircle, Users, Award, Target, Clock, 
-  Calendar, Layers, Monitor, Bullseye, Check 
+  MessageCircle, Users, Award, Clock, 
+  Layers, Monitor, Target, Check 
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import AnimatedSection from '../ui/AnimatedSection';
@@ -14,7 +14,7 @@ const ICONS_MAP: Record<string, any> = {
   MessageCircle: <MessageCircle size={20} />,
   Users: <Users size={20} />,
   Award: <Award size={20} />,
-  Bullseye: <Bullseye size={20} />,
+  Target: <Target size={20} />,
   Clock: <Clock size={20} />,
   Layers: <Layers size={20} />,
   Monitor: <Monitor size={20} />,

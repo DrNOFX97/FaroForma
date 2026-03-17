@@ -47,11 +47,45 @@ const nodemailer_1 = __importDefault(require("nodemailer"));
 const zod_1 = require("zod");
 const admin = __importStar(require("firebase-admin"));
 const sheetsSchema_1 = require("./sheetsSchema");
+const generative_ai_1 = require("@google/generative-ai");
 admin.initializeApp();
 const GOOGLE_SERVICE_ACCOUNT_JSON = (0, params_1.defineSecret)("GOOGLE_SERVICE_ACCOUNT_JSON");
 const SPREADSHEET_ID = (0, params_1.defineSecret)("SPREADSHEET_ID");
 const GMAIL_USER = (0, params_1.defineSecret)("GMAIL_USER");
 const GMAIL_APP_PASSWORD = (0, params_1.defineSecret)("GMAIL_APP_PASSWORD");
+const GEMINI_API_KEY = (0, params_1.defineSecret)("GEMINI_API_KEY");
+async function autoTranslate(data) {
+    if (!data)
+        return data;
+    const apiKey = GEMINI_API_KEY.value();
+    if (!apiKey)
+        return data;
+    const genAI = new generative_ai_1.GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    async function processObject(obj) {
+        if (!obj || typeof obj !== 'object')
+            return;
+        if (obj.pt && (obj.en === undefined || obj.en === null || obj.en.trim() === '')) {
+            const prompt = `Translate this text from a professional training center in Portugal to UK English. Keep the professional and educational tone. Format: Return ONLY the translated text.\n\nText: ${obj.pt}`;
+            try {
+                const result = await model.generateContent(prompt);
+                obj.en = result.response.text().trim();
+            }
+            catch (err) {
+                console.error('Translation failed for:', obj.pt, err);
+            }
+        }
+        else {
+            for (const key in obj) {
+                if (typeof obj[key] === 'object')
+                    await processObject(obj[key]);
+            }
+        }
+    }
+    const result = JSON.parse(JSON.stringify(data));
+    await processObject(result);
+    return result;
+}
 const app = (0, express_1.default)();
 app.set('trust proxy', 1);
 app.use((0, cors_1.default)({ origin: true }));
@@ -77,6 +111,24 @@ async function getAdminEmails() {
     }
     catch {
         return adminEmailsCache?.emails ?? [];
+    }
+}
+async function createAuditLog(req, action, target, details = {}) {
+    const user = req.user;
+    if (!user)
+        return;
+    try {
+        await admin.firestore().collection('audit_log').add({
+            timestamp: new Date().toISOString(),
+            userEmail: user.email,
+            userName: user.name || user.email.split('@')[0],
+            action,
+            target,
+            details
+        });
+    }
+    catch (err) {
+        console.error('Audit log failed:', err);
     }
 }
 const isAdmin = async (req, res, next) => {
@@ -371,12 +423,6 @@ app.post('/api/student', publicLimiter, async (req, res) => {
         res.status(500).json({ error: 'Erro ao processar inscrição' });
     }
 });
-async function logAdminAction(email, action, details) {
-    try {
-        await admin.firestore().collection('admin_logs').add({ ts: new Date().toISOString(), email, action, details });
-    }
-    catch { }
-}
 app.get('/api/admin/data', isAdmin, async (req, res) => {
     try {
         const [formadores, alunos, contactos] = await Promise.all([
@@ -420,7 +466,7 @@ app.post('/api/admin/update-row', isAdmin, async (req, res) => {
         return res.status(400).json({ error: 'Dados inválidos' });
     try {
         await updateSheetRow(tabName, rowIndex, values);
-        await logAdminAction(req.user?.email || '?', 'update_row', { tabName, rowIndex });
+        await createAuditLog(req, 'UPDATE_ROW', tabName, { rowIndex, label: values[1] });
         res.json({ message: 'Atualizado com sucesso' });
     }
     catch (err) {
@@ -433,7 +479,7 @@ app.delete('/api/admin/delete-row', isAdmin, async (req, res) => {
         return res.status(400).json({ error: 'Dados inválidos' });
     try {
         await deleteSheetRow(tabName, rowIndex);
-        await logAdminAction(req.user?.email || '?', 'delete_row', { tabName, rowIndex });
+        await createAuditLog(req, 'DELETE_ROW', tabName, { rowIndex });
         res.json({ message: 'Eliminado com sucesso' });
     }
     catch (err) {
@@ -448,7 +494,7 @@ app.delete('/api/admin/bulk-delete', isAdmin, async (req, res) => {
         const sorted = [...rowIndices].sort((a, b) => b - a);
         for (const idx of sorted)
             await deleteSheetRow(tabName, idx);
-        await logAdminAction(req.user?.email || '?', 'bulk_delete', { tabName, count: sorted.length });
+        await createAuditLog(req, 'BULK_DELETE', tabName, { count: sorted.length, indices: sorted });
         res.json({ message: `${sorted.length} registos eliminados` });
     }
     catch (err) {
@@ -461,7 +507,7 @@ app.post('/api/admin/update-formador', isAdmin, async (req, res) => {
         return res.status(400).json({ error: 'Dados inválidos' });
     try {
         await updateSheetRow('Formadores', rowIndex, values);
-        await logAdminAction(req.user?.email || '?', 'update_formador', { rowIndex });
+        await createAuditLog(req, 'UPDATE_FORMADOR', 'Formadores', { rowIndex, nome: values[sheetsSchema_1.F.NOME] });
         res.json({ message: 'Atualizado com sucesso' });
     }
     catch (err) {
@@ -479,7 +525,9 @@ app.get('/api/admin/config', isAdmin, async (req, res) => {
 });
 app.post('/api/admin/config', isAdmin, async (req, res) => {
     try {
-        await admin.firestore().collection('config').doc('siteMeta').set(req.body, { merge: true });
+        const data = await autoTranslate(req.body);
+        await admin.firestore().collection('config').doc('siteMeta').set(data, { merge: true });
+        await createAuditLog(req, 'UPDATE_CONFIG', 'config/siteMeta', data);
         res.json({ message: 'Configurações guardadas' });
     }
     catch (err) {
@@ -500,6 +548,7 @@ app.post('/api/admin/agenda', isAdmin, async (req, res) => {
     const room = req.query.room || 'sala1';
     try {
         await admin.firestore().collection('agenda').doc(room).set(req.body);
+        await createAuditLog(req, 'UPDATE_AGENDA', `agenda/${room}`, { slots: Object.keys(req.body).length });
         res.json({ message: 'Agenda atualizada' });
     }
     catch (err) {
@@ -527,13 +576,17 @@ app.get('/api/admin/courses', isAdmin, async (req, res) => {
     }
 });
 app.post('/api/admin/courses', isAdmin, async (req, res) => {
-    const { id, ...data } = req.body;
+    const { id, ...raw } = req.body;
     try {
-        if (id) {
-            await admin.firestore().collection('courses').doc(id).set(data, { merge: true });
+        const data = await autoTranslate(raw);
+        const col = admin.firestore().collection('courses');
+        if (typeof id === 'string' && id.trim() !== '') {
+            await col.doc(id).set(data, { merge: true });
+            await createAuditLog(req, 'UPDATE_COURSE', `courses/${id}`, { title: data.title?.pt });
         }
         else {
-            await admin.firestore().collection('courses').add(data);
+            const ref = await col.add(data);
+            await createAuditLog(req, 'CREATE_COURSE', `courses/${ref.id}`, { title: data.title?.pt });
         }
         res.json({ message: 'Curso guardado com sucesso' });
     }
@@ -545,6 +598,7 @@ app.delete('/api/admin/courses/:id', isAdmin, async (req, res) => {
     const { id } = req.params;
     try {
         await admin.firestore().collection('courses').doc(id).delete();
+        await createAuditLog(req, 'DELETE_COURSE', `courses/${id}`);
         res.json({ message: 'Curso removido com sucesso' });
     }
     catch (err) {
@@ -626,7 +680,9 @@ app.get('/api/cms/:section', async (req, res) => {
 app.post('/api/cms/:section', isAdmin, async (req, res) => {
     const section = req.params.section;
     try {
-        await admin.firestore().collection('cms').doc(section).set(req.body, { merge: true });
+        const data = await autoTranslate(req.body);
+        await admin.firestore().collection('cms').doc(section).set(data, { merge: true });
+        await createAuditLog(req, 'UPDATE_CMS', `cms/${section}`);
         res.json({ message: 'Secção atualizada com sucesso' });
     }
     catch (err) {

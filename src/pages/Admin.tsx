@@ -23,7 +23,8 @@ import {
   Bell,
   Search as SearchIcon,
   Menu,
-  FileText
+  FileText,
+  Activity
 } from 'lucide-react';
 
 import { apiService } from '../services/api';
