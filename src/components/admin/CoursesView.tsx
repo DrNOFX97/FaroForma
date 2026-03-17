@@ -341,7 +341,7 @@ function CourseEditModal({ course, onClose, onSave }: any) {
                 <div key={i} className="schedule-row-edit">
                   <button className="remove-row-btn" onClick={() => setData(prev => ({...prev, schedule: prev.schedule.filter((_: any, idx: number) => idx !== i)}))}><X size={18} /></button>
                   
-                  <div className="form__grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                  <div className="form__grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                     <div className="form__group">
                       <label className="form__label">Nome da Turma</label>
                       <input className="form__input" value={s.turma?.pt || ''} onChange={e => updateSchedule(i, 'turma', { pt: e.target.value, en: '' })} placeholder="Ex: Turma A" />
@@ -351,6 +351,17 @@ function CourseEditModal({ course, onClose, onSave }: any) {
                       <select className="form__input" value={s.periodo} onChange={e => updateSchedule(i, 'periodo', e.target.value)}>
                         {PERIODS.map(p => <option key={p.id} value={p.id}>{p.pt}</option>)}
                       </select>
+                    </div>
+                    <div className="form__group">
+                      <label className="form__label">Vagas Máximas</label>
+                      <input
+                        className="form__input"
+                        type="number" min="1"
+                        placeholder="∞ ilimitado"
+                        value={s.capacity ?? ''}
+                        onChange={e => updateSchedule(i, 'capacity', e.target.value ? Number(e.target.value) : undefined)}
+                        title="Deixar vazio = vagas ilimitadas"
+                      />
                     </div>
                   </div>
 

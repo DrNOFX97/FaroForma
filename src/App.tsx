@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { Navbar, Footer } from './components/layout';
 import { Hero, About, Services, Tutoring, Contact, Courses } from './components/sections';
 import FormadoresInscricao from './pages/FormadoresInscricao';
+import TurmasPage from './pages/TurmasPage';
 import Admin from './pages/Admin';
 import { Toaster } from 'react-hot-toast';
 import { getSiteMeta, DEFAULT_SITE_META } from './config/siteMeta';
 import { apiService } from './services/api';
 
-export type Page = 'home' | 'formadores' | 'admin';
+export type Page = 'home' | 'formadores' | 'admin' | 'turmas';
 
 export default function App() {
   const [isDark, setIsDark] = useState(false);
@@ -16,6 +17,7 @@ export default function App() {
     const path = window.location.pathname;
     if (path === '/formadores') return 'formadores';
     if (path === '/admin') return 'admin';
+    if (path === '/turmas') return 'turmas';
     return 'home';
   });
 
@@ -32,6 +34,12 @@ export default function App() {
           title: 'Candidatura de Formadores | FaroForma — Faro',
           description: 'Candidate-se como formador no FaroForma em Faro. Junte-se à nossa equipa de formadores certificados e contribua para a formação e ensino na região do Algarve.',
           canonical: 'https://www.faroforma.pt/formadores',
+        }
+      : page === 'turmas'
+      ? {
+          title: 'Turmas Disponíveis | FaroForma — Faro',
+          description: 'Consulte as turmas disponíveis e inscreva-se diretamente. Vagas em tempo real nos cursos FaroForma em Faro.',
+          canonical: 'https://www.faroforma.pt/turmas',
         }
       : {
           title: meta.title,
@@ -75,6 +83,7 @@ export default function App() {
       const path = window.location.pathname;
       if (path === '/formadores') setPage('formadores');
       else if (path === '/admin') setPage('admin');
+      else if (path === '/turmas') setPage('turmas');
       else setPage('home');
     };
     window.addEventListener('popstate', onPop);
@@ -101,7 +110,7 @@ export default function App() {
         currentPage={page}
         onNavigate={navigate}
       />
-      {page === 'home' ? (
+      {page === 'home' && (
         <main id="main-content">
           <Hero />
           <About />
@@ -110,9 +119,9 @@ export default function App() {
           <Tutoring />
           <Contact />
         </main>
-      ) : (
-        <FormadoresInscricao onNavigateHome={() => navigate('home')} />
       )}
+      {page === 'formadores' && <FormadoresInscricao onNavigateHome={() => navigate('home')} />}
+      {page === 'turmas' && <TurmasPage onNavigate={navigate} />}
       <Footer />
     </>
   );

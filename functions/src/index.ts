@@ -424,6 +424,21 @@ app.post('/api/student', publicLimiter, async (req: Request, res: Response) => {
 
     await appendToSheet('Alunos', row);
 
+    // Fire-and-forget: increment enrolledCounts for the turma in Firestore
+    if (d.turma && d.program) {
+      const turmaKey = d.turma.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+      admin.firestore().collection('courses')
+        .where('title.pt', '==', d.program).limit(1).get()
+        .then(snapshot => {
+          if (!snapshot.empty) {
+            const update: Record<string, any> = {};
+            update[`enrolledCounts.${turmaKey}`] = admin.firestore.FieldValue.increment(1);
+            return snapshot.docs[0].ref.update(update);
+          }
+        })
+        .catch(() => {});
+    }
+
     notifyAdmins(
       `[Aluno] Nova inscrição — ${d.fullName}`,
       `<h2>Nova inscrição de aluno</h2>
@@ -584,7 +599,7 @@ app.post('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response
 
 app.get('/api/courses', async (req: Request, res: Response) => {
   try {
-    const snapshot = await admin.firestore().collection('courses').orderBy('title').get();
+    const snapshot = await admin.firestore().collection('courses').get();
     const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     res.json(courses);
   } catch (err: any) {

@@ -3,4 +3,5 @@ export const NAV_LINKS = [
   { label: { pt: 'Cursos', en: 'Courses' }, href: '#cursos' },
   { label: { pt: 'Serviços', en: 'Services' }, href: '#servicos' },
   { label: { pt: 'Explicações', en: 'Tutoring' }, href: '#explicacoes' },
+  { label: { pt: 'Turmas', en: 'Classes' }, href: '/turmas', isPage: true },
 ];

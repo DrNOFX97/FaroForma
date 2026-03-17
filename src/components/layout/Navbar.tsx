@@ -52,10 +52,14 @@ export default function Navbar({ isDark, onThemeToggle, currentPage, onNavigate 
 
         {/* Desktop nav */}
         <nav className="navbar__links">
-          {currentPage === 'home' ? (
+          {currentPage === 'home' || currentPage === 'turmas' ? (
             <>
               {NAV_LINKS.map(link => (
-                <button key={link.href} className="navbar__link" onClick={() => scrollTo(link.href)}>
+                <button
+                  key={link.href}
+                  className={`navbar__link${(link as any).isPage && currentPage === link.href.slice(1) ? ' is-active' : ''}`}
+                  onClick={() => (link as any).isPage ? onNavigate(link.href.slice(1) as any) : scrollTo(link.href)}
+                >
                   {typeof link.label === 'string' ? link.label : (link.label as any)[language]}
                 </button>
               ))}
@@ -111,10 +115,13 @@ export default function Navbar({ isDark, onThemeToggle, currentPage, onNavigate 
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
           >
-            {currentPage === 'home' ? (
+            {currentPage === 'home' || currentPage === 'turmas' ? (
               <>
                 {NAV_LINKS.map((link, i) => (
-                  <motion.button key={link.href} className="navbar__mobile-link" onClick={() => scrollTo(link.href)}
+                  <motion.button
+                    key={link.href}
+                    className="navbar__mobile-link"
+                    onClick={() => (link as any).isPage ? (setMobileOpen(false), onNavigate(link.href.slice(1) as any)) : scrollTo(link.href)}
                     initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 + 0.05 }}>
                     {typeof link.label === 'string' ? link.label : (link.label as any)[language]}

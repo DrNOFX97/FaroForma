@@ -35,6 +35,7 @@ import { FormadoresTable } from '../components/admin/FormadoresTable';
 import { TableView } from '../components/admin/TableView';
 import { AgendaView } from '../components/admin/AgendaView';
 import { CoursesView } from '../components/admin/CoursesView';
+import { TurmasView } from '../components/admin/TurmasView';
 import { ConfigView } from '../components/admin/ConfigView';
 import { CMSView } from '../components/admin/CMSView';
 import { AuditLogView } from '../components/admin/AuditLogView';
@@ -102,6 +103,7 @@ export default function Admin() {
   const [editingRow, setEditingRow] = useState<any | null>(null);
   const [editingGenericRow, setEditingGenericRow] = useState<any | null>(null);
   const [detailRow, setDetailRow] = useState<any | null>(null);
+  const [adminCourses, setAdminCourses] = useState<any[]>([]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
@@ -119,6 +121,7 @@ export default function Admin() {
         setUser(u);
         setData(json);
         setError('');
+        fetchAdminCourses().catch(() => {});
       } catch (err: any) {
         if (err.message === 'ACCESS_DENIED') {
           setError('Acesso negado. Apenas administradores autorizados têm permissão.');
@@ -165,6 +168,20 @@ export default function Admin() {
     } finally {
       setFetching(false);
     }
+  };
+
+  const fetchAdminCourses = async () => {
+    try {
+      const courses = await apiService.getAdminCourses();
+      setAdminCourses(courses || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSaveCourse = async (course: any) => {
+    await apiService.saveCourse(course);
+    await fetchAdminCourses();
   };
 
   // Auto-sync every 30 seconds while logged in
@@ -283,6 +300,7 @@ export default function Admin() {
 
           <div className="nav-group-label">Conteúdo Site</div>
           <SidebarItem active={activeTab === 'cursos'} icon={<Award size={20} />} label="Cursos" onClick={() => { setActiveTab('cursos'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
+          <SidebarItem active={activeTab === 'turmas'} icon={<Users size={20} />} label="Turmas" onClick={() => { setActiveTab('turmas'); setMobileMenuOpen(false); fetchAdminCourses(); }} collapsed={sidebarCollapsed} />
           <SidebarItem active={activeTab === 'cms'} icon={<FileText size={20} />} label="Editor de Páginas" onClick={() => { setActiveTab('cms'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
 
           <div className="nav-group-label">Configurações</div>
@@ -386,8 +404,9 @@ export default function Admin() {
         <main className="admin-content-area">
           <div className="admin-content-title" style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '2rem', fontWeight: 800 }}>
-              {activeTab === 'config' ? 'SEO & Definições' : 
+              {activeTab === 'config' ? 'SEO & Definições' :
                activeTab === 'cms' ? 'Editor de Páginas (CMS)' :
+               activeTab === 'turmas' ? 'Turmas' :
                activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
             </h2>
           </div>
@@ -401,6 +420,7 @@ export default function Admin() {
                 {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} headerMap={{ 0: 'Data/Hora' }} cellFormat={{ 0: v => { const d = new Date(v); return isNaN(d.getTime()) ? v : `${d.toLocaleDateString('pt-PT')} ${d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}`; } }} />}
                 {activeTab === 'agenda' && <AgendaView data={data} />}
                 {activeTab === 'cursos' && <CoursesView />}
+                {activeTab === 'turmas' && <TurmasView courses={adminCourses} alunosData={data?.alunos || []} onSaveCourse={handleSaveCourse} />}
                 {activeTab === 'config' && <ConfigView />}
                 {activeTab === 'cms' && <CMSView />}
                 {activeTab === 'audit' && <AuditLogView />}
