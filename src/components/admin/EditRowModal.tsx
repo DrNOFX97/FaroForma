@@ -39,20 +39,40 @@ export function EditRowModal({ row, headers, onClose, onSuccess }: EditRowModalP
         </div>
         <div className="admin-modal-body">
           <div className="form__grid">
-            {headers.map((header, idx) => (
-              <div key={idx} className="form__group">
-                <label className="form__label">{header}</label>
-                <input 
-                  className="form__input" 
-                  value={values[idx] || ''} 
-                  onChange={e => {
-                    const v = [...values];
-                    v[idx] = e.target.value;
-                    setValues(v);
-                  }} 
-                />
-              </div>
-            ))}
+            {headers.map((header, idx) => {
+              const h = header.toLowerCase();
+              const isLarge = h.includes('mensagem') || h.includes('motivação') || h.includes('notas');
+              const type = h.includes('email') ? 'email' : h.includes('tel') ? 'tel' : h.includes('data') ? 'date' : 'text';
+
+              return (
+                <div key={idx} className={`form__group ${isLarge ? 'form__group--full' : ''}`}>
+                  <label className="form__label">{header}</label>
+                  {isLarge ? (
+                    <textarea
+                      className="form__textarea"
+                      rows={3}
+                      value={values[idx] || ''}
+                      onChange={e => {
+                        const v = [...values];
+                        v[idx] = e.target.value;
+                        setValues(v);
+                      }}
+                    />
+                  ) : (
+                    <input 
+                      type={type}
+                      className="form__input" 
+                      value={values[idx] || ''} 
+                      onChange={e => {
+                        const v = [...values];
+                        v[idx] = e.target.value;
+                        setValues(v);
+                      }} 
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="admin-modal-footer">

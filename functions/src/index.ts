@@ -8,6 +8,7 @@ import nodemailer from "nodemailer";
 import { z } from "zod";
 import * as admin from "firebase-admin";
 import { F, A, C } from "./sheetsSchema";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 admin.initializeApp();
 
@@ -16,6 +17,41 @@ const GOOGLE_SERVICE_ACCOUNT_JSON = defineSecret("GOOGLE_SERVICE_ACCOUNT_JSON");
 const SPREADSHEET_ID = defineSecret("SPREADSHEET_ID");
 const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
+const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+
+// ── Translation Service ───────────────────────────────────────────────────────
+
+async function autoTranslate(data: any) {
+  if (!data) return data;
+  const apiKey = GEMINI_API_KEY.value();
+  if (!apiKey) return data;
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  // Recursive function to find and translate { pt, en } objects
+  async function processObject(obj: any) {
+    if (!obj || typeof obj !== 'object') return;
+
+    if (obj.pt && (obj.en === undefined || obj.en === null || obj.en.trim() === '')) {
+      const prompt = `Translate this text from a professional training center in Portugal to UK English. Keep the professional and educational tone. Format: Return ONLY the translated text.\n\nText: ${obj.pt}`;
+      try {
+        const result = await model.generateContent(prompt);
+        obj.en = result.response.text().trim();
+      } catch (err) {
+        console.error('Translation failed for:', obj.pt, err);
+      }
+    } else {
+      for (const key in obj) {
+        if (typeof obj[key] === 'object') await processObject(obj[key]);
+      }
+    }
+  }
+
+  const result = JSON.parse(JSON.stringify(data)); // deep clone
+  await processObject(result);
+  return result;
+}
 
 const app = express();
 app.set('trust proxy', 1); // Cloud Run sits behind Google's load balancer
@@ -46,6 +82,26 @@ async function getAdminEmails(): Promise<string[]> {
     return emails;
   } catch {
     return adminEmailsCache?.emails ?? [];
+  }
+}
+
+// ── Audit Log Helper ──────────────────────────────────────────────────────────
+
+async function createAuditLog(req: Request, action: string, target: string, details: any = {}) {
+  const user = (req as any).user;
+  if (!user) return;
+
+  try {
+    await admin.firestore().collection('audit_log').add({
+      timestamp: new Date().toISOString(),
+      userEmail: user.email,
+      userName: user.name || user.email.split('@')[0],
+      action,
+      target,
+      details
+    });
+  } catch (err) {
+    console.error('Audit log failed:', err);
   }
 }
 
@@ -389,14 +445,6 @@ app.post('/api/student', publicLimiter, async (req: Request, res: Response) => {
   }
 });
 
-// ── Audit Log ─────────────────────────────────────────────────────────────────
-
-async function logAdminAction(email: string, action: string, details: Record<string, any>) {
-  try {
-    await admin.firestore().collection('admin_logs').add({ ts: new Date().toISOString(), email, action, details });
-  } catch { /* non-critical */ }
-}
-
 // ── Admin Routes ─────────────────────────────────────────────────────────────
 
 
@@ -444,7 +492,7 @@ app.post('/api/admin/update-row', isAdmin as any, async (req: Request, res: Resp
 
   try {
     await updateSheetRow(tabName, rowIndex, values);
-    await logAdminAction((req as any).user?.email || '?', 'update_row', { tabName, rowIndex });
+    await createAuditLog(req, 'UPDATE_ROW', tabName, { rowIndex, label: values[1] });
     res.json({ message: 'Atualizado com sucesso' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao atualizar' });
@@ -457,7 +505,7 @@ app.delete('/api/admin/delete-row', isAdmin as any, async (req: Request, res: Re
 
   try {
     await deleteSheetRow(tabName, rowIndex);
-    await logAdminAction((req as any).user?.email || '?', 'delete_row', { tabName, rowIndex });
+    await createAuditLog(req, 'DELETE_ROW', tabName, { rowIndex });
     res.json({ message: 'Eliminado com sucesso' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao eliminar linha' });
@@ -470,7 +518,7 @@ app.delete('/api/admin/bulk-delete', isAdmin as any, async (req: Request, res: R
   try {
     const sorted = [...rowIndices].sort((a: number, b: number) => b - a);
     for (const idx of sorted) await deleteSheetRow(tabName, idx);
-    await logAdminAction((req as any).user?.email || '?', 'bulk_delete', { tabName, count: sorted.length });
+    await createAuditLog(req, 'BULK_DELETE', tabName, { count: sorted.length, indices: sorted });
     res.json({ message: `${sorted.length} registos eliminados` });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao eliminar registos' });
@@ -483,7 +531,7 @@ app.post('/api/admin/update-formador', isAdmin as any, async (req: Request, res:
 
   try {
     await updateSheetRow('Formadores', rowIndex, values);
-    await logAdminAction((req as any).user?.email || '?', 'update_formador', { rowIndex });
+    await createAuditLog(req, 'UPDATE_FORMADOR', 'Formadores', { rowIndex, nome: values[F.NOME] });
     res.json({ message: 'Atualizado com sucesso' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao atualizar' });
@@ -501,7 +549,9 @@ app.get('/api/admin/config', isAdmin as any, async (req: Request, res: Response)
 
 app.post('/api/admin/config', isAdmin as any, async (req: Request, res: Response) => {
   try {
-    await admin.firestore().collection('config').doc('siteMeta').set(req.body, { merge: true });
+    const data = await autoTranslate(req.body);
+    await admin.firestore().collection('config').doc('siteMeta').set(data, { merge: true });
+    await createAuditLog(req, 'UPDATE_CONFIG', 'config/siteMeta', data);
     res.json({ message: 'Configurações guardadas' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao guardar' });
@@ -522,6 +572,7 @@ app.post('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response
   const room = (req.query.room as string) || 'sala1';
   try {
     await admin.firestore().collection('agenda').doc(room).set(req.body);
+    await createAuditLog(req, 'UPDATE_AGENDA', `agenda/${room}`, { slots: Object.keys(req.body).length });
     res.json({ message: 'Agenda atualizada' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao salvar' });
@@ -551,12 +602,17 @@ app.get('/api/admin/courses', isAdmin as any, async (req: Request, res: Response
 });
 
 app.post('/api/admin/courses', isAdmin as any, async (req: Request, res: Response) => {
-  const { id, ...data } = req.body;
+  const { id, ...raw } = req.body;
   try {
-    if (id) {
-      await admin.firestore().collection('courses').doc(id).set(data, { merge: true });
+    const data = await autoTranslate(raw);
+    const col = admin.firestore().collection('courses');
+    // Ensure we only update if ID is a non-empty string
+    if (typeof id === 'string' && id.trim() !== '') {
+      await col.doc(id).set(data, { merge: true });
+      await createAuditLog(req, 'UPDATE_COURSE', `courses/${id}`, { title: data.title?.pt });
     } else {
-      await admin.firestore().collection('courses').add(data);
+      const ref = await col.add(data);
+      await createAuditLog(req, 'CREATE_COURSE', `courses/${ref.id}`, { title: data.title?.pt });
     }
     res.json({ message: 'Curso guardado com sucesso' });
   } catch (err: any) {
@@ -568,6 +624,7 @@ app.delete('/api/admin/courses/:id', isAdmin as any, async (req: Request, res: R
   const { id } = req.params;
   try {
     await admin.firestore().collection('courses').doc(id as string).delete();
+    await createAuditLog(req, 'DELETE_COURSE', `courses/${id}`);
     res.json({ message: 'Curso removido com sucesso' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao remover curso' });
@@ -656,7 +713,9 @@ app.get('/api/cms/:section', async (req: Request, res: Response) => {
 app.post('/api/cms/:section', isAdmin as any, async (req: Request, res: Response) => {
   const section = req.params.section as string;
   try {
-    await admin.firestore().collection('cms').doc(section).set(req.body, { merge: true });
+    const data = await autoTranslate(req.body);
+    await admin.firestore().collection('cms').doc(section).set(data, { merge: true });
+    await createAuditLog(req, 'UPDATE_CMS', `cms/${section}`);
     res.json({ message: 'Secção atualizada com sucesso' });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao guardar secção CMS' });

@@ -41,7 +41,7 @@ npm run build && cd functions && npm run build && cd .. && firebase deploy --pro
 - **Frontend:** `.env` with `VITE_FIREBASE_*` variables.
 - **Backend Secrets (Secret Manager):**
     - `GOOGLE_SERVICE_ACCOUNT_JSON`: Service account key (must be clean JSON).
-    - `SPREADSHEET_ID`: Current Sheet ID: `1lU-ubt273ZRlnGsI6g3WQMFEPKul15TqRrSnRJJ8LDo`.
+    - `SPREADSHEET_ID`: Current Sheet ID: `1wXUXd1gCuNvTjgjG2ZrdtKbmycQIvK9fvAnhHUP0ODU`.
     - `GMAIL_USER`: `faroforma@gmail.com`.
     - `GMAIL_APP_PASSWORD`: 16-char App Password.
 

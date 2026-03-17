@@ -28,6 +28,7 @@ import {
 
 import { apiService } from '../services/api';
 import type { RawData } from '../services/api';
+import { F, A, C } from '../config/sheetsSchema';
 import { DashboardView } from '../components/admin/DashboardView';
 import { FormadoresTable } from '../components/admin/FormadoresTable';
 import { TableView } from '../components/admin/TableView';
@@ -35,6 +36,7 @@ import { AgendaView } from '../components/admin/AgendaView';
 import { CoursesView } from '../components/admin/CoursesView';
 import { ConfigView } from '../components/admin/ConfigView';
 import { CMSView } from '../components/admin/CMSView';
+import { AuditLogView } from '../components/admin/AuditLogView';
 import { DetailModal } from '../components/admin/DetailModal';
 import { EditFormadorModal } from '../components/admin/EditFormadorModal';
 import { EditRowModal } from '../components/admin/EditRowModal';
@@ -68,10 +70,13 @@ export default function Admin() {
       if (!u) {
         setUser(null);
         setLoading(false);
+        (window as any).firebaseAuthToken = null;
         return;
       }
       setLoading(true);
       try {
+        const token = await u.getIdToken();
+        (window as any).firebaseAuthToken = () => auth.currentUser?.getIdToken() || Promise.resolve(token);
         const json = await apiService.getAdminData();
         setUser(u);
         setData(json);
@@ -147,12 +152,12 @@ export default function Admin() {
     if (!data) return [];
     const items: { type: string; name: string; desc: string; date: Date; tab: string }[] = [];
     data.alunos?.slice(1).forEach(r => {
-      const d = new Date(r[0]);
-      if (!isNaN(d.getTime())) items.push({ type: 'aluno', name: r[1], desc: `Inscrição em ${r[4] || '—'}`, date: d, tab: 'alunos' });
+      const d = new Date(r[A.TIMESTAMP]);
+      if (!isNaN(d.getTime())) items.push({ type: 'aluno', name: r[A.NOME], desc: `Inscrição em ${r[A.PROGRAMA] || '—'}`, date: d, tab: 'alunos' });
     });
     data.contactos?.slice(1).forEach(r => {
-      const d = new Date(r[0]);
-      if (!isNaN(d.getTime())) items.push({ type: 'contacto', name: r[1], desc: r[4] || '—', date: d, tab: 'contactos' });
+      const d = new Date(r[C.TIMESTAMP]);
+      if (!isNaN(d.getTime())) items.push({ type: 'contacto', name: r[C.NOME], desc: r[C.ASSUNTO] || '—', date: d, tab: 'contactos' });
     });
     return items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 8);
   }, [data]);
@@ -168,16 +173,16 @@ export default function Admin() {
     const results: { tab: string; label: string; name: string; sub: string }[] = [];
     const match = (...fields: any[]) => fields.some(f => String(f || '').toLowerCase().includes(q));
     data.formadores?.slice(1).forEach(r => {
-      if (match(r[1], r[2], r[3], r[5]))
-        results.push({ tab: 'formadores', label: 'Formador', name: r[1], sub: r[2] || r[3] || '' });
+      if (match(r[F.NOME], r[F.EMAIL], r[F.TELEFONE], r[F.NIF]))
+        results.push({ tab: 'formadores', label: 'Formador', name: r[F.NOME], sub: r[F.EMAIL] || r[F.TELEFONE] || '' });
     });
     data.alunos?.slice(1).forEach(r => {
-      if (match(r[1], r[2], r[3]))
-        results.push({ tab: 'alunos', label: 'Aluno', name: r[1], sub: r[4] || r[2] || '' });
+      if (match(r[A.NOME], r[A.EMAIL], r[A.TELEFONE]))
+        results.push({ tab: 'alunos', label: 'Aluno', name: r[A.NOME], sub: r[A.PROGRAMA] || r[A.EMAIL] || '' });
     });
     data.contactos?.slice(1).forEach(r => {
-      if (match(r[1], r[2], r[3], r[4]))
-        results.push({ tab: 'contactos', label: 'Contacto', name: r[1], sub: r[4] || r[2] || '' });
+      if (match(r[C.NOME], r[C.EMAIL], r[C.TELEFONE], r[C.ASSUNTO]))
+        results.push({ tab: 'contactos', label: 'Contacto', name: r[C.NOME], sub: r[C.ASSUNTO] || r[C.EMAIL] || '' });
     });
     return results.slice(0, 8);
   }, [searchQuery, data]);
@@ -244,6 +249,7 @@ export default function Admin() {
 
           <div className="nav-group-label">Configurações</div>
           <SidebarItem active={activeTab === 'config'} icon={<Settings size={20} />} label="SEO & Definições" onClick={() => { setActiveTab('config'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
+          <SidebarItem active={activeTab === 'audit'} icon={<Activity size={20} />} label="Histórico (Logs)" onClick={() => { setActiveTab('audit'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
         </nav>
 
         <div className="sidebar-footer">
@@ -359,6 +365,7 @@ export default function Admin() {
                 {activeTab === 'cursos' && <CoursesView />}
                 {activeTab === 'config' && <ConfigView />}
                 {activeTab === 'cms' && <CMSView />}
+                {activeTab === 'audit' && <AuditLogView />}
               </motion.div>
             </AnimatePresence>
           </div>

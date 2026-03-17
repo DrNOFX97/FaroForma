@@ -1,34 +1,35 @@
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { X, Mail, Phone, Calendar, Hash, Linkedin, BookOpen, Award, Clock, Monitor, Layers, Star } from 'lucide-react';
+import { F } from '../../config/sheetsSchema';
 
 /* ── Formador field map ─────────────────────────────────────────────────── */
 const SECTIONS = [
   {
     label: 'Contacto',
     fields: [
-      { idx: 2, label: 'Email',             icon: Mail },
-      { idx: 3, label: 'Telefone',          icon: Phone },
-      { idx: 10, label: 'LinkedIn',         icon: Linkedin },
-      { idx: 5, label: 'NIF',               icon: Hash },
-      { idx: 4, label: 'Data de Nascimento',icon: Calendar },
+      { idx: F.EMAIL,            label: 'Email',             icon: Mail },
+      { idx: F.TELEFONE,         label: 'Telefone',          icon: Phone },
+      { idx: F.LINKEDIN,         label: 'LinkedIn',         icon: Linkedin },
+      { idx: F.NIF,              label: 'NIF',               icon: Hash },
+      { idx: F.DATA_NASCIMENTO,  label: 'Data de Nascimento',icon: Calendar },
     ],
   },
   {
     label: 'Disponibilidade',
     fields: [
-      { idx: 11, label: 'Dias Disponíveis', icon: Calendar },
-      { idx: 12, label: 'Períodos',         icon: Clock },
-      { idx: 13, label: 'Modalidade',       icon: Monitor },
+      { idx: F.DIAS,             label: 'Dias Disponíveis', icon: Calendar },
+      { idx: F.PERIODOS,         label: 'Períodos',         icon: Clock },
+      { idx: F.MODALIDADE,       label: 'Modalidade',       icon: Monitor },
     ],
   },
   {
     label: 'Qualificações',
     fields: [
-      { idx: 6,  label: 'Áreas',            icon: Layers },
-      { idx: 7,  label: 'Habilitações',     icon: BookOpen },
-      { idx: 8,  label: 'CAP / CCP',        icon: Award },
-      { idx: 9,  label: 'Experiência',      icon: Star },
+      { idx: F.AREAS,            label: 'Áreas',            icon: Layers },
+      { idx: F.HABILITACOES,     label: 'Habilitações',     icon: BookOpen },
+      { idx: F.CAP_CCP,          label: 'CAP / CCP',        icon: Award },
+      { idx: F.EXPERIENCIA,      label: 'Experiência',      icon: Star },
     ],
   },
 ];
@@ -84,15 +85,15 @@ export function DetailModal({ data, onClose }: DetailModalProps) {
         <div className="dm-header">
           <div className="dm-header-info">
             <div className="dm-avatar">
-              {isFormador ? (data.cells[1]?.[0] ?? '?') : (data.fullName?.[0] ?? data.name?.[0] ?? '?')}
+              {isFormador ? (data.cells[F.NOME]?.[0] ?? '?') : (data.fullName?.[0] ?? data.name?.[0] ?? '?')}
             </div>
             <div>
               <h3 id="dm-title" className="dm-name">
-                {isFormador ? data.cells[1] : (data.fullName || data.name || 'Registo')}
+                {isFormador ? data.cells[F.NOME] : (data.fullName || data.name || 'Registo')}
               </h3>
               <span className="dm-meta">
                 {isFormador
-                  ? `Candidatura #${data.originalIndex} · ${data.cells[0] ? new Date(data.cells[0]).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}`
+                  ? `Candidatura #${data.originalIndex} · ${data.cells[F.TIMESTAMP] ? new Date(data.cells[F.TIMESTAMP]).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}`
                   : `Registo #${data.originalIndex}`}
               </span>
             </div>
@@ -126,10 +127,10 @@ export function DetailModal({ data, onClose }: DetailModalProps) {
               })}
 
               {/* Motivação full-width */}
-              {data.cells[14] && (
+              {data.cells[F.MOTIVACAO] && (
                 <div className="dm-section">
                   <span className="dm-section-label">Motivação</span>
-                  <div className="dm-textarea-value">{data.cells[14]}</div>
+                  <div className="dm-textarea-value">{data.cells[F.MOTIVACAO]}</div>
                 </div>
               )}
             </>

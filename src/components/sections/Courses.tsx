@@ -1,33 +1,38 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { MessageCircle, Users, Award, Target } from 'lucide-react';
+import { 
+  MessageCircle, Users, Award, Target, Clock, 
+  Calendar, Layers, Monitor, Bullseye, Check 
+} from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import AnimatedSection from '../ui/AnimatedSection';
 import { COURSE_INFO as DEFAULT_COURSE_INFO } from '../../data/courses';
-import type { CourseHighlight } from '../../data/courses';
 import { useLanguage } from '../../context/LanguageContext';
-
 import { apiService } from '../../services/api';
 
-const SCHEMA_DAY = 'https://schema.org/';
-const WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday'].map(d => SCHEMA_DAY + d);
+const ICONS_MAP: Record<string, any> = {
+  MessageCircle: <MessageCircle size={20} />,
+  Users: <Users size={20} />,
+  Award: <Award size={20} />,
+  Bullseye: <Bullseye size={20} />,
+  Clock: <Clock size={20} />,
+  Layers: <Layers size={20} />,
+  Monitor: <Monitor size={20} />,
+};
 
-function mapDayOfWeek(dias: string | undefined): { byDay?: string[] } {
-  if (!dias) return {};
-  const lower = dias.toLowerCase();
-  if (lower.includes('sábado') && lower.includes('domingo')) return { byDay: [SCHEMA_DAY + 'Saturday', SCHEMA_DAY + 'Sunday'] };
-  if (lower.includes('sábado')) return { byDay: [SCHEMA_DAY + 'Saturday'] };
-  if (lower.includes('domingo')) return { byDay: [SCHEMA_DAY + 'Sunday'] };
-  if (lower.includes('2ª') || lower.includes('segunda') || lower.includes('mon')) return { byDay: WEEKDAYS };
-  return {};
-}
+const PERIOD_MAP: Record<string, { pt: string, en: string }> = {
+  manha: { pt: 'Manhã', en: 'Morning' },
+  tarde: { pt: 'Tarde', en: 'Afternoon' },
+  noite: { pt: 'Noite', en: 'Evening' },
+  sabado: { pt: 'Sábado', en: 'Saturday' },
+};
 
 export default function Courses() {
   const { language } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
   const [modalOpen, setModalOpen] = useState(false);
-  const [courseData, setCourseData] = useState<any>(DEFAULT_COURSE_INFO);
+  const [courseData, setCourseData] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -41,60 +46,6 @@ export default function Courses() {
     fetchCourse();
   }, []);
 
-  useEffect(() => {
-    if (!courseData) return;
-
-    const schema = {
-      '@context': 'https://schema.org',
-      '@type': 'Course',
-      name: courseData.title?.pt ?? courseData.title,
-      description: courseData.description?.pt ?? courseData.description,
-      provider: {
-        '@type': 'Organization',
-        name: 'FaroForma',
-        url: 'https://www.faroforma.pt',
-        address: {
-          '@type': 'PostalAddress',
-          streetAddress: 'Rua Conselheiro Sebastião Teles 2A',
-          postalCode: '8000-256',
-          addressLocality: 'Faro',
-          addressCountry: 'PT',
-        },
-      },
-      inLanguage: 'pt',
-      hasCourseInstance: (courseData.schedule ?? []).map((slot: any) => ({
-        '@type': 'CourseInstance',
-        name: slot.turma?.pt ?? slot.turma,
-        courseMode: 'onsite',
-        location: {
-          '@type': 'Place',
-          name: 'FaroForma',
-          address: {
-            '@type': 'PostalAddress',
-            addressLocality: 'Faro',
-            addressCountry: 'PT',
-          },
-        },
-        courseSchedule: {
-          '@type': 'Schedule',
-          ...mapDayOfWeek(slot.dias?.pt ?? slot.dias),
-          startTime: slot.horário?.split('–')[0]?.trim(),
-          endTime: slot.horário?.split('–')[1]?.trim(),
-        },
-      })),
-    };
-
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.id = 'ld-json-course';
-    script.textContent = JSON.stringify(schema);
-    document.head.appendChild(script);
-
-    return () => {
-      document.getElementById('ld-json-course')?.remove();
-    };
-  }, [courseData]);
-
   const fetchCourse = async () => {
     try {
       const data = await apiService.getCourses();
@@ -102,20 +53,14 @@ export default function Courses() {
         setCourseData(data[0]);
         const firstSlot = data[0].schedule?.[0];
         if (firstSlot) {
-          setFormData(prev => ({ ...prev, level: (firstSlot.turma as any)[language] ?? '' }));
+          setFormData(prev => ({ ...prev, level: firstSlot.turma?.pt || firstSlot.turma || '' }));
         }
+      } else {
+        setCourseData(DEFAULT_COURSE_INFO);
       }
     } catch (err) {
-      // API unavailable — silently keep DEFAULT_COURSE_INFO already in state
+      setCourseData(DEFAULT_COURSE_INFO);
     }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -130,13 +75,15 @@ export default function Courses() {
         startDate: new Date().toISOString().split('T')[0],
         contactPreference: 'Email/Phone',
         needsTransport: formData.needsTransport,
-        notes: `Inscrição via formulário de curso: ${formData.level}`,
+        notes: `Inscrição via site (Cursos): ${formData.level}`,
       });
       setFormSuccess(true);
     } catch (err) {
       toast.error('Erro ao enviar inscrição. Por favor tente novamente.');
     }
   };
+
+  if (!courseData) return null;
 
   return (
     <section className="section section--alt" id="cursos">
@@ -151,159 +98,191 @@ export default function Courses() {
           <span className="tag">{language === 'pt' ? 'Cursos' : 'Courses'}</span>
           <h2>
             {courseData.title[language]}<br />
-            <span className="gradient-text">{courseData.subtitle[language]}</span>
+            <span className="gradient-text">{courseData.subtitle?.[language] || ''}</span>
           </h2>
           <p>
             {courseData.description[language]}<br />
-            <strong>{courseData.status[language]}</strong>
+            <span className="status-highlight">{courseData.status[language]}</span>
           </p>
         </motion.div>
 
-        <div className="courses__grid">
-          <AnimatedSection direction="left" delay={0.15}>
-              <div className="courses__highlights">
-                {(courseData.highlights || DEFAULT_COURSE_INFO.highlights).map((item: CourseHighlight, i: number) => (
-                  <div key={i} className="courses__highlight">
-                    <span className="courses__highlight-icon">
-                      {{
-                        MessageCircle: <MessageCircle size={16} />,
-                        Users: <Users size={16} />,
-                        Award: <Award size={16} />,
-                        Bullseye: <Target size={16} />,
-                      }[item.icon]}
-                    </span>
-                    <span>{item.text[language]}</span>
-                  </div>
-                ))}
+        {/* 3 Cartões de Destaque */}
+        <div className="courses__highlight-cards">
+          {(courseData.highlights || []).slice(0, 3).map((item: any, i: number) => (
+            <AnimatedSection key={i} direction="up" delay={0.1 * i} className="course-card-wrap">
+              <div className="course-feat-card glass">
+                <div className="course-feat-icon">
+                  {ICONS_MAP[item.icon] || <Check size={20} />}
+                </div>
+                <p>{item.text[language]}</p>
               </div>
-            <div className="courses__contact">
-              <div className="courses__cta">
+            </AnimatedSection>
+          ))}
+        </div>
+
+        <div className="courses__main-content">
+          <AnimatedSection direction="up" delay={0.3}>
+            <div className="courses__schedule-box glass">
+              <div className="schedule-header">
+                <Clock size={20} className="text-accent" />
+                <h3>{language === 'pt' ? 'Horários das Turmas' : 'Class Schedules'}</h3>
+              </div>
+              
+              <div className="courses__table-responsive">
+                <table className="course-schedule-table">
+                  <thead>
+                    <tr>
+                      <th>{language === 'pt' ? 'Turma' : 'Class'}</th>
+                      <th>{language === 'pt' ? 'Período' : 'Period'}</th>
+                      <th>{language === 'pt' ? 'Horário' : 'Schedule'}</th>
+                      <th>{language === 'pt' ? 'Dias' : 'Days'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(courseData.schedule || []).map((slot: any, i: number) => (
+                      <tr key={i}>
+                        <td className="col-turma"><strong>{slot.turma?.pt || slot.turma}</strong></td>
+                        <td className="col-periodo">{PERIOD_MAP[slot.periodo]?.[language] || slot.período?.[language] || '—'}</td>
+                        <td className="col-horario">
+                          {Array.isArray(slot.horario) ? slot.horario.join(' / ') : slot.horário}
+                        </td>
+                        <td className="col-dias">
+                          {Array.isArray(slot.dias) ? slot.dias.join(', ') : (slot.dias?.[language] || slot.dias)}
+                          {slot.diasExtra?.[language] && (
+                            <span className="dias-extra"> ({slot.diasExtra[language]})</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="courses__cta-area">
                 <button
                   type="button"
                   className="btn btn--primary btn--lg"
                   onClick={() => {
                     setModalOpen(true);
                     setFormSuccess(false);
-                    if (!formData.level && courseData.schedule.length > 0) {
-                      setFormData(f => ({ ...f, level: courseData.schedule[0].turma[language] }));
-                    }
                   }}
                 >
-                  {language === 'pt' ? 'Inscrever-me' : 'Enrol now'}
+                  {language === 'pt' ? 'Garantir a minha vaga' : 'Secure my spot'}
                 </button>
               </div>
             </div>
           </AnimatedSection>
-
-          <AnimatedSection direction="right" delay={0.25}>
-            <div className="courses__schedule">
-              <h3>{language === 'pt' ? 'Horários das Turmas' : 'Class Schedules'}</h3>
-              <div className="courses__table">
-                <div className="courses__row is-header">
-                  <span>{language === 'pt' ? 'Turma' : 'Class'}</span>
-                  <span>{language === 'pt' ? 'Período' : 'Period'}</span>
-                  <span>{language === 'pt' ? 'Horário' : 'Schedule'}</span>
-                  <span>{language === 'pt' ? 'Dias' : 'Days'}</span>
-                </div>
-                {(courseData.schedule || []).map((slot: any, i: number) => (
-                  <div key={i} className="courses__row">
-                    <span>{(slot.turma as any)[language]}</span>
-                    <span>{(slot.período as any)[language]}</span>
-                    <span>{slot.horário}</span>
-                    <span>{(slot.dias as any)[language]}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </AnimatedSection>
         </div>
-...
-        {modalOpen && (
-          <div className="modal-overlay" role="dialog" aria-modal="true">
-            <div className="modal-card">
-              <button
-                type="button"
-                className="modal-close"
-                onClick={() => setModalOpen(false)}
-                aria-label={language === 'pt' ? 'Fechar formulário' : 'Close form'}
+
+        {/* Modal remains similar but updated for new data structure if needed */}
+        <AnimatePresence>
+          {modalOpen && (
+            <div className="modal-overlay" onClick={() => setModalOpen(false)}>
+              <motion.div 
+                className="modal-card glass" 
+                initial={{ opacity: 0, scale: 0.9 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                exit={{ opacity: 0, scale: 0.9 }}
+                onClick={e => e.stopPropagation()}
               >
-                ×
-              </button>
-              <h3>{language === 'pt' ? 'Formulário de Inscrição' : 'Enrolment Form'}</h3>
-              {formSuccess ? (
-                <div className="modal-success">
-                  <p>
-                    {language === 'pt' 
-                      ? 'Obrigado! Recebemos a sua inscrição e em breve entraremos em contacto.'
-                      : 'Thank you! We have received your enrolment and will be in touch soon.'}
-                  </p>
-                  <button type="button" className="btn btn--primary" onClick={() => setModalOpen(false)}>
-                    {language === 'pt' ? 'Fechar' : 'Close'}
-                  </button>
-                </div>
-              ) : (
-                <form className="modal-form" onSubmit={handleSubmit}>
-                  <label>
-                    {language === 'pt' ? 'Nome completo' : 'Full name'}
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      required
-                    />
-                  </label>
-                  <label>
-                    {language === 'pt' ? 'Email' : 'Email'}
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                    />
-                  </label>
-                  <label>
-                    {language === 'pt' ? 'Telemóvel' : 'Mobile'}
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                    />
-                  </label>
-                  <label>
-                    {language === 'pt' ? 'Turma' : 'Class'}
-                    <select name="level" value={formData.level} onChange={handleChange}>
-                      {(courseData.schedule || []).map((slot: any, i: number) => (
-                        <option key={i} value={(slot.turma as any)[language]}>
-                          {(slot.turma as any)[language]} · {(slot.período as any)[language]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="modal-form__checkbox">
-                    <input
-                      type="checkbox"
-                      name="needsTransport"
-                      checked={formData.needsTransport}
-                      onChange={handleChange}
-                    />
-                    <span>
-                      {language === 'pt'
-                        ? <> Necessito de transporte <strong>(+2,50 € por viagem/dia)</strong></>
-                        : <> I need transport <strong>(+€2.50 per trip/day)</strong></>}
-                    </span>
-                  </label>
-                  <button type="submit" className="btn btn--primary btn--lg">
-                    {language === 'pt' ? 'Enviar inscrição' : 'Send enrolment'}
-                  </button>
-                </form>
-              )}
+                <button type="button" className="modal-close" onClick={() => setModalOpen(false)} aria-label="Fechar">×</button>
+                <h3>{language === 'pt' ? 'Formulário de Inscrição' : 'Enrolment Form'}</h3>
+                {formSuccess ? (
+                  <div className="modal-success">
+                    <div className="success-icon"><Check size={32} /></div>
+                    <p>{language === 'pt' ? 'Inscrição recebida! Entraremos em contacto brevemente.' : 'Enrolment received! We will be in touch soon.'}</p>
+                    <button type="button" className="btn btn--primary" onClick={() => setModalOpen(false)}>Fechar</button>
+                  </div>
+                ) : (
+                  <form className="modal-form" onSubmit={handleSubmit}>
+                    <div className="form__group">
+                      <label>{language === 'pt' ? 'Nome completo' : 'Full name'}</label>
+                      <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
+                    </div>
+                    <div className="form__grid">
+                      <div className="form__group">
+                        <label>Email</label>
+                        <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
+                      </div>
+                      <div className="form__group">
+                        <label>{language === 'pt' ? 'Telemóvel' : 'Mobile'}</label>
+                        <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                      </div>
+                    </div>
+                    <div className="form__group">
+                      <label>{language === 'pt' ? 'Turma pretendida' : 'Preferred Class'}</label>
+                      <select value={formData.level} onChange={e => setFormData({...formData, level: e.target.value})}>
+                        {(courseData.schedule || []).map((slot: any, i: number) => (
+                          <option key={i} value={slot.turma?.pt || slot.turma}>
+                            {slot.turma?.pt || slot.turma} · {PERIOD_MAP[slot.periodo]?.[language] || '—'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <label className="modal-form__checkbox">
+                      <input type="checkbox" checked={formData.needsTransport} onChange={e => setFormData({...formData, needsTransport: e.target.checked})} />
+                      <span>{language === 'pt' ? 'Necessito de transporte (+2,50 €/dia)' : 'I need transport (+€2.50/day)'}</span>
+                    </label>
+                    <button type="submit" className="btn btn--primary btn--lg btn--full">{language === 'pt' ? 'Enviar Inscrição' : 'Submit Enrolment'}</button>
+                  </form>
+                )}
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
       </div>
+
+      <style>{`
+        .status-highlight { color: var(--accent); font-weight: 700; font-size: 0.9rem; }
+        
+        .courses__highlight-cards { 
+          display: grid; 
+          grid-template-columns: repeat(3, 1fr); 
+          gap: 1.5rem; 
+          margin-bottom: 3rem; 
+        }
+        .course-feat-card { 
+          padding: 2rem; 
+          text-align: center; 
+          border-radius: 20px; 
+          display: flex; 
+          flex-direction: column; 
+          align-items: center; 
+          gap: 1rem;
+          height: 100%;
+          transition: transform 0.3s ease;
+        }
+        .course-feat-card:hover { transform: translateY(-5px); }
+        .course-feat-icon { 
+          width: 48px; height: 48px; 
+          background: rgba(var(--accent-rgb), 0.1); 
+          color: var(--accent); 
+          border-radius: 12px; 
+          display: flex; align-items: center; justify-content: center; 
+        }
+        .course-feat-card p { font-size: 0.9rem; font-weight: 600; color: var(--text); margin: 0; }
+
+        .courses__schedule-box { padding: 2.5rem; border-radius: 24px; }
+        .schedule-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem; }
+        .schedule-header h3 { margin: 0; font-size: 1.5rem; }
+
+        .course-schedule-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .course-schedule-table th { padding: 1rem; border-bottom: 2px solid var(--border); font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); }
+        .course-schedule-table td { padding: 1.25rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+        .dias-extra { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
+
+        .courses__cta-area { margin-top: 2.5rem; display: flex; justify-content: center; }
+
+        @media (max-width: 1024px) {
+          .courses__highlight-cards { grid-template-columns: 1fr; gap: 1rem; }
+        }
+        @media (max-width: 768px) {
+          .course-schedule-table thead { display: none; }
+          .course-schedule-table tr { display: block; padding: 1rem 0; }
+          .course-schedule-table td { display: block; padding: 0.25rem 0; border: none; }
+          .col-turma { font-size: 1.1rem; color: var(--accent); }
+        }
+      `}</style>
     </section>
   );
 }

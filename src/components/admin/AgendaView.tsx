@@ -16,6 +16,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { apiService } from '../../services/api';
 import type { RawData } from '../../services/api';
+import { F } from '../../config/sheetsSchema';
 
 const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const SLOTS = ['Manhã (09h-13h)', 'Tarde (13h-18h)', 'Noite (18h-21h)'];
@@ -193,11 +194,11 @@ function AgendaEditorPopOver({ day, slot, currentData, formadores, onClose, onSa
   const [step, setStep] = useState(1); // 1: Trainer, 2: Course
 
   const filteredTrainers = formadores.filter((f: any) => 
-    f[1]?.toLowerCase().includes(trainerSearch.toLowerCase())
+    f[F.NOME]?.toLowerCase().includes(trainerSearch.toLowerCase())
   ).slice(0, 5);
 
-  const selectedTrainerData = formadores.find((f: any) => f[1] === trainerSearch);
-  const availableCourses = selectedTrainerData?.[6]?.split(',').map((c: string) => c.trim()) || [];
+  const selectedTrainerData = formadores.find((f: any) => f[F.NOME] === trainerSearch);
+  const availableCourses = selectedTrainerData?.[F.AREAS]?.split(',').map((c: string) => c.trim()) || [];
   
   const filteredCourses = availableCourses.filter((c: string) => 
     c.toLowerCase().includes(courseSearch.toLowerCase())
@@ -235,10 +236,10 @@ function AgendaEditorPopOver({ day, slot, currentData, formadores, onClose, onSa
               </div>
               <div className="search-results">
                 {filteredTrainers.map((f: any) => (
-                  <button key={f[1]} className={`result-item ${trainerSearch === f[1] ? 'is-selected' : ''}`} onClick={() => { setTrainerSearch(f[1]); setStep(2); }}>
+                  <button key={f[F.NOME]} className={`result-item ${trainerSearch === f[F.NOME] ? 'is-selected' : ''}`} onClick={() => { setTrainerSearch(f[F.NOME]); setStep(2); }}>
                     <Users size={14} />
-                    <span>{f[1]}</span>
-                    {trainerSearch === f[1] && <Check size={14} className="text-accent" />}
+                    <span>{f[F.NOME]}</span>
+                    {trainerSearch === f[F.NOME] && <Check size={14} className="text-accent" />}
                   </button>
                 ))}
                 {filteredTrainers.length === 0 && <div className="no-results">Nenhum formador encontrado.</div>}
