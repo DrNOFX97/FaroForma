@@ -1,4 +1,4 @@
-import { Search, Pencil, FileDown, Trash2 } from 'lucide-react';
+import { Search, Pencil, FileDown, Trash2 } from 'lucide-react'; // Search still used in input icon
 import { useState } from 'react';
 import { apiService } from '../../services/api';
 import { TableSkeleton } from './TableSkeleton';
@@ -183,8 +183,11 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
           </thead>
           <tbody>
             {pageRows.map((item, i) => (
-              <tr key={i} style={selected.has(item.originalIndex) ? { background: 'rgba(239,68,68,0.04)' } : undefined}>
-                <td style={{ textAlign: 'center', padding: '0.6rem' }}>
+              <tr key={i}
+                onClick={() => onDetail(item)}
+                style={{ cursor: 'pointer', ...(selected.has(item.originalIndex) ? { background: 'rgba(239,68,68,0.04)' } : {}) }}
+              >
+                <td style={{ textAlign: 'center', padding: '0.6rem' }} onClick={e => e.stopPropagation()}>
                   <input type="checkbox" checked={selected.has(item.originalIndex)} onChange={() => toggleSelect(item.originalIndex)} style={{ cursor: 'pointer' }} />
                 </td>
                 <td style={{ fontWeight: 700 }}>#{item.originalIndex}</td>
@@ -199,11 +202,8 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
                     : <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>—</span>
                   }
                 </td>
-                <td>
+                <td onClick={e => e.stopPropagation()}>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="admin-action-btn" onClick={() => onDetail(item)} title="Ver Detalhes">
-                      <Search size={16} />
-                    </button>
                     <button className="admin-action-btn" onClick={() => onEdit(item)} title="Editar">
                       <Pencil size={16} />
                     </button>

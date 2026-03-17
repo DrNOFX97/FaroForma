@@ -208,8 +208,11 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
           </thead>
           <tbody>
             {pageRows.map((item, i) => (
-              <tr key={i} style={selected.has(item.originalIndex) ? { background: 'rgba(239,68,68,0.04)' } : undefined}>
-                <td style={{ textAlign: 'center', padding: '0.6rem' }}>
+              <tr key={i}
+                onClick={() => onDetail({ originalIndex: item.originalIndex, cells: item.cells, _type: type })}
+                style={{ cursor: 'pointer', ...(selected.has(item.originalIndex) ? { background: 'rgba(239,68,68,0.04)' } : {}) }}
+              >
+                <td style={{ textAlign: 'center', padding: '0.6rem' }} onClick={e => e.stopPropagation()}>
                   <input type="checkbox" checked={selected.has(item.originalIndex)} onChange={() => toggleSelect(item.originalIndex)} style={{ cursor: 'pointer' }} />
                 </td>
                 {columns ? (
@@ -227,16 +230,9 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
                     return <td key={j}><span className="cell-truncate" title={String(cell ?? '')}>{display}</span></td>;
                   })
                 )}
-                <td>
+                <td onClick={e => e.stopPropagation()}>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="admin-action-btn" onClick={() => {
-                      onDetail({ originalIndex: item.originalIndex, cells: item.cells, _type: type });
-                    }} title="Ver Detalhes">
-                      <Search size={16} />
-                    </button>
-                    <button className="admin-action-btn" onClick={() => {
-                      onEdit({ originalIndex: item.originalIndex, cells: item.cells, type });
-                    }} title="Editar">
+                    <button className="admin-action-btn" onClick={() => onEdit({ originalIndex: item.originalIndex, cells: item.cells, type })} title="Editar">
                       <Pencil size={16} />
                     </button>
                     <button
