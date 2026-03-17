@@ -42,10 +42,6 @@ export default function Courses() {
   });
   const [formSuccess, setFormSuccess] = useState(false);
 
-  useEffect(() => {
-    fetchCourse();
-  }, []);
-
   const fetchCourse = async () => {
     try {
       const data = await apiService.getCourses();
@@ -62,6 +58,10 @@ export default function Courses() {
       setCourseData(DEFAULT_COURSE_INFO);
     }
   };
+
+  useEffect(() => {
+    fetchCourse();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
