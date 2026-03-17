@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Award, Pencil, X, Save } from 'lucide-react';
+import { Award, Pencil, X, Save, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiService } from '../../services/api';
 
@@ -8,6 +8,7 @@ export function CoursesView() {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingCourse, setEditingCourse] = useState<any | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchCourses();
@@ -36,14 +37,21 @@ export function CoursesView() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem a certeza que deseja remover este curso?')) return;
-    try {
-      await apiService.deleteCourse(id);
-      fetchCourses();
-    } catch (err) {
-      toast.error('Erro ao remover curso');
-    }
+  const handleDelete = (id: string, title: string) => {
+    toast((t) => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Remover curso?</span>
+        <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>"{title}"</span>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+          <button onClick={async () => {
+            toast.dismiss(t.id);
+            try { await apiService.deleteCourse(id); fetchCourses(); }
+            catch { toast.error('Erro ao remover curso'); }
+          }} style={{ padding: '4px 12px', borderRadius: '6px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>Remover</button>
+          <button onClick={() => toast.dismiss(t.id)} style={{ padding: '4px 12px', borderRadius: '6px', background: '#f3f4f6', color: '#374151', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>Cancelar</button>
+        </div>
+      </div>
+    ), { duration: Infinity, icon: '🗑️' });
   };
 
   if (loading) return <div className="glass" style={{ padding: '2rem', display: 'flex', justifyContent: 'center' }}><div className="spinner"></div></div>;
@@ -58,6 +66,22 @@ export function CoursesView() {
       </div>
 
       <div className="admin-table-container glass">
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ position: 'relative', maxWidth: '360px', width: '100%' }}>
+            <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              className="form__input"
+              placeholder="Pesquisar cursos..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft: '2.2rem', height: '38px', fontSize: '0.85rem' }}
+            />
+          </div>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            {courses.filter(c => !search || c.title?.pt?.toLowerCase().includes(search.toLowerCase()) || c.title?.en?.toLowerCase().includes(search.toLowerCase())).length} curso(s)
+          </span>
+        </div>
         <div className="admin-table-scroll">
           <table className="admin-table">
             <thead>
@@ -68,14 +92,16 @@ export function CoursesView() {
               </tr>
             </thead>
             <tbody>
-              {courses.map((course) => (
+              {courses
+                .filter(c => !search || c.title?.pt?.toLowerCase().includes(search.toLowerCase()) || c.title?.en?.toLowerCase().includes(search.toLowerCase()))
+                .map((course) => (
                 <tr key={course.id}>
                   <td style={{ fontWeight: 600 }}>{course.title?.pt}</td>
                   <td>{course.status?.pt}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button className="admin-action-btn" onClick={() => setEditingCourse(course)} title="Editar"><Pencil size={16} /></button>
-                      <button className="admin-action-btn" onClick={() => handleDelete(course.id)} title="Remover" style={{ color: '#ef4444' }}><X size={16} /></button>
+                      <button className="admin-action-btn" onClick={() => handleDelete(course.id, course.title?.pt || '')} title="Remover" style={{ color: '#ef4444' }}><X size={16} /></button>
                     </div>
                   </td>
                 </tr>

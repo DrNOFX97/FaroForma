@@ -30,19 +30,24 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
   const headers = data[0];
   const rows = data.slice(1);
 
-  const handleDelete = async (index: number) => {
-    const tabName = type.charAt(0).toUpperCase() + type.slice(1); // alunos -> Alunos
-    if (!confirm(`Tem a certeza que deseja eliminar o registo #${index} de ${type}?`)) return;
-    setDeleting(index);
-    try {
-      await apiService.deleteRow(tabName, index);
-      toast.success('Registo eliminado!');
-      onRefresh();
-    } catch (err) {
-      toast.error('Erro ao eliminar.');
-    } finally {
-      setDeleting(null);
-    }
+  const handleDelete = (index: number) => {
+    const tabName = type.charAt(0).toUpperCase() + type.slice(1);
+    toast((t) => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Eliminar #{index}?</span>
+        <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Esta ação é irreversível.</span>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+          <button onClick={async () => {
+            toast.dismiss(t.id);
+            setDeleting(index);
+            try { await apiService.deleteRow(tabName, index); toast.success('Registo eliminado!'); onRefresh(); }
+            catch { toast.error('Erro ao eliminar.'); }
+            finally { setDeleting(null); }
+          }} style={{ padding: '4px 12px', borderRadius: '6px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>Eliminar</button>
+          <button onClick={() => toast.dismiss(t.id)} style={{ padding: '4px 12px', borderRadius: '6px', background: '#f3f4f6', color: '#374151', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>Cancelar</button>
+        </div>
+      </div>
+    ), { duration: Infinity, icon: '🗑️' });
   };
 
   const rowsWithIdx = rows.map((row, i) => ({ row, originalIndex: i + 1 }));
@@ -52,11 +57,24 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
   });
 
   const handleExport = () => {
-    const sheetData = [headers, ...filteredRows.map(({ row }) => row)];
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    const tabTitle = type.charAt(0).toUpperCase() + type.slice(1);
+    let exportHeaders: string[];
+    let exportRows: any[][];
+    if (columns) {
+      exportHeaders = columns.map(ci => headerMap?.[ci] ?? headers[ci]);
+      exportRows = filteredRows.map(({ row, originalIndex }) => [
+        `#${originalIndex}`,
+        ...columns.map(ci => cellFormat?.[ci] ? cellFormat[ci](row[ci]) : row[ci]),
+      ]);
+      exportHeaders = ['ID', ...exportHeaders];
+    } else {
+      exportHeaders = headers;
+      exportRows = filteredRows.map(({ row }) => row);
+    }
+    const ws = XLSX.utils.aoa_to_sheet([exportHeaders, ...exportRows]);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, type.charAt(0).toUpperCase() + type.slice(1));
-    XLSX.writeFile(wb, `FaroForma_${type.charAt(0).toUpperCase() + type.slice(1)}_${new Date().toLocaleDateString('pt-PT').replace(/\//g, '-')}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, tabTitle);
+    XLSX.writeFile(wb, `FaroForma_${tabTitle}_${new Date().toLocaleDateString('pt-PT').replace(/\//g, '-')}.xlsx`);
   };
 
   const displayRows = [...filteredRows].reverse().map(({ row, originalIndex }) => ({

@@ -123,10 +123,10 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
     <div className="command-center">
       {/* Top Stats */}
       <div className="stats-row">
-        <StatCard label="Formadores" val={stats.formadores} icon={<Users size={18} />} trend={trends.formadores.label} trendPositive={trends.formadores.positive} color="emerald" onClick={() => onNavigate?.('formadores')} />
-        <StatCard label="Alunos" val={stats.alunos} icon={<GraduationCap size={18} />} trend={trends.alunos.label} trendPositive={trends.alunos.positive} color="blue" onClick={() => onNavigate?.('alunos')} />
+        <StatCard label="Formadores" val={stats.formadores} icon={<Users size={18} />} trend={trends.formadores.label} trendPositive={trends.formadores.positive} color="emerald" loading={!data} onClick={() => onNavigate?.('formadores')} />
+        <StatCard label="Alunos" val={stats.alunos} icon={<GraduationCap size={18} />} trend={trends.alunos.label} trendPositive={trends.alunos.positive} color="blue" loading={!data} onClick={() => onNavigate?.('alunos')} />
         <StatCard label="Visitantes Hoje" val={stats.visitantes} icon={<MousePointer2 size={18} />} trend="Hoje" trendPositive={true} color="amber" onClick={() => setVisitorPopup(true)} />
-        <StatCard label="Contactos" val={stats.contactos} icon={<MessageSquare size={18} />} trend={trends.contactos.label} trendPositive={trends.contactos.positive} color="violet" onClick={() => onNavigate?.('contactos')} />
+        <StatCard label="Contactos" val={stats.contactos} icon={<MessageSquare size={18} />} trend={trends.contactos.label} trendPositive={trends.contactos.positive} color="violet" loading={!data} onClick={() => onNavigate?.('contactos')} />
       </div>
 
       <AnimatePresence>
@@ -278,18 +278,22 @@ export function DashboardView({ data, onNavigate }: DashboardViewProps) {
   );
 }
 
-function StatCard({ label, val, icon, trend, trendPositive, color, onClick }: any) {
+function StatCard({ label, val, icon, trend, trendPositive, color, onClick, loading }: any) {
   return (
-    <button className={`stat-card-v2 ${color}`} onClick={onClick} title={`Ver ${label}`}>
+    <button className={`stat-card-v2 ${color}${loading ? ' is-loading' : ''}`} onClick={onClick} title={`Ver ${label}`}>
       <div className="stat-card-icon">{icon}</div>
       <div className="stat-card-info">
         <span className="stat-label">{label}</span>
         <div className="stat-value-row">
-          <span className="stat-value">{val}</span>
-          {trend !== '—' && (
-            <span className={`stat-trend ${trendPositive ? 'positive' : 'negative'}`} title="vs mês anterior">
-              {trend}
-            </span>
+          {loading ? <span className="stat-skeleton" /> : (
+            <>
+              <span className="stat-value">{val}</span>
+              {trend !== '—' && (
+                <span className={`stat-trend ${trendPositive ? 'positive' : 'negative'}`} title="vs mês anterior">
+                  {trend}
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -425,6 +429,9 @@ const DASHBOARD_STYLES = `
   .stat-trend { font-size: 0.7rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
   .stat-trend.positive { color: #10b981; background: rgba(16, 185, 129, 0.1); }
   .stat-trend.negative { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+  @keyframes shimmer { 0% { opacity: 0.4 } 50% { opacity: 0.9 } 100% { opacity: 0.4 } }
+  .stat-skeleton { display: inline-block; width: 48px; height: 22px; border-radius: 6px; background: var(--border); animation: shimmer 1.4s ease-in-out infinite; }
+  .stat-card-v2.is-loading { pointer-events: none; }
 
   /* Visitor Popup */
   .visitor-popup { width: 100%; max-width: 420px; border-radius: var(--radius-xl); overflow: hidden; }
