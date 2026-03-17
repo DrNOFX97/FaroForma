@@ -3,34 +3,42 @@ import { motion } from 'framer-motion';
 import { X, Mail, Phone, Calendar, Hash, Linkedin, BookOpen, Award, Clock, Monitor, Layers, Star, MessageSquare, GraduationCap, User } from 'lucide-react';
 import { F, A, C } from '../../config/sheetsSchema';
 
+/* ── Value formatters ───────────────────────────────────────────────────── */
+const stripFloat = (v: string) => v ? String(v).replace(/\.0$/, '') : v;
+const fmtDate = (v: string) => {
+  if (!v) return v;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? v : d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
 /* ── Formador sections ──────────────────────────────────────────────────── */
 const F_SECTIONS = [
   {
     label: 'Contacto',
     fields: [
       { idx: F.EMAIL,           label: 'Email',              icon: Mail },
-      { idx: F.TELEFONE,        label: 'Telefone',           icon: Phone },
+      { idx: F.TELEFONE,        label: 'Telefone',           icon: Phone,     format: stripFloat },
       { idx: F.LINKEDIN,        label: 'LinkedIn',           icon: Linkedin },
-      { idx: F.NIF,             label: 'NIF',                icon: Hash },
-      { idx: F.DATA_NASCIMENTO, label: 'Data de Nascimento', icon: Calendar },
+      { idx: F.NIF,             label: 'NIF',                icon: Hash,      format: stripFloat },
+      { idx: F.DATA_NASCIMENTO, label: 'Data de Nascimento', icon: Calendar,  format: fmtDate },
       { idx: F.EMAIL_CONF,      label: 'Email Confirmado',   icon: Mail },
     ],
   },
   {
     label: 'Disponibilidade',
     fields: [
-      { idx: F.DIAS,      label: 'Dias Disponíveis', icon: Calendar },
-      { idx: F.PERIODOS,  label: 'Períodos',         icon: Clock },
-      { idx: F.MODALIDADE,label: 'Modalidade',       icon: Monitor },
+      { idx: F.DIAS,       label: 'Dias Disponíveis', icon: Calendar },
+      { idx: F.PERIODOS,   label: 'Períodos',         icon: Clock },
+      { idx: F.MODALIDADE, label: 'Modalidade',       icon: Monitor },
     ],
   },
   {
     label: 'Qualificações',
     fields: [
-      { idx: F.AREAS,      label: 'Áreas',       icon: Layers },
-      { idx: F.HABILITACOES,label: 'Habilitações',icon: BookOpen },
-      { idx: F.CAP_CCP,    label: 'CAP / CCP',   icon: Award },
-      { idx: F.EXPERIENCIA,label: 'Experiência', icon: Star },
+      { idx: F.AREAS,       label: 'Áreas',        icon: Layers },
+      { idx: F.HABILITACOES,label: 'Habilitações',  icon: BookOpen },
+      { idx: F.CAP_CCP,     label: 'CAP / CCP',    icon: Award },
+      { idx: F.EXPERIENCIA, label: 'Experiência',   icon: Star,      format: stripFloat },
     ],
   },
 ];
@@ -41,7 +49,7 @@ const A_SECTIONS = [
     label: 'Contacto',
     fields: [
       { idx: A.EMAIL,                label: 'Email',              icon: Mail },
-      { idx: A.TELEFONE,             label: 'Telefone',           icon: Phone },
+      { idx: A.TELEFONE,             label: 'Telefone',           icon: Phone, format: stripFloat },
       { idx: A.PREFERENCIA_CONTACTO, label: 'Contacto Preferido', icon: Phone },
       { idx: A.EMAIL_CONF,           label: 'Email Confirmado',   icon: Mail },
     ],
@@ -159,12 +167,12 @@ export function DetailModal({ data, onClose }: DetailModalProps) {
               <div key={section.label} className="dm-section">
                 <span className="dm-section-label">{section.label}</span>
                 <div className="dm-fields">
-                  {visible.map(({ idx, label, icon: Icon }) => (
+                  {visible.map(({ idx, label, icon: Icon, format }: any) => (
                     <div key={idx} className="dm-field">
                       <Icon size={14} className="dm-field-icon" />
                       <div className="dm-field-content">
                         <span className="dm-field-label">{label}</span>
-                        <span className="dm-field-value">{cells[idx]}</span>
+                        <span className="dm-field-value">{format ? format(cells[idx]) : cells[idx]}</span>
                       </div>
                     </div>
                   ))}
