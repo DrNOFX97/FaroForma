@@ -55,20 +55,22 @@ export default function Services() {
               <div className="service-card__glow" />
               <div className="service-card__icon">
                 {s.icon && (LucideIcons as any)[s.icon] ? (
-                  React.createElement((LucideIcons as any)[s.icon], { size: 24 })
+                  React.createElement((LucideIcons as any)[s.icon], { size: 18 })
                 ) : (
-                  s.icon && typeof s.icon !== 'string' ? s.icon : <GraduationCap size={24} />
+                  s.icon && typeof s.icon !== 'string' ? s.icon : <GraduationCap size={18} />
                 )}
               </div>
-              <h3 className="service-card__title">{(s.title as any)[language]}</h3>
-              <p className="service-card__desc">{(s.desc as any)[language]}</p>
-              <button 
-                className="service-card__arrow"
-                onClick={() => document.querySelector('#contactos')?.scrollIntoView({ behavior: 'smooth' })}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-              >
-                {language === 'pt' ? 'Saber mais' : 'Learn more'} <ArrowRight size={14} />
-              </button>
+              <div>
+                <h3 className="service-card__title">{(s.title as any)[language]}</h3>
+                <p className="service-card__desc">{(s.desc as any)[language]}</p>
+                <button
+                  className="service-card__arrow"
+                  onClick={() => document.querySelector('#contactos')?.scrollIntoView({ behavior: 'smooth' })}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  {language === 'pt' ? 'Saber mais' : 'Learn more'} <ArrowRight size={12} />
+                </button>
+              </div>
             </motion.div>
           ))}
         </div>
