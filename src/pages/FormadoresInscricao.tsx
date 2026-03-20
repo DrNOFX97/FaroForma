@@ -188,6 +188,7 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
             { headers: { Authorization: `Bearer ${accessToken}` } }
           );
           const person = await resp.json();
+          console.log('[Google People API]', person);
           const b = person.birthdays?.[0]?.date;
           if (b?.year && b?.month && b?.day) {
             birthday = `${b.year}-${String(b.month).padStart(2, '0')}-${String(b.day).padStart(2, '0')}`;
@@ -195,7 +196,11 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
           if (!phone && person.phoneNumbers?.[0]?.value) {
             phone = person.phoneNumbers[0].value;
           }
-        } catch { /* ignore — non-critical */ }
+        } catch (err) {
+          console.warn('[Google People API] failed:', err);
+        }
+      } else {
+        console.warn('[Google People API] no access token');
       }
 
       setData(prev => ({
