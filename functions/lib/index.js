@@ -55,42 +55,79 @@ const SPREADSHEET_ID = (0, params_1.defineSecret)("SPREADSHEET_ID");
 const GMAIL_USER = (0, params_1.defineSecret)("GMAIL_USER");
 const GMAIL_APP_PASSWORD = (0, params_1.defineSecret)("GMAIL_APP_PASSWORD");
 const GEMINI_API_KEY = (0, params_1.defineSecret)("GEMINI_API_KEY");
+const N8N_WEBHOOK_URL = (0, params_1.defineSecret)("N8N_WEBHOOK_URL");
+async function notifyN8n(type, data) {
+    const url = N8N_WEBHOOK_URL.value();
+    if (!url)
+        return;
+    try {
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, data }),
+        });
+    }
+    catch (err) {
+        console.warn('[n8n] webhook failed:', err);
+    }
+}
+const TRANSLATE_MAX_DEPTH = 6;
+const TRANSLATE_MAX_STRING = 2000;
 async function autoTranslate(data) {
     if (!data)
-        return data;
+        return {};
     const apiKey = GEMINI_API_KEY.value();
     if (!apiKey)
         return data;
     const genAI = new generative_ai_1.GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    async function processObject(obj) {
-        if (!obj || typeof obj !== 'object')
+    async function processObject(obj, depth) {
+        if (depth > TRANSLATE_MAX_DEPTH)
             return;
-        if (obj.pt && (obj.en === undefined || obj.en === null || obj.en.trim() === '')) {
-            const prompt = `Translate this text from a professional training center in Portugal to UK English. Keep the professional and educational tone. Format: Return ONLY the translated text.\n\nText: ${obj.pt}`;
+        if (typeof obj.pt === 'string' && obj.pt.length > 0 &&
+            (obj.en === undefined || obj.en === null || (typeof obj.en === 'string' && obj.en.trim() === ''))) {
+            const text = obj.pt.slice(0, TRANSLATE_MAX_STRING).replace(/[`\\]/g, ' ');
+            const prompt = `Translate this text from a professional training center in Portugal to UK English. Keep the professional and educational tone. Return ONLY the translated text.\n\nText: ${text}`;
             try {
                 const result = await model.generateContent(prompt);
                 obj.en = result.response.text().trim();
             }
             catch (err) {
-                console.error('Translation failed for:', obj.pt, err);
+                console.error('Translation failed:', err);
             }
         }
         else {
-            for (const key in obj) {
-                if (typeof obj[key] === 'object')
-                    await processObject(obj[key]);
+            for (const key of Object.keys(obj)) {
+                const val = obj[key];
+                if (Array.isArray(val)) {
+                    for (const item of val) {
+                        if (item !== null && typeof item === 'object') {
+                            await processObject(item, depth + 1);
+                        }
+                    }
+                }
+                else if (val !== null && typeof val === 'object') {
+                    await processObject(val, depth + 1);
+                }
             }
         }
     }
     const result = JSON.parse(JSON.stringify(data));
-    await processObject(result);
+    await processObject(result, 0);
     return result;
 }
+const ALLOWED_ORIGINS = ['https://faroforma.pt', 'https://www.faroforma.pt'];
 const app = (0, express_1.default)();
 app.set('trust proxy', 1);
-app.use((0, cors_1.default)({ origin: true }));
+app.use((0, cors_1.default)({ origin: ALLOWED_ORIGINS }));
 app.use(express_1.default.json());
+app.use((_req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+});
 const publicLimiter = (0, express_rate_limit_1.default)({
     windowMs: 60 * 60 * 1000,
     max: 5,
@@ -98,21 +135,32 @@ const publicLimiter = (0, express_rate_limit_1.default)({
     legacyHeaders: false,
     message: { error: 'Demasiados pedidos. Tente novamente mais tarde.' },
 });
+const adminLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiados pedidos. Tente novamente mais tarde.' },
+});
+app.use('/api/admin', adminLimiter);
 let adminEmailsCache = null;
+let adminEmailsFetch = null;
 const ADMIN_CACHE_TTL = 5 * 60 * 1000;
 async function getAdminEmails() {
     if (adminEmailsCache && Date.now() - adminEmailsCache.ts < ADMIN_CACHE_TTL) {
         return adminEmailsCache.emails;
     }
-    try {
-        const doc = await admin.firestore().collection('config').doc('admins').get();
+    if (adminEmailsFetch)
+        return adminEmailsFetch;
+    adminEmailsFetch = admin.firestore().collection('config').doc('admins').get()
+        .then(doc => {
         const emails = (doc.exists ? doc.data()?.emails : null) ?? [];
         adminEmailsCache = { emails, ts: Date.now() };
         return emails;
-    }
-    catch {
-        return adminEmailsCache?.emails ?? [];
-    }
+    })
+        .catch(() => adminEmailsCache?.emails ?? [])
+        .finally(() => { adminEmailsFetch = null; });
+    return adminEmailsFetch;
 }
 async function createAuditLog(req, action, target, details = {}) {
     const user = req.user;
@@ -150,7 +198,7 @@ const isAdmin = async (req, res, next) => {
             res.status(403).json({ error: 'Proibido' });
         }
     }
-    catch (error) {
+    catch {
         res.status(401).json({ error: 'Token inválido' });
     }
 };
@@ -325,6 +373,7 @@ app.post('/api/inscricao-formadores', publicLimiter, async (req, res) => {
         catch { }
         row[sheetsSchema_1.F.EMAIL_CONF] = emailConf;
         await appendToSheet('Formadores', row);
+        notifyN8n('formador', d).catch(() => { });
         notifyAdmins(`[Formador] Nova candidatura — ${d.nome}`, `<h2>Nova candidatura de formador</h2>
       <table cellpadding="6" style="border-collapse:collapse">
         <tr><td><strong>Nome</strong></td><td>${escHtml(d.nome)}</td></tr>
@@ -359,6 +408,7 @@ app.post('/api/contact', publicLimiter, async (req, res) => {
         row[sheetsSchema_1.C.ASSUNTO] = d.subject;
         row[sheetsSchema_1.C.MENSAGEM] = d.message;
         await appendToSheet('Contactos', row);
+        notifyN8n('contacto', d).catch(() => { });
         await notifyAdmins(`[Contacto] ${d.name} — ${d.subject || 'sem assunto'}`, `<h2>Nova mensagem de contacto</h2>
       <table cellpadding="6" style="border-collapse:collapse">
         <tr><td><strong>Nome</strong></td><td>${escHtml(d.name)}</td></tr>
@@ -405,6 +455,20 @@ app.post('/api/student', publicLimiter, async (req, res) => {
         catch { }
         row[sheetsSchema_1.A.EMAIL_CONF] = emailConf;
         await appendToSheet('Alunos', row);
+        notifyN8n('aluno', d).catch(() => { });
+        if (d.turma && d.program) {
+            const turmaKey = d.turma.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+            admin.firestore().collection('courses')
+                .where('title.pt', '==', d.program).limit(1).get()
+                .then(snapshot => {
+                if (!snapshot.empty) {
+                    const update = {};
+                    update[`enrolledCounts.${turmaKey}`] = admin.firestore.FieldValue.increment(1);
+                    return snapshot.docs[0].ref.update(update);
+                }
+            })
+                .catch(() => { });
+        }
         notifyAdmins(`[Aluno] Nova inscrição — ${d.fullName}`, `<h2>Nova inscrição de aluno</h2>
       <table cellpadding="6" style="border-collapse:collapse">
         <tr><td><strong>Nome</strong></td><td>${escHtml(d.fullName)}</td></tr>
@@ -437,7 +501,7 @@ app.get('/api/admin/data', isAdmin, async (req, res) => {
 });
 app.get('/api/admin/audit-log', isAdmin, async (req, res) => {
     try {
-        const snap = await admin.firestore().collection('admin_logs').orderBy('ts', 'desc').limit(50).get();
+        const snap = await admin.firestore().collection('audit_log').orderBy('timestamp', 'desc').limit(50).get();
         res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }
     catch (err) {
@@ -458,13 +522,17 @@ app.post('/api/admin/sync-headers', isAdmin, async (req, res) => {
         res.json({ message: 'Headers actualizados' });
     }
     catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('sync-headers error:', err);
+        res.status(500).json({ error: 'Erro ao sincronizar cabeçalhos' });
     }
 });
+const ALLOWED_TABS = ['Formadores', 'Alunos', 'Contactos'];
 app.post('/api/admin/update-row', isAdmin, async (req, res) => {
     const { tabName, rowIndex, values } = req.body;
     if (!tabName || rowIndex === undefined || !Array.isArray(values))
         return res.status(400).json({ error: 'Dados inválidos' });
+    if (!ALLOWED_TABS.includes(tabName))
+        return res.status(400).json({ error: 'Separador inválido' });
     try {
         await updateSheetRow(tabName, rowIndex, values);
         await createAuditLog(req, 'UPDATE_ROW', tabName, { rowIndex, label: values[1] });
@@ -478,6 +546,8 @@ app.delete('/api/admin/delete-row', isAdmin, async (req, res) => {
     const { tabName, rowIndex } = req.body;
     if (!tabName || rowIndex === undefined)
         return res.status(400).json({ error: 'Dados inválidos' });
+    if (!ALLOWED_TABS.includes(tabName))
+        return res.status(400).json({ error: 'Separador inválido' });
     try {
         await deleteSheetRow(tabName, rowIndex);
         await createAuditLog(req, 'DELETE_ROW', tabName, { rowIndex });
@@ -491,6 +561,10 @@ app.delete('/api/admin/bulk-delete', isAdmin, async (req, res) => {
     const { tabName, rowIndices } = req.body;
     if (!tabName || !Array.isArray(rowIndices) || rowIndices.length === 0)
         return res.status(400).json({ error: 'Dados inválidos' });
+    if (!ALLOWED_TABS.includes(tabName))
+        return res.status(400).json({ error: 'Separador inválido' });
+    if (rowIndices.length > 100)
+        return res.status(400).json({ error: 'Máximo de 100 registos por operação' });
     try {
         const sorted = [...rowIndices].sort((a, b) => b - a);
         for (const idx of sorted)
@@ -535,8 +609,13 @@ app.post('/api/admin/config', isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Erro ao guardar' });
     }
 });
+const ALLOWED_ROOMS = ['sala1', 'sala2'];
 app.get('/api/admin/agenda', isAdmin, async (req, res) => {
     const room = req.query.room || 'sala1';
+    if (!ALLOWED_ROOMS.includes(room)) {
+        res.status(400).json({ error: 'Sala inválida' });
+        return;
+    }
     try {
         const doc = await admin.firestore().collection('agenda').doc(room).get();
         res.json(doc.exists ? doc.data() : {});
@@ -547,6 +626,10 @@ app.get('/api/admin/agenda', isAdmin, async (req, res) => {
 });
 app.post('/api/admin/agenda', isAdmin, async (req, res) => {
     const room = req.query.room || 'sala1';
+    if (!ALLOWED_ROOMS.includes(room)) {
+        res.status(400).json({ error: 'Sala inválida' });
+        return;
+    }
     try {
         await admin.firestore().collection('agenda').doc(room).set(req.body);
         await createAuditLog(req, 'UPDATE_AGENDA', `agenda/${room}`, { slots: Object.keys(req.body).length });
@@ -558,7 +641,7 @@ app.post('/api/admin/agenda', isAdmin, async (req, res) => {
 });
 app.get('/api/courses', async (req, res) => {
     try {
-        const snapshot = await admin.firestore().collection('courses').orderBy('title').get();
+        const snapshot = await admin.firestore().collection('courses').get();
         const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         res.json(courses);
     }
@@ -569,7 +652,11 @@ app.get('/api/courses', async (req, res) => {
 app.get('/api/admin/courses', isAdmin, async (req, res) => {
     try {
         const snapshot = await admin.firestore().collection('courses').orderBy('title').get();
-        const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const courses = snapshot.docs.map(doc => {
+            const { id: _id, ...data } = doc.data();
+            void _id;
+            return { id: doc.id, ...data };
+        });
         res.json(courses);
     }
     catch (err) {
@@ -582,7 +669,7 @@ app.post('/api/admin/courses', isAdmin, async (req, res) => {
         const data = await autoTranslate(raw);
         const col = admin.firestore().collection('courses');
         if (typeof id === 'string' && id.trim() !== '') {
-            await col.doc(id).set(data, { merge: true });
+            await col.doc(id).set(data);
             await createAuditLog(req, 'UPDATE_COURSE', `courses/${id}`, { title: data.title?.pt });
         }
         else {
@@ -606,6 +693,36 @@ app.delete('/api/admin/courses/:id', isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Erro ao remover curso' });
     }
 });
+app.get('/api/admin/notif-state', isAdmin, async (req, res) => {
+    const uid = req.user.uid;
+    try {
+        const doc = await admin.firestore().collection('notifState').doc(uid).get();
+        res.json(doc.exists ? doc.data() : { lastViewedAt: null, lastSeen: {} });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao obter estado de notificações' });
+    }
+});
+app.post('/api/admin/notif-state', isAdmin, async (req, res) => {
+    const uid = req.user.uid;
+    const { lastViewedAt, lastSeen } = req.body;
+    try {
+        const update = {};
+        if (typeof lastViewedAt === 'string')
+            update.lastViewedAt = lastViewedAt;
+        if (lastSeen && typeof lastSeen === 'object')
+            update.lastSeen = lastSeen;
+        if (Object.keys(update).length === 0) {
+            res.status(400).json({ error: 'Nada para guardar' });
+            return;
+        }
+        await admin.firestore().collection('notifState').doc(uid).set(update, { merge: true });
+        res.json({ message: 'Estado guardado' });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao guardar estado de notificações' });
+    }
+});
 app.get('/api/admin/admins', isAdmin, async (req, res) => {
     try {
         const doc = await admin.firestore().collection('config').doc('admins').get();
@@ -618,8 +735,9 @@ app.get('/api/admin/admins', isAdmin, async (req, res) => {
 });
 app.post('/api/admin/admins', isAdmin, async (req, res) => {
     const { emails } = req.body;
-    if (!Array.isArray(emails) || emails.some(e => typeof e !== 'string')) {
-        return res.status(400).json({ error: 'Dados inválidos' });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!Array.isArray(emails) || emails.some(e => typeof e !== 'string' || !emailRegex.test(e))) {
+        return res.status(400).json({ error: 'Emails inválidos' });
     }
     try {
         await admin.firestore().collection('config').doc('admins').set({ emails });
@@ -682,8 +800,13 @@ app.get('/api/admin/analytics', isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Erro ao obter analytics' });
     }
 });
+const CMS_SECTIONS = ['hero', 'about', 'services', 'tutoring'];
 app.get('/api/cms/:section', async (req, res) => {
     const section = req.params.section;
+    if (!CMS_SECTIONS.includes(section)) {
+        res.status(400).json({ error: 'Secção inválida' });
+        return;
+    }
     try {
         const doc = await admin.firestore().collection('cms').doc(section).get();
         res.json(doc.exists ? doc.data() : {});
@@ -694,6 +817,10 @@ app.get('/api/cms/:section', async (req, res) => {
 });
 app.post('/api/cms/:section', isAdmin, async (req, res) => {
     const section = req.params.section;
+    if (!CMS_SECTIONS.includes(section)) {
+        res.status(400).json({ error: 'Secção inválida' });
+        return;
+    }
     try {
         const data = await autoTranslate(req.body);
         await admin.firestore().collection('cms').doc(section).set(data, { merge: true });
@@ -708,6 +835,6 @@ app.get('/health', (req, res) => res.send('OK'));
 exports.api = (0, https_1.onRequest)({
     region: "europe-west1",
     memory: "256MiB",
-    secrets: [GOOGLE_SERVICE_ACCOUNT_JSON, SPREADSHEET_ID, GMAIL_USER, GMAIL_APP_PASSWORD]
+    secrets: [GOOGLE_SERVICE_ACCOUNT_JSON, SPREADSHEET_ID, GMAIL_USER, GMAIL_APP_PASSWORD, N8N_WEBHOOK_URL, GEMINI_API_KEY]
 }, app);
 //# sourceMappingURL=index.js.map

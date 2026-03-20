@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Clock, User, Activity, Search } from 'lucide-react';
 import { TableSkeleton } from './TableSkeleton';
+import { apiService } from '../../services/api';
 
 export function AuditLogView() {
   const [logs, setLogs] = useState<any[]>([]);
@@ -14,14 +15,7 @@ export function AuditLogView() {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/audit-log', {
-        headers: {
-          'Authorization': `Bearer ${await (window as any).firebaseAuthToken()}`
-        }
-      });
-      if (res.ok) {
-        setLogs(await res.json());
-      }
+      setLogs(await apiService.getAuditLog());
     } catch (err) {
       console.error('Failed to fetch logs:', err);
     } finally {

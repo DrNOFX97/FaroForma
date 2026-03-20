@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Navbar, Footer } from './components/layout';
 import { Hero, About, Services, Tutoring, Contact, Courses } from './components/sections';
-import FormadoresInscricao from './pages/FormadoresInscricao';
-import TurmasPage from './pages/TurmasPage';
-import Admin from './pages/Admin';
 import { Toaster } from 'react-hot-toast';
+
+const FormadoresInscricao = lazy(() => import('./pages/FormadoresInscricao'));
+const TurmasPage = lazy(() => import('./pages/TurmasPage'));
+const Admin = lazy(() => import('./pages/Admin'));
 import { getSiteMeta, DEFAULT_SITE_META } from './config/siteMeta';
 import { apiService } from './services/api';
 
@@ -74,7 +75,7 @@ export default function App() {
 
   const navigate = (p: Page) => {
     setPage(p);
-    window.history.pushState({}, '', p === 'home' ? '/' : `/${p}`);
+    window.history.pushState({ page: p }, '', p === 'home' ? '/' : `/${p}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -93,10 +94,10 @@ export default function App() {
   // Hide Layout for Admin
   if (page === 'admin') {
     return (
-      <>
+      <Suspense fallback={null}>
         <Admin />
         <Toaster position="bottom-right" toastOptions={{ className: 'glass', style: { background: 'var(--bg-1)', color: 'var(--text)', border: '1px solid var(--border)', fontSize: '0.9rem', padding: '12px 20px', borderRadius: 'var(--radius)' } }} />
-      </>
+      </Suspense>
     );
   }
 
@@ -120,8 +121,10 @@ export default function App() {
           <Contact />
         </main>
       )}
-      {page === 'formadores' && <FormadoresInscricao onNavigateHome={() => navigate('home')} />}
-      {page === 'turmas' && <TurmasPage onNavigate={navigate} />}
+      <Suspense fallback={null}>
+        {page === 'formadores' && <FormadoresInscricao onNavigateHome={() => navigate('home')} />}
+        {page === 'turmas' && <TurmasPage onNavigate={navigate} />}
+      </Suspense>
       <Footer />
     </>
   );

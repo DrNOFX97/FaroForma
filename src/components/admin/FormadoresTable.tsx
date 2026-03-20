@@ -1,4 +1,4 @@
-import { Search, Pencil, FileDown, Trash2 } from 'lucide-react'; // Search still used in input icon
+import { Search, FileDown, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { apiService } from '../../services/api';
 import { TableSkeleton } from './TableSkeleton';
@@ -8,17 +8,23 @@ import * as XLSX from 'xlsx';
 
 const PAGE_SIZE = 25;
 
+const DIAS_ABBREV: Record<string, string> = {
+  'Segunda': '2ª', 'Terça': '3ª', 'Quarta': '4ª',
+  'Quinta': '5ª', 'Sexta': '6ª', 'Sábado': 'Sáb', 'Domingo': 'Dom',
+};
+const abbrevDias = (v: string) =>
+  v ? v.split(',').map(d => DIAS_ABBREV[d.trim()] ?? d.trim()).join(', ') : '';
+
 interface FormadoresTableProps {
   data: any[][];
   fetching: boolean;
   onRefresh: () => void;
-  onEdit: (row: any) => void;
   onDetail: (row: any) => void;
+  lastSeenTs?: number;
 }
 
-export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }: FormadoresTableProps) {
+export function FormadoresTable({ data, fetching, onRefresh, onDetail, lastSeenTs = 0 }: FormadoresTableProps) {
   const [search, setSearch] = useState('');
-  const [deleting, setDeleting] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(0);
 
@@ -28,24 +34,6 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
   const headers = data[0];
   const rows = data.slice(1);
 
-  const handleDelete = (index: number) => {
-    toast((t) => (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-        <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Eliminar #{index}?</span>
-        <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Esta ação é irreversível.</span>
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
-          <button onClick={async () => {
-            toast.dismiss(t.id);
-            setDeleting(index);
-            try { await apiService.deleteRow('Formadores', index); toast.success('Registo eliminado!'); onRefresh(); }
-            catch { toast.error('Erro ao eliminar.'); }
-            finally { setDeleting(null); }
-          }} style={{ padding: '4px 12px', borderRadius: '6px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>Eliminar</button>
-          <button onClick={() => toast.dismiss(t.id)} style={{ padding: '4px 12px', borderRadius: '6px', background: '#f3f4f6', color: '#374151', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>Cancelar</button>
-        </div>
-      </div>
-    ), { duration: Infinity, icon: '🗑️' });
-  };
 
   const handleBulkDelete = () => {
     const count = selected.size;
@@ -157,28 +145,24 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
         <table className="admin-table">
           <colgroup>
             <col style={{ width: '3%' }} />   {/* Checkbox */}
-            <col style={{ width: '5%' }} />   {/* ID */}
-            <col style={{ width: '20%' }} />  {/* Nome */}
-            <col style={{ width: '12%' }} />  {/* Tel */}
-            <col style={{ width: '25%' }} />  {/* Áreas */}
-            <col style={{ width: '12%' }} />  {/* Dias */}
-            <col style={{ width: '9%' }} />   {/* Período */}
-            <col style={{ width: '7%' }} />   {/* Email✓ */}
-            <col style={{ width: '7%' }} />   {/* Ações */}
+            <col style={{ width: '6%' }} />   {/* ID */}
+            <col style={{ width: '21%' }} />  {/* Nome */}
+            <col style={{ width: '11%' }} />  {/* Tel */}
+            <col style={{ width: '33%' }} />  {/* Áreas */}
+            <col style={{ width: '14%' }} />  {/* Dias */}
+            <col style={{ width: '12%' }} />  {/* Período */}
           </colgroup>
           <thead>
             <tr>
-              <th style={{ textAlign: 'center', padding: '0.6rem' }}>
+              <th style={{ textAlign: 'center', padding: '0.6rem', textOverflow: 'clip', overflow: 'visible' }}>
                 <input type="checkbox" checked={allPageSelected} onChange={toggleSelectAll} style={{ cursor: 'pointer' }} />
               </th>
               <th>ID</th>
               <th>Nome</th>
-              <th>Tel</th>
+              <th>Telemóvel</th>
               <th>Áreas</th>
               <th>Dias</th>
               <th>Período</th>
-              <th title="Confirmação de email enviada">Email✓</th>
-              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -187,37 +171,15 @@ export function FormadoresTable({ data, fetching, onRefresh, onEdit, onDetail }:
                 onClick={() => onDetail(item)}
                 style={{ cursor: 'pointer', ...(selected.has(item.originalIndex) ? { background: 'rgba(239,68,68,0.04)' } : {}) }}
               >
-                <td style={{ textAlign: 'center', padding: '0.6rem' }} onClick={e => e.stopPropagation()}>
+                <td style={{ textAlign: 'center', padding: '0.6rem', textOverflow: 'clip', overflow: 'visible' }} onClick={e => e.stopPropagation()}>
                   <input type="checkbox" checked={selected.has(item.originalIndex)} onChange={() => toggleSelect(item.originalIndex)} style={{ cursor: 'pointer' }} />
                 </td>
                 <td style={{ fontWeight: 700 }}>#{item.originalIndex}</td>
-                <td style={{ color: 'var(--text)', fontWeight: 600 }}>{item.cells[F.NOME]}</td>
-                <td>{item.cells[F.TELEFONE]}</td>
+                <td style={{ color: 'var(--text)', fontWeight: new Date(item.cells[F.TIMESTAMP]).getTime() > lastSeenTs ? 700 : 400 }}>{item.cells[F.NOME]}</td>
+                <td>{String(item.cells[F.TELEFONE] || '').replace(/\.0$/, '')}</td>
                 <td><span className="cell-truncate" title={item.cells[F.AREAS]}>{item.cells[F.AREAS]}</span></td>
-                <td>{item.cells[F.DIAS]}</td>
+                <td>{abbrevDias(item.cells[F.DIAS])}</td>
                 <td>{item.cells[F.PERIODOS]}</td>
-                <td style={{ textAlign: 'center' }}>
-                  {item.cells[F.EMAIL_CONF] === 'Sim'
-                    ? <span style={{ color: '#10b981', fontWeight: 700, fontSize: '0.85rem' }}>✓</span>
-                    : <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>—</span>
-                  }
-                </td>
-                <td onClick={e => e.stopPropagation()}>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="admin-action-btn" onClick={() => onEdit(item)} title="Editar">
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      className="admin-action-btn"
-                      onClick={() => handleDelete(item.originalIndex)}
-                      title="Eliminar"
-                      style={{ color: '#ef4444' }}
-                      disabled={deleting === item.originalIndex}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
               </tr>
             ))}
           </tbody>

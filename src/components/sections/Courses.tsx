@@ -31,7 +31,9 @@ const PERIOD_MAP: Record<string, { pt: string, en: string }> = {
 const t = (field: any, lang: string): string => {
   if (!field) return '';
   if (typeof field === 'string') return field;
-  return field[lang] || field['pt'] || '';
+  const val = field[lang] || field['pt'] || '';
+  if (typeof val !== 'string') return '';
+  return val;
 };
 
 export default function Courses() {
@@ -183,20 +185,20 @@ export default function Courses() {
 
       <style>{`
         .status-highlight { color: var(--accent); font-weight: 700; font-size: 0.9rem; }
-        .courses__highlight-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 3rem; }
-        .course-feat-card { padding: 2rem; text-align: center; border-radius: 20px; display: flex; flex-direction: column; align-items: center; gap: 1rem; height: 100%; transition: transform 0.3s ease; }
-        .course-feat-card:hover { transform: translateY(-5px); }
-        .course-feat-icon { width: 48px; height: 48px; background: rgba(var(--accent-rgb), 0.1); color: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-        .course-feat-card p { font-size: 0.9rem; font-weight: 600; color: var(--text); margin: 0; }
-        .courses__schedule-box { padding: 2.5rem; border-radius: 24px; }
-        .schedule-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem; }
-        .schedule-header h3 { margin: 0; font-size: 1.5rem; }
+        .courses__highlight-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .course-feat-card { padding: 1.25rem; text-align: center; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 0.65rem; height: 100%; transition: transform 0.3s ease; }
+        .course-feat-card:hover { transform: translateY(-3px); }
+        .course-feat-icon { width: 38px; height: 38px; background: rgba(var(--accent-rgb), 0.1); color: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+        .course-feat-card p { font-size: 0.85rem; font-weight: 600; color: var(--text); margin: 0; }
+        .courses__schedule-box { padding: 1.5rem; border-radius: 14px; }
+        .schedule-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+        .schedule-header h3 { margin: 0; font-size: 1.2rem; }
         .course-schedule-table { width: 100%; border-collapse: collapse; text-align: left; }
-        .course-schedule-table th { padding: 1rem; border-bottom: 2px solid var(--border); font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); }
-        .course-schedule-table td { padding: 1.25rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+        .course-schedule-table th { padding: 0.5rem 0.75rem; border-bottom: 2px solid var(--border); font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); }
+        .course-schedule-table td { padding: 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
         .dias-extra { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
-        .courses__cta-area { margin-top: 2.5rem; display: flex; justify-content: center; }
-        .course-block { margin-bottom: 4rem; }
+        .courses__cta-area { margin-top: 1.5rem; display: flex; justify-content: center; }
+        .course-block { margin-bottom: 2.5rem; }
         @media (max-width: 1024px) { .courses__highlight-cards { grid-template-columns: 1fr; gap: 1rem; } }
         @media (max-width: 768px) {
           .course-schedule-table thead { display: none; }

@@ -151,8 +151,10 @@ export function TurmasView({ courses: initialCourses, alunosData, onSaveCourse }
                   const barColor = pct < 50 ? '#10b981' : pct < 90 ? '#f59e0b' : '#ef4444';
                   const isFull = capacity !== null && enrolled.length >= capacity;
                   const isExpanded = expanded[key];
-                  const horario = Array.isArray(slot.horario) ? slot.horario.join(', ') : (slot.horario || '');
-                  const dias = Array.isArray(slot.dias) ? slot.dias.join(', ') : (slot.dias || '');
+                  const _allTimeSlots = new Set(Object.values(PERIOD_SLOTS).flat());
+                  const _allWeekdays = new Set(WEEKDAYS);
+                  const horario = Array.isArray(slot.horario) ? slot.horario.filter((h: string) => _allTimeSlots.has(h)).join(', ') : (slot.horario || '');
+                  const dias = Array.isArray(slot.dias) ? slot.dias.filter((d: string) => _allWeekdays.has(d)).join(', ') : (slot.dias || '');
 
                   return (
                     <>
@@ -234,7 +236,7 @@ export function TurmasView({ courses: initialCourses, alunosData, onSaveCourse }
                                     <tr key={ri} style={{ borderBottom: '1px solid var(--border)' }}>
                                       <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: 'var(--text)' }}>{r[A.NOME] || '—'}</td>
                                       <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>{r[A.EMAIL] || '—'}</td>
-                                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>{r[A.TELEFONE] || '—'}</td>
+                                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>{String(r[A.TELEFONE] || '').replace(/\.0$/, '') || '—'}</td>
                                       <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>
                                         {r[A.TIMESTAMP] ? new Date(r[A.TIMESTAMP]).toLocaleDateString('pt-PT') : '—'}
                                       </td>
@@ -278,11 +280,22 @@ function SlotEditModal({ courseId, slotIdx, slot, onClose, onSave }: {
   onClose: () => void;
   onSave: (courseId: string, slotIdx: number, updatedSlot: any) => Promise<void>;
 }) {
+  // Sanitize potentially mixed-up horario/dias on load
+  const ALL_TIME_SLOTS = new Set(Object.values(PERIOD_SLOTS).flat());
+  const ALL_WEEKDAYS = new Set(WEEKDAYS);
+
+  const rawHorario: string[] = Array.isArray(slot.horario) ? slot.horario : (slot.horario ? [String(slot.horario)] : []);
+  const rawDias: string[] = Array.isArray(slot.dias) ? slot.dias : (slot.dias ? [String(slot.dias)] : []);
+
+  // Move any weekday strings out of horario into dias, and any time strings out of dias into horario
+  const cleanHorario = [...rawHorario.filter(v => ALL_TIME_SLOTS.has(v)), ...rawDias.filter(v => ALL_TIME_SLOTS.has(v))];
+  const cleanDias    = [...rawDias.filter(v => ALL_WEEKDAYS.has(v)),    ...rawHorario.filter(v => ALL_WEEKDAYS.has(v))];
+
   const [form, setForm] = useState({
     turmaPt: slot.turma?.pt || slot.turma || '',
     periodo: slot.periodo || 'manha',
-    horario: Array.isArray(slot.horario) ? slot.horario : (slot.horario ? [slot.horario] : []),
-    dias: Array.isArray(slot.dias) ? slot.dias : (slot.dias ? [slot.dias] : []),
+    horario: cleanHorario,
+    dias: cleanDias,
     diasExtra: slot.diasExtra?.pt || slot.diasExtra || '',
     capacity: typeof slot.capacity === 'number' ? String(slot.capacity) : '',
   });
@@ -303,12 +316,13 @@ function SlotEditModal({ courseId, slotIdx, slot, onClose, onSave }: {
   const handleSave = async () => {
     if (!form.turmaPt.trim()) return;
     setSaving(true);
+    const periodSlots = new Set(PERIOD_SLOTS[form.periodo] || []);
     const updatedSlot = {
       ...slot,
       turma: { pt: form.turmaPt.trim(), en: slot.turma?.en || '' },
       periodo: form.periodo,
-      horario: form.horario,
-      dias: form.dias,
+      horario: form.horario.filter(h => periodSlots.has(h)),
+      dias: form.dias.filter(d => ALL_WEEKDAYS.has(d)),
       diasExtra: { pt: form.diasExtra, en: slot.diasExtra?.en || '' },
       capacity: form.capacity.trim() === '' ? undefined : Number(form.capacity),
     };

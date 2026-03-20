@@ -30,3 +30,8 @@ temp/
 
 # Service account key (never commit)
 *-sa-key.json
+
+# Local documents / sensitive files (never commit)
+documents/
+n8n/
+fonts/

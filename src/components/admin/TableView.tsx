@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, FileDown, Pencil, Trash2 } from 'lucide-react';
+import { Search, FileDown, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { TableSkeleton } from './TableSkeleton';
 import toast from 'react-hot-toast';
@@ -12,19 +12,19 @@ interface TableViewProps {
   data: any[][];
   fetching: boolean;
   onRefresh: () => void;
-  onEdit: (row: any) => void;
   onDetail: (row: any) => void;
-  /** If provided, only these column indices are shown (ID + Ações always included). CSV still exports all columns. */
+  /** If provided, only these column indices are shown (ID always included). CSV still exports all columns. */
   columns?: number[];
   /** Override display labels for specific column indices, e.g. { 0: 'Data/Hora' } */
   headerMap?: Record<number, string>;
   /** Format cell values for specific column indices, e.g. { 0: v => new Date(v).toLocaleString() } */
   cellFormat?: Record<number, (v: any) => string>;
+  /** Override column widths for specific column indices, e.g. { 3: '8%', 4: '44%' } */
+  columnWidths?: Record<number, string>;
 }
 
-export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, columns, headerMap, cellFormat }: TableViewProps) {
+export function TableView({ type, data, fetching, onRefresh, onDetail, columns, headerMap, cellFormat, columnWidths }: TableViewProps) {
   const [search, setSearch] = useState('');
-  const [deleting, setDeleting] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(0);
 
@@ -34,25 +34,6 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
   const headers = data[0];
   const rows = data.slice(1);
   const tabName = type.charAt(0).toUpperCase() + type.slice(1);
-
-  const handleDelete = (index: number) => {
-    toast((t) => (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-        <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Eliminar #{index}?</span>
-        <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Esta ação é irreversível.</span>
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
-          <button onClick={async () => {
-            toast.dismiss(t.id);
-            setDeleting(index);
-            try { await apiService.deleteRow(tabName, index); toast.success('Registo eliminado!'); onRefresh(); }
-            catch { toast.error('Erro ao eliminar.'); }
-            finally { setDeleting(null); }
-          }} style={{ padding: '4px 12px', borderRadius: '6px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>Eliminar</button>
-          <button onClick={() => toast.dismiss(t.id)} style={{ padding: '4px 12px', borderRadius: '6px', background: '#f3f4f6', color: '#374151', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>Cancelar</button>
-        </div>
-      </div>
-    ), { duration: Infinity, icon: '🗑️' });
-  };
 
   const handleBulkDelete = () => {
     const count = selected.size;
@@ -98,9 +79,8 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
     }
     const ws = XLSX.utils.aoa_to_sheet([exportHeaders, ...exportRows]);
     const wb = XLSX.utils.book_new();
-    const tabTitle = tabName;
-    XLSX.utils.book_append_sheet(wb, ws, tabTitle);
-    XLSX.writeFile(wb, `FaroForma_${tabTitle}_${new Date().toLocaleDateString('pt-PT').replace(/\//g, '-')}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, tabName);
+    XLSX.writeFile(wb, `FaroForma_${tabName}_${new Date().toLocaleDateString('pt-PT').replace(/\//g, '-')}.xlsx`);
   };
 
   const displayRows = [...filteredRows].reverse().map(({ row, originalIndex }) => ({
@@ -175,34 +155,28 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
             <colgroup>
               <col style={{ width: '3%' }} />  {/* Checkbox */}
               <col style={{ width: '5%' }} />  {/* ID */}
-              {columns.map((_, i) => <col key={i} style={{ width: `${Math.floor(74 / columns.length)}%` }} />)}
-              <col style={{ width: '18%' }} />  {/* Ações */}
+              {columns.map((ci, i) => <col key={i} style={{ width: columnWidths?.[ci] ?? `${Math.floor(92 / columns.length)}%` }} />)}
             </colgroup>
           ) : (
             <colgroup>
               <col style={{ width: '3%' }} />  {/* Checkbox */}
               {headers.map((_: any, i: number) => (
-                <col key={i} style={{ width: `${Math.floor(79 / headers.length)}%` }} />
+                <col key={i} style={{ width: `${Math.floor(97 / headers.length)}%` }} />
               ))}
-              <col style={{ width: '18%' }} />
             </colgroup>
           )}
           <thead>
             <tr>
-              <th style={{ textAlign: 'center', padding: '0.6rem' }}>
+              <th style={{ textAlign: 'center', padding: '0.6rem', textOverflow: 'clip', overflow: 'visible' }}>
                 <input type="checkbox" checked={allPageSelected} onChange={toggleSelectAll} style={{ cursor: 'pointer' }} />
               </th>
               {columns ? (
                 <>
                   <th>ID</th>
                   {columns.map(ci => <th key={ci}>{headerMap?.[ci] ?? headers[ci]}</th>)}
-                  <th>Ações</th>
                 </>
               ) : (
-                <>
-                  {headers.map((h: string, i: number) => <th key={i}>{headerMap?.[i] ?? h}</th>)}
-                  <th>Ações</th>
-                </>
+                headers.map((h: string, i: number) => <th key={i}>{headerMap?.[i] ?? h}</th>)
               )}
             </tr>
           </thead>
@@ -212,7 +186,7 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
                 onClick={() => onDetail({ originalIndex: item.originalIndex, cells: item.cells, _type: type })}
                 style={{ cursor: 'pointer', ...(selected.has(item.originalIndex) ? { background: 'rgba(239,68,68,0.04)' } : {}) }}
               >
-                <td style={{ textAlign: 'center', padding: '0.6rem' }} onClick={e => e.stopPropagation()}>
+                <td style={{ textAlign: 'center', padding: '0.6rem', textOverflow: 'clip', overflow: 'visible' }} onClick={e => e.stopPropagation()}>
                   <input type="checkbox" checked={selected.has(item.originalIndex)} onChange={() => toggleSelect(item.originalIndex)} style={{ cursor: 'pointer' }} />
                 </td>
                 {columns ? (
@@ -230,22 +204,6 @@ export function TableView({ type, data, fetching, onRefresh, onEdit, onDetail, c
                     return <td key={j}><span className="cell-truncate" title={String(cell ?? '')}>{display}</span></td>;
                   })
                 )}
-                <td onClick={e => e.stopPropagation()}>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="admin-action-btn" onClick={() => onEdit({ originalIndex: item.originalIndex, cells: item.cells, type })} title="Editar">
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      className="admin-action-btn"
-                      onClick={() => handleDelete(item.originalIndex)}
-                      title="Eliminar"
-                      style={{ color: '#ef4444' }}
-                      disabled={deleting === item.originalIndex}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
               </tr>
             ))}
           </tbody>

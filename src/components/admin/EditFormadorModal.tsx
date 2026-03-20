@@ -4,6 +4,7 @@ import { F } from '../../config/sheetsSchema';
 import { X, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiService } from '../../services/api';
+import { DM_STYLES } from './DetailModal';
 
 interface EditFormadorModalProps {
   row: any;
@@ -179,7 +180,7 @@ export function EditFormadorModal({ row, onClose, onSuccess }: EditFormadorModal
         </div>
       </motion.div>
 
-      <style>{`
+      <style>{DM_STYLES + `
         .efm-section { display: flex; flex-direction: column; gap: 0.75rem; }
         .efm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.875rem; }
         .efm-col-2 { grid-column: span 2; }

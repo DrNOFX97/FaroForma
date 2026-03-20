@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 
 import { apiService } from '../services/api';
+import toast from 'react-hot-toast';
 import type { RawData } from '../services/api';
 import { F, A, C } from '../config/sheetsSchema';
 import { DashboardView } from '../components/admin/DashboardView';
@@ -41,6 +42,7 @@ import { CMSView } from '../components/admin/CMSView';
 import { AuditLogView } from '../components/admin/AuditLogView';
 import { DetailModal } from '../components/admin/DetailModal';
 import { EditFormadorModal } from '../components/admin/EditFormadorModal';
+import { EditAlunoModal } from '../components/admin/EditAlunoModal';
 import { EditRowModal } from '../components/admin/EditRowModal';
 
 export default function Admin() {
@@ -54,31 +56,26 @@ export default function Admin() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [lastViewedAt, setLastViewedAt] = useState<Date>(() => {
-    const ts = localStorage.getItem('admin_notif_viewed');
-    return ts && !isNaN(Date.parse(ts)) ? new Date(ts) : new Date(0);
-  });
+  const [lastViewedAt, setLastViewedAt] = useState<Date>(new Date(0));
   const notifRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchRef = useRef<HTMLDivElement>(null);
-  
-  // Track last seen timestamps for dashboard badges
-  const [lastSeen, setLastSeen] = useState<Record<string, number>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('admin_last_seen') || '{}');
-    } catch { return {}; }
-  });
 
-  // Update last seen when tab changes
+  // Track last seen timestamps for dashboard badges
+  const [lastSeen, setLastSeen] = useState<Record<string, number>>({});
+  const [notifStateLoaded, setNotifStateLoaded] = useState(false);
+
+  // Update last seen when tab changes — only after server state is loaded
   useEffect(() => {
+    if (!notifStateLoaded) return;
     if (['formadores', 'alunos', 'contactos'].includes(activeTab)) {
       setLastSeen(prev => {
         const next = { ...prev, [activeTab]: Date.now() };
-        localStorage.setItem('admin_last_seen', JSON.stringify(next));
+        apiService.saveNotifState({ lastSeen: next });
         return next;
       });
     }
-  }, [activeTab]);
+  }, [activeTab, notifStateLoaded]);
 
   // Calculate unread counts for dashboard
   const unreadCounts = useMemo(() => {
@@ -110,18 +107,21 @@ export default function Admin() {
       if (!u) {
         setUser(null);
         setLoading(false);
-        (window as any).firebaseAuthToken = null;
         return;
       }
       setLoading(true);
       try {
-        const token = await u.getIdToken();
-        (window as any).firebaseAuthToken = () => auth.currentUser?.getIdToken() || Promise.resolve(token);
-        const json = await apiService.getAdminData();
+        const [json, notifState] = await Promise.all([
+          apiService.getAdminData(),
+          apiService.getNotifState(),
+        ]);
         setUser(u);
         setData(json);
         setError('');
         fetchAdminCourses().catch(() => {});
+        if (notifState.lastViewedAt) setLastViewedAt(new Date(notifState.lastViewedAt));
+        if (notifState.lastSeen) setLastSeen(notifState.lastSeen);
+        setNotifStateLoaded(true);
       } catch (err: any) {
         if (err.message === 'ACCESS_DENIED') {
           setError('Acesso negado. Apenas administradores autorizados têm permissão.');
@@ -264,14 +264,12 @@ export default function Admin() {
   }
 
   const openNotif = () => {
-    setNotifOpen(o => {
-      if (!o) {
-        const now = new Date();
-        localStorage.setItem('admin_notif_viewed', now.toISOString());
-        setLastViewedAt(now);
-      }
-      return !o;
-    });
+    if (!notifOpen) {
+      const now = new Date();
+      setLastViewedAt(now);
+      apiService.saveNotifState({ lastViewedAt: now.toISOString() });
+    }
+    setNotifOpen(o => !o);
   };
 
   return (
@@ -301,10 +299,10 @@ export default function Admin() {
           <div className="nav-group-label">Conteúdo Site</div>
           <SidebarItem active={activeTab === 'cursos'} icon={<Award size={20} />} label="Cursos" onClick={() => { setActiveTab('cursos'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
           <SidebarItem active={activeTab === 'turmas'} icon={<Users size={20} />} label="Turmas" onClick={() => { setActiveTab('turmas'); setMobileMenuOpen(false); fetchAdminCourses(); }} collapsed={sidebarCollapsed} />
-          <SidebarItem active={activeTab === 'cms'} icon={<FileText size={20} />} label="Editor de Páginas" onClick={() => { setActiveTab('cms'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
 
           <div className="nav-group-label">Configurações</div>
           <SidebarItem active={activeTab === 'config'} icon={<Settings size={20} />} label="SEO & Definições" onClick={() => { setActiveTab('config'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
+          <SidebarItem active={activeTab === 'cms'} icon={<FileText size={20} />} label="Editor de Páginas" onClick={() => { setActiveTab('cms'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
           <SidebarItem active={activeTab === 'audit'} icon={<Activity size={20} />} label="Histórico (Logs)" onClick={() => { setActiveTab('audit'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
         </nav>
 
@@ -327,6 +325,7 @@ export default function Admin() {
               <SearchIcon size={16} />
               <input
                 className="search-pill-input"
+                aria-label="Pesquisar registos"
                 placeholder="Pesquisar nome, email, NIF..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -383,7 +382,7 @@ export default function Admin() {
                       className={`notif-item ${n.date > lastViewedAt ? 'is-new' : ''}`}
                       onClick={() => { setActiveTab(n.tab); setNotifOpen(false); }}
                     >
-                      <div className={`notif-dot ${n.type}`} />
+                      <div className={`notif-dot ${n.type} ${n.date > lastViewedAt ? '' : 'is-read'}`} />
                       <div className="notif-item-body">
                         <span className="notif-name">{n.name}</span>
                         <span className="notif-desc">{n.desc}</span>
@@ -395,7 +394,7 @@ export default function Admin() {
               )}
             </div>
             <div className="admin-user-pill">
-              <img src={user.photoURL || ''} alt="" className="admin-avatar" />
+              <img src={user.photoURL || ''} alt={`Avatar de ${user.displayName}`} className="admin-avatar" />
               <span>{user.displayName?.split(' ')[0]}</span>
             </div>
           </div>
@@ -415,9 +414,9 @@ export default function Admin() {
             <AnimatePresence mode="wait">
               <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                 {activeTab === 'dashboard' && <DashboardView data={data} onNavigate={setActiveTab} unread={unreadCounts} />}
-                {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingRow} onDetail={setDetailRow} />}
-                {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} columns={[1, 3, 4]} />}
-                {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} onRefresh={fetchData} onEdit={setEditingGenericRow} onDetail={setDetailRow} headerMap={{ 0: 'Data/Hora' }} cellFormat={{ 0: v => { const d = new Date(v); return isNaN(d.getTime()) ? v : `${d.toLocaleDateString('pt-PT')} ${d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}`; } }} />}
+                {activeTab === 'formadores' && <FormadoresTable data={data?.formadores || []} fetching={fetching} onRefresh={fetchData} onDetail={setDetailRow} lastSeenTs={lastSeen.formadores} />}
+                {activeTab === 'alunos' && <TableView type="alunos" data={data?.alunos || []} fetching={fetching} onRefresh={fetchData} onDetail={setDetailRow} columns={[1, 3, 4]} headerMap={{ 1: 'Nome' }} cellFormat={{ 3: v => String(v || '').replace(/\.0$/, '') }} columnWidths={{ 1: '22%', 3: '9%', 4: '43%' }} />}
+                {activeTab === 'contactos' && <TableView type="contactos" data={data?.contactos || []} fetching={fetching} onRefresh={fetchData} onDetail={setDetailRow} headerMap={{ 0: 'Data/Hora' }} cellFormat={{ 0: v => { const d = new Date(v); return isNaN(d.getTime()) ? v : `${d.toLocaleDateString('pt-PT')} ${d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}`; }, 3: v => String(v || '').replace(/\.0$/, '').replace(/^(?:\+351|00351|351)([29]\d{8})$/, '$1') }} />}
                 {activeTab === 'agenda' && <AgendaView data={data} />}
                 {activeTab === 'cursos' && <CoursesView />}
                 {activeTab === 'turmas' && <TurmasView courses={adminCourses} alunosData={data?.alunos || []} onSaveCourse={handleSaveCourse} />}
@@ -438,18 +437,46 @@ export default function Admin() {
             onSuccess={() => { setEditingRow(null); fetchData(); }}
           />
         )}
-        {editingGenericRow && (
-          <EditRowModal 
+        {editingGenericRow?.type === 'alunos' && (
+          <EditAlunoModal
             row={editingGenericRow}
-            headers={editingGenericRow.type === 'alunos' ? (data?.alunos?.[0] || []) : (data?.contactos?.[0] || [])}
+            onClose={() => setEditingGenericRow(null)}
+            onSuccess={() => { setEditingGenericRow(null); fetchData(); }}
+          />
+        )}
+        {editingGenericRow?.type === 'contactos' && (
+          <EditRowModal
+            row={editingGenericRow}
+            headers={data?.contactos?.[0] || []}
             onClose={() => setEditingGenericRow(null)}
             onSuccess={() => { setEditingGenericRow(null); fetchData(); }}
           />
         )}
         {detailRow && (
-          <DetailModal 
-            data={detailRow} 
-            onClose={() => setDetailRow(null)} 
+          <DetailModal
+            data={detailRow}
+            onClose={() => setDetailRow(null)}
+            onEdit={() => {
+              const type: string = detailRow._type || 'formadores';
+              if (type === 'formadores') {
+                setEditingRow(detailRow);
+              } else {
+                setEditingGenericRow({ ...detailRow, type });
+              }
+              setDetailRow(null);
+            }}
+            onDelete={async () => {
+              const type: string = detailRow._type || 'formadores';
+              const tabName = type === 'formadores' ? 'Formadores' : type === 'alunos' ? 'Alunos' : 'Contactos';
+              try {
+                await apiService.deleteRow(tabName, detailRow.originalIndex);
+                toast.success('Registo eliminado!');
+                setDetailRow(null);
+                fetchData();
+              } catch {
+                toast.error('Erro ao eliminar registo.');
+              }
+            }}
           />
         )}
       </AnimatePresence>
@@ -787,6 +814,7 @@ const ADMIN_STYLES = `
   .notif-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
   .notif-dot.aluno { background: #3b82f6; }
   .notif-dot.contacto { background: #8b5cf6; }
+  .notif-dot.is-read { background: var(--border); }
   .notif-item-body { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
   .notif-name { font-size: 0.85rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .notif-desc { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

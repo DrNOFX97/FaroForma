@@ -303,24 +303,48 @@ export function DashboardView({ data, onNavigate, unread }: DashboardViewProps) 
               <Shield size={18} className="text-accent" />
               <h4>Log de Administração</h4>
             </div>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Últimas {Math.min(auditLog.length, 10)} ações</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Últimas {Math.min(auditLog.length, 7)} ações</span>
           </div>
           <div className="audit-log">
-            {auditLog.slice(0, 10).map((entry, i) => {
-              const label: Record<string, string> = {
-                update_row: 'Editou registo',
-                delete_row: 'Eliminou registo',
-                update_formador: 'Editou formador',
-                bulk_delete: 'Eliminação em massa',
+            {auditLog.slice(0, 7).map((entry, i) => {
+              const ACTION_LABELS: Record<string, string> = {
+                UPDATE_ROW: 'Editou registo', DELETE_ROW: 'Eliminou registo',
+                UPDATE_FORMADOR: 'Editou formador', BULK_DELETE: 'Eliminação em massa',
+                UPDATE_AGENDA: 'Atualizou agenda', UPDATE_COURSE: 'Editou curso',
+                CREATE_COURSE: 'Criou curso', DELETE_COURSE: 'Eliminou curso',
+                UPDATE_CONFIG: 'Atualizou configurações', UPDATE_CMS: 'Editou página',
+                update_row: 'Editou registo', delete_row: 'Eliminou registo',
+                update_formador: 'Editou formador', bulk_delete: 'Eliminação em massa',
               };
-              const details = entry.details || {};
-              const sub = details.tabName ? `${details.tabName}${details.rowIndex !== undefined ? ` #${details.rowIndex}` : ''}${details.count !== undefined ? ` (${details.count} registos)` : ''}` : '';
+              const isDelete = /delete/i.test(entry.action || '');
+              const actionLabel = ACTION_LABELS[entry.action] ?? entry.action;
+
+              const d = entry.details || {};
+              const target: string = entry.target || '';
+              let targetLabel = target
+                .replace('agenda/sala1', 'Sala 1').replace('agenda/sala2', 'Sala 2')
+                .replace(/^courses\/.*/, 'Cursos');
+              const detail = d.label ? `"${d.label}"` : d.title ? `"${d.title}"` : d.rowIndex !== undefined ? `#${d.rowIndex}` : d.count !== undefined ? `${d.count} registos` : '';
+
+              const ts = new Date(entry.timestamp);
+              const now = new Date();
+              const diffMin = Math.floor((now.getTime() - ts.getTime()) / 60000);
+              const timeLabel = isNaN(ts.getTime()) ? '—'
+                : diffMin < 1 ? 'agora'
+                : diffMin < 60 ? `há ${diffMin}m`
+                : diffMin < 1440 ? `há ${Math.floor(diffMin / 60)}h`
+                : ts.toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
               return (
                 <div key={i} className="audit-entry">
-                  <span className="audit-ts">{new Date(entry.ts).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-                  <span className="audit-email">{entry.email?.split('@')[0]}</span>
-                  <span className={`audit-action-badge ${entry.action?.includes('delete') ? 'danger' : 'info'}`}>{label[entry.action] ?? entry.action}</span>
-                  {sub && <span className="audit-sub">{sub}</span>}
+                  <span className="audit-ts">{timeLabel}</span>
+                  <span className="audit-email">{entry.userEmail?.split('@')[0]}</span>
+                  <span className={`audit-action-badge ${isDelete ? 'danger' : 'info'}`}>{actionLabel}</span>
+                  {(targetLabel || detail) && (
+                    <span className="audit-sub">
+                      {targetLabel}{targetLabel && detail ? ' · ' : ''}{detail}
+                    </span>
+                  )}
                 </div>
               );
             })}

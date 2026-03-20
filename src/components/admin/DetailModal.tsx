@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { X, Mail, Phone, Calendar, Hash, Linkedin, BookOpen, Award, Clock, Monitor, Layers, Star, MessageSquare, GraduationCap, User } from 'lucide-react';
+import { X, Mail, Phone, Calendar, Hash, Linkedin, BookOpen, Award, Clock, Monitor, Layers, Star, MessageSquare, GraduationCap, User, Pencil, Trash2 } from 'lucide-react';
 import { F, A, C } from '../../config/sheetsSchema';
+import toast from 'react-hot-toast';
 
 /* ── Value formatters ───────────────────────────────────────────────────── */
 const stripFloat = (v: string) => v ? String(v).replace(/\.0$/, '') : v;
@@ -80,9 +81,11 @@ const C_SECTIONS = [
 interface DetailModalProps {
   data: any;
   onClose: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-export function DetailModal({ data, onClose }: DetailModalProps) {
+export function DetailModal({ data, onClose, onEdit, onDelete }: DetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
   // _type is set by TableView; absent when called from FormadoresTable
@@ -191,8 +194,33 @@ export function DetailModal({ data, onClose }: DetailModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="dm-footer">
-          <button className="btn btn--primary" onClick={onClose}>Fechar</button>
+        <div className="dm-footer" style={{ justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {onDelete && (
+              <button className="btn btn--danger" onClick={() => {
+                toast((t) => (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Eliminar registo?</span>
+                    <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Esta ação é irreversível.</span>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                      <button onClick={() => { toast.dismiss(t.id); onDelete(); }} style={{ padding: '4px 12px', borderRadius: '6px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>Eliminar</button>
+                      <button onClick={() => toast.dismiss(t.id)} style={{ padding: '4px 12px', borderRadius: '6px', background: '#f3f4f6', color: '#374151', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>Cancelar</button>
+                    </div>
+                  </div>
+                ), { duration: Infinity, icon: '🗑️' });
+              }}>
+                <Trash2 size={15} /> Eliminar
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn" onClick={onClose}>Fechar</button>
+            {onEdit && (
+              <button className="btn btn--primary" onClick={onEdit}>
+                <Pencil size={15} /> Editar
+              </button>
+            )}
+          </div>
         </div>
       </motion.div>
 
@@ -201,7 +229,7 @@ export function DetailModal({ data, onClose }: DetailModalProps) {
   );
 }
 
-const DM_STYLES = `
+export const DM_STYLES = `
   .dm-overlay {
     position: fixed; inset: 0; z-index: 1000;
     background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);

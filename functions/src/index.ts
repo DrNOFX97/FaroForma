@@ -1,6 +1,6 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response, NextFunction, RequestHandler } from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { google } from "googleapis";
@@ -13,51 +13,96 @@ import crypto from "crypto";
 
 admin.initializeApp();
 
+interface AdminRequest extends Request {
+  user: admin.auth.DecodedIdToken;
+}
+
 // Define secrets
 const GOOGLE_SERVICE_ACCOUNT_JSON = defineSecret("GOOGLE_SERVICE_ACCOUNT_JSON");
 const SPREADSHEET_ID = defineSecret("SPREADSHEET_ID");
 const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const N8N_WEBHOOK_URL = defineSecret("N8N_WEBHOOK_URL");
+
+// ── n8n Webhook ────────────────────────────────────────────────────────────────
+
+async function notifyN8n(type: 'aluno' | 'formador' | 'contacto', data: any) {
+  const url = N8N_WEBHOOK_URL.value();
+  if (!url) return;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, data }),
+    });
+  } catch (err) {
+    console.warn('[n8n] webhook failed:', err);
+  }
+}
 
 // ── Translation Service ───────────────────────────────────────────────────────
 
-async function autoTranslate(data: any) {
-  if (!data) return data;
+const TRANSLATE_MAX_DEPTH = 6;
+const TRANSLATE_MAX_STRING = 2000;
+
+async function autoTranslate(data: unknown): Promise<Record<string, unknown>> {
+  if (!data) return {};
   const apiKey = GEMINI_API_KEY.value();
-  if (!apiKey) return data;
+  if (!apiKey) return data as Record<string, unknown>;
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  // Recursive function to find and translate { pt, en } objects
-  async function processObject(obj: any) {
-    if (!obj || typeof obj !== 'object') return;
+  async function processObject(obj: Record<string, unknown>, depth: number): Promise<void> {
+    if (depth > TRANSLATE_MAX_DEPTH) return;
 
-    if (obj.pt && (obj.en === undefined || obj.en === null || obj.en.trim() === '')) {
-      const prompt = `Translate this text from a professional training center in Portugal to UK English. Keep the professional and educational tone. Format: Return ONLY the translated text.\n\nText: ${obj.pt}`;
+    if (typeof obj.pt === 'string' && obj.pt.length > 0 &&
+        (obj.en === undefined || obj.en === null || (typeof obj.en === 'string' && obj.en.trim() === ''))) {
+      const text = obj.pt.slice(0, TRANSLATE_MAX_STRING).replace(/[`\\]/g, ' ');
+      const prompt = `Translate this text from a professional training center in Portugal to UK English. Keep the professional and educational tone. Return ONLY the translated text.\n\nText: ${text}`;
       try {
         const result = await model.generateContent(prompt);
         obj.en = result.response.text().trim();
       } catch (err) {
-        console.error('Translation failed for:', obj.pt, err);
+        console.error('Translation failed:', err);
       }
     } else {
-      for (const key in obj) {
-        if (typeof obj[key] === 'object') await processObject(obj[key]);
+      for (const key of Object.keys(obj)) {
+        const val = obj[key];
+        if (Array.isArray(val)) {
+          for (const item of val) {
+            if (item !== null && typeof item === 'object') {
+              await processObject(item as Record<string, unknown>, depth + 1);
+            }
+          }
+        } else if (val !== null && typeof val === 'object') {
+          await processObject(val as Record<string, unknown>, depth + 1);
+        }
       }
     }
   }
 
-  const result = JSON.parse(JSON.stringify(data)); // deep clone
-  await processObject(result);
+  const result = JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
+  await processObject(result, 0);
   return result;
 }
 
+const ALLOWED_ORIGINS = ['https://faroforma.pt', 'https://www.faroforma.pt'];
+
 const app = express();
 app.set('trust proxy', 1); // Cloud Run sits behind Google's load balancer
-app.use(cors({ origin: true }));
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json());
+
+// Security headers
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
 
 const publicLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
@@ -67,29 +112,42 @@ const publicLimiter = rateLimit({
   message: { error: 'Demasiados pedidos. Tente novamente mais tarde.' },
 });
 
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados pedidos. Tente novamente mais tarde.' },
+});
+
+app.use('/api/admin', adminLimiter);
+
 // ── Admin emails — Firestore config/admins ────────────────────────────────────
 
 let adminEmailsCache: { emails: string[]; ts: number } | null = null;
+let adminEmailsFetch: Promise<string[]> | null = null;
 const ADMIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 async function getAdminEmails(): Promise<string[]> {
   if (adminEmailsCache && Date.now() - adminEmailsCache.ts < ADMIN_CACHE_TTL) {
     return adminEmailsCache.emails;
   }
-  try {
-    const doc = await admin.firestore().collection('config').doc('admins').get();
-    const emails = (doc.exists ? (doc.data()?.emails as string[]) : null) ?? [];
-    adminEmailsCache = { emails, ts: Date.now() };
-    return emails;
-  } catch {
-    return adminEmailsCache?.emails ?? [];
-  }
+  if (adminEmailsFetch) return adminEmailsFetch;
+  adminEmailsFetch = admin.firestore().collection('config').doc('admins').get()
+    .then(doc => {
+      const emails = (doc.exists ? (doc.data()?.emails as string[]) : null) ?? [];
+      adminEmailsCache = { emails, ts: Date.now() };
+      return emails;
+    })
+    .catch(() => adminEmailsCache?.emails ?? [])
+    .finally(() => { adminEmailsFetch = null; });
+  return adminEmailsFetch;
 }
 
 // ── Audit Log Helper ──────────────────────────────────────────────────────────
 
-async function createAuditLog(req: Request, action: string, target: string, details: any = {}) {
-  const user = (req as any).user;
+async function createAuditLog(req: Request, action: string, target: string, details: Record<string, unknown> = {}) {
+  const user = (req as AdminRequest).user;
   if (!user) return;
 
   try {
@@ -108,7 +166,7 @@ async function createAuditLog(req: Request, action: string, target: string, deta
 
 // ── Auth Middleware ──────────────────────────────────────────────────────────
 
-const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
+const isAdmin: RequestHandler = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Não autorizado' });
@@ -120,12 +178,12 @@ const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const adminEmails = await getAdminEmails();
     if (adminEmails.includes(decodedToken.email || '')) {
-      (req as any).user = decodedToken;
+      (req as AdminRequest).user = decodedToken;
       next();
     } else {
       res.status(403).json({ error: 'Proibido' });
     }
-  } catch (error: any) {
+  } catch {
     res.status(401).json({ error: 'Token inválido' });
   }
 };
@@ -334,6 +392,7 @@ app.post('/api/inscricao-formadores', publicLimiter, async (req: Request, res: R
 
     await appendToSheet('Formadores', row);
 
+    notifyN8n('formador', d).catch(() => {});
     notifyAdmins(
       `[Formador] Nova candidatura — ${d.nome}`,
       `<h2>Nova candidatura de formador</h2>
@@ -372,7 +431,8 @@ app.post('/api/contact', publicLimiter, async (req: Request, res: Response) => {
     row[C.ASSUNTO] = d.subject;
     row[C.MENSAGEM] = d.message;
     await appendToSheet('Contactos', row);
-    
+
+    notifyN8n('contacto', d).catch(() => {});
     await notifyAdmins(
       `[Contacto] ${d.name} — ${d.subject || 'sem assunto'}`,
       `<h2>Nova mensagem de contacto</h2>
@@ -424,6 +484,8 @@ app.post('/api/student', publicLimiter, async (req: Request, res: Response) => {
 
     await appendToSheet('Alunos', row);
 
+    notifyN8n('aluno', d).catch(() => {});
+
     // Fire-and-forget: increment enrolledCounts for the turma in Firestore
     if (d.turma && d.program) {
       const turmaKey = d.turma.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
@@ -464,7 +526,7 @@ app.post('/api/student', publicLimiter, async (req: Request, res: Response) => {
 // ── Admin Routes ─────────────────────────────────────────────────────────────
 
 
-app.get('/api/admin/data', isAdmin as any, async (req: Request, res: Response) => {
+app.get('/api/admin/data', isAdmin, async (req: Request, res: Response) => {
   try {
     const [formadores, alunos, contactos] = await Promise.all([
       getSheetData('Formadores'), getSheetData('Alunos'), getSheetData('Contactos'),
@@ -475,16 +537,16 @@ app.get('/api/admin/data', isAdmin as any, async (req: Request, res: Response) =
   }
 });
 
-app.get('/api/admin/audit-log', isAdmin as any, async (req: Request, res: Response) => {
+app.get('/api/admin/audit-log', isAdmin, async (req: Request, res: Response) => {
   try {
-    const snap = await admin.firestore().collection('admin_logs').orderBy('ts', 'desc').limit(50).get();
+    const snap = await admin.firestore().collection('audit_log').orderBy('timestamp', 'desc').limit(50).get();
     res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao obter log' });
   }
 });
 
-app.post('/api/admin/sync-headers', isAdmin as any, async (req: Request, res: Response) => {
+app.post('/api/admin/sync-headers', isAdmin, async (req: Request, res: Response) => {
   const { sheets, spreadsheetId } = getSheetsClient();
   const tabs = [
     { name: 'Formadores', headers: ['Timestamp','Nome','Email','Telefone','DataNascimento','NIF','Areas','Habilitacoes','CAP_CCP','Experiencia','LinkedIn','Dias','Periodos','Modalidade','Motivacao','EmailConfirmacao'] },
@@ -496,15 +558,19 @@ app.post('/api/admin/sync-headers', isAdmin as any, async (req: Request, res: Re
       await sheets.spreadsheets.values.update({ spreadsheetId, range: `${tab.name}!A1`, valueInputOption: 'RAW', requestBody: { values: [tab.headers] } });
     }
     res.json({ message: 'Headers actualizados' });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (err) {
+    console.error('sync-headers error:', err);
+    res.status(500).json({ error: 'Erro ao sincronizar cabeçalhos' });
   }
 });
 
 
-app.post('/api/admin/update-row', isAdmin as any, async (req: Request, res: Response) => {
+const ALLOWED_TABS = ['Formadores', 'Alunos', 'Contactos'] as const;
+
+app.post('/api/admin/update-row', isAdmin, async (req: Request, res: Response) => {
   const { tabName, rowIndex, values } = req.body;
   if (!tabName || rowIndex === undefined || !Array.isArray(values)) return res.status(400).json({ error: 'Dados inválidos' });
+  if (!(ALLOWED_TABS as readonly string[]).includes(tabName)) return res.status(400).json({ error: 'Separador inválido' });
 
   try {
     await updateSheetRow(tabName, rowIndex, values);
@@ -515,9 +581,10 @@ app.post('/api/admin/update-row', isAdmin as any, async (req: Request, res: Resp
   }
 });
 
-app.delete('/api/admin/delete-row', isAdmin as any, async (req: Request, res: Response) => {
+app.delete('/api/admin/delete-row', isAdmin, async (req: Request, res: Response) => {
   const { tabName, rowIndex } = req.body;
   if (!tabName || rowIndex === undefined) return res.status(400).json({ error: 'Dados inválidos' });
+  if (!(ALLOWED_TABS as readonly string[]).includes(tabName)) return res.status(400).json({ error: 'Separador inválido' });
 
   try {
     await deleteSheetRow(tabName, rowIndex);
@@ -528,9 +595,11 @@ app.delete('/api/admin/delete-row', isAdmin as any, async (req: Request, res: Re
   }
 });
 
-app.delete('/api/admin/bulk-delete', isAdmin as any, async (req: Request, res: Response) => {
+app.delete('/api/admin/bulk-delete', isAdmin, async (req: Request, res: Response) => {
   const { tabName, rowIndices } = req.body;
   if (!tabName || !Array.isArray(rowIndices) || rowIndices.length === 0) return res.status(400).json({ error: 'Dados inválidos' });
+  if (!(ALLOWED_TABS as readonly string[]).includes(tabName)) return res.status(400).json({ error: 'Separador inválido' });
+  if (rowIndices.length > 100) return res.status(400).json({ error: 'Máximo de 100 registos por operação' });
   try {
     const sorted = [...rowIndices].sort((a: number, b: number) => b - a);
     for (const idx of sorted) await deleteSheetRow(tabName, idx);
@@ -541,7 +610,7 @@ app.delete('/api/admin/bulk-delete', isAdmin as any, async (req: Request, res: R
   }
 });
 
-app.post('/api/admin/update-formador', isAdmin as any, async (req: Request, res: Response) => {
+app.post('/api/admin/update-formador', isAdmin, async (req: Request, res: Response) => {
   const { rowIndex, values } = req.body;
   if (rowIndex === undefined || !Array.isArray(values)) return res.status(400).json({ error: 'Dados inválidos' });
 
@@ -554,7 +623,7 @@ app.post('/api/admin/update-formador', isAdmin as any, async (req: Request, res:
   }
 });
 
-app.get('/api/admin/config', isAdmin as any, async (req: Request, res: Response) => {
+app.get('/api/admin/config', isAdmin, async (req: Request, res: Response) => {
   try {
     const doc = await admin.firestore().collection('config').doc('siteMeta').get();
     res.json(doc.exists ? doc.data() : {});
@@ -563,7 +632,7 @@ app.get('/api/admin/config', isAdmin as any, async (req: Request, res: Response)
   }
 });
 
-app.post('/api/admin/config', isAdmin as any, async (req: Request, res: Response) => {
+app.post('/api/admin/config', isAdmin, async (req: Request, res: Response) => {
   try {
     const data = await autoTranslate(req.body);
     await admin.firestore().collection('config').doc('siteMeta').set(data, { merge: true });
@@ -574,8 +643,13 @@ app.post('/api/admin/config', isAdmin as any, async (req: Request, res: Response
   }
 });
 
-app.get('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response) => {
+const ALLOWED_ROOMS = ['sala1', 'sala2'] as const;
+
+app.get('/api/admin/agenda', isAdmin, async (req: Request, res: Response) => {
   const room = (req.query.room as string) || 'sala1';
+  if (!(ALLOWED_ROOMS as readonly string[]).includes(room)) {
+    res.status(400).json({ error: 'Sala inválida' }); return;
+  }
   try {
     const doc = await admin.firestore().collection('agenda').doc(room).get();
     res.json(doc.exists ? doc.data() : {});
@@ -584,8 +658,11 @@ app.get('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response)
   }
 });
 
-app.post('/api/admin/agenda', isAdmin as any, async (req: Request, res: Response) => {
+app.post('/api/admin/agenda', isAdmin, async (req: Request, res: Response) => {
   const room = (req.query.room as string) || 'sala1';
+  if (!(ALLOWED_ROOMS as readonly string[]).includes(room)) {
+    res.status(400).json({ error: 'Sala inválida' }); return;
+  }
   try {
     await admin.firestore().collection('agenda').doc(room).set(req.body);
     await createAuditLog(req, 'UPDATE_AGENDA', `agenda/${room}`, { slots: Object.keys(req.body).length });
@@ -607,28 +684,31 @@ app.get('/api/courses', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/admin/courses', isAdmin as any, async (req: Request, res: Response) => {
+app.get('/api/admin/courses', isAdmin, async (req: Request, res: Response) => {
   try {
     const snapshot = await admin.firestore().collection('courses').orderBy('title').get();
-    const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const courses = snapshot.docs.map(doc => {
+      const { id: _id, ...data } = doc.data() as Record<string, unknown>;
+      void _id;
+      return { id: doc.id, ...data };
+    });
     res.json(courses);
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao obter cursos' });
   }
 });
 
-app.post('/api/admin/courses', isAdmin as any, async (req: Request, res: Response) => {
+app.post('/api/admin/courses', isAdmin, async (req: Request, res: Response) => {
   const { id, ...raw } = req.body;
   try {
     const data = await autoTranslate(raw);
     const col = admin.firestore().collection('courses');
-    // Ensure we only update if ID is a non-empty string
     if (typeof id === 'string' && id.trim() !== '') {
-      await col.doc(id).set(data, { merge: true });
-      await createAuditLog(req, 'UPDATE_COURSE', `courses/${id}`, { title: data.title?.pt });
+      await col.doc(id).set(data);
+      await createAuditLog(req, 'UPDATE_COURSE', `courses/${id}`, { title: (data.title as Record<string, unknown>)?.pt });
     } else {
       const ref = await col.add(data);
-      await createAuditLog(req, 'CREATE_COURSE', `courses/${ref.id}`, { title: data.title?.pt });
+      await createAuditLog(req, 'CREATE_COURSE', `courses/${ref.id}`, { title: (data.title as Record<string, unknown>)?.pt });
     }
     res.json({ message: 'Curso guardado com sucesso' });
   } catch (err: any) {
@@ -636,7 +716,7 @@ app.post('/api/admin/courses', isAdmin as any, async (req: Request, res: Respons
   }
 });
 
-app.delete('/api/admin/courses/:id', isAdmin as any, async (req: Request, res: Response) => {
+app.delete('/api/admin/courses/:id', isAdmin, async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     await admin.firestore().collection('courses').doc(id as string).delete();
@@ -647,9 +727,38 @@ app.delete('/api/admin/courses/:id', isAdmin as any, async (req: Request, res: R
   }
 });
 
+// ── Notification State Routes ─────────────────────────────────────────────────
+
+app.get('/api/admin/notif-state', isAdmin, async (req: Request, res: Response) => {
+  const uid = (req as AdminRequest).user.uid;
+  try {
+    const doc = await admin.firestore().collection('notifState').doc(uid).get();
+    res.json(doc.exists ? doc.data() : { lastViewedAt: null, lastSeen: {} });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao obter estado de notificações' });
+  }
+});
+
+app.post('/api/admin/notif-state', isAdmin, async (req: Request, res: Response) => {
+  const uid = (req as AdminRequest).user.uid;
+  const { lastViewedAt, lastSeen } = req.body;
+  try {
+    const update: Record<string, unknown> = {};
+    if (typeof lastViewedAt === 'string') update.lastViewedAt = lastViewedAt;
+    if (lastSeen && typeof lastSeen === 'object') update.lastSeen = lastSeen;
+    if (Object.keys(update).length === 0) {
+      res.status(400).json({ error: 'Nada para guardar' }); return;
+    }
+    await admin.firestore().collection('notifState').doc(uid).set(update, { merge: true });
+    res.json({ message: 'Estado guardado' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao guardar estado de notificações' });
+  }
+});
+
 // ── Admin Emails Routes ───────────────────────────────────────────────────────
 
-app.get('/api/admin/admins', isAdmin as any, async (req: Request, res: Response) => {
+app.get('/api/admin/admins', isAdmin, async (req: Request, res: Response) => {
   try {
     const doc = await admin.firestore().collection('config').doc('admins').get();
     const emails = (doc.exists ? (doc.data()?.emails as string[]) : null) ?? [];
@@ -659,10 +768,11 @@ app.get('/api/admin/admins', isAdmin as any, async (req: Request, res: Response)
   }
 });
 
-app.post('/api/admin/admins', isAdmin as any, async (req: Request, res: Response) => {
+app.post('/api/admin/admins', isAdmin, async (req: Request, res: Response) => {
   const { emails } = req.body;
-  if (!Array.isArray(emails) || emails.some(e => typeof e !== 'string')) {
-    return res.status(400).json({ error: 'Dados inválidos' });
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!Array.isArray(emails) || emails.some(e => typeof e !== 'string' || !emailRegex.test(e))) {
+    return res.status(400).json({ error: 'Emails inválidos' });
   }
   try {
     await admin.firestore().collection('config').doc('admins').set({ emails });
@@ -715,7 +825,7 @@ app.post('/api/track-visit', publicLimiter, async (req: Request, res: Response) 
   }
 });
 
-app.get('/api/admin/analytics', isAdmin as any, async (req: Request, res: Response) => {
+app.get('/api/admin/analytics', isAdmin, async (req: Request, res: Response) => {
   const dateKey = new Date().toISOString().split('T')[0];
   try {
     const doc = await admin.firestore().collection('analytics').doc(dateKey).get();
@@ -729,8 +839,14 @@ app.get('/api/admin/analytics', isAdmin as any, async (req: Request, res: Respon
 
 // ── CMS Routes ──────────────────────────────────────────────────────────────
 
+const CMS_SECTIONS = ['hero', 'about', 'services', 'tutoring'] as const;
+
 app.get('/api/cms/:section', async (req: Request, res: Response) => {
   const section = req.params.section as string;
+  if (!(CMS_SECTIONS as readonly string[]).includes(section)) {
+    res.status(400).json({ error: 'Secção inválida' });
+    return;
+  }
   try {
     const doc = await admin.firestore().collection('cms').doc(section).get();
     res.json(doc.exists ? doc.data() : {});
@@ -739,8 +855,12 @@ app.get('/api/cms/:section', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/cms/:section', isAdmin as any, async (req: Request, res: Response) => {
+app.post('/api/cms/:section', isAdmin, async (req: Request, res: Response) => {
   const section = req.params.section as string;
+  if (!(CMS_SECTIONS as readonly string[]).includes(section)) {
+    res.status(400).json({ error: 'Secção inválida' });
+    return;
+  }
   try {
     const data = await autoTranslate(req.body);
     await admin.firestore().collection('cms').doc(section).set(data, { merge: true });
@@ -756,5 +876,5 @@ app.get('/health', (req, res) => res.send('OK'));
 export const api = onRequest({ 
   region: "europe-west1", 
   memory: "256MiB",
-  secrets: [GOOGLE_SERVICE_ACCOUNT_JSON, SPREADSHEET_ID, GMAIL_USER, GMAIL_APP_PASSWORD]
+  secrets: [GOOGLE_SERVICE_ACCOUNT_JSON, SPREADSHEET_ID, GMAIL_USER, GMAIL_APP_PASSWORD, N8N_WEBHOOK_URL, GEMINI_API_KEY]
 }, app);

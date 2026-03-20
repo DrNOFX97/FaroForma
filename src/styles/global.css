@@ -229,6 +229,16 @@ main {
   background: linear-gradient(135deg, var(--accent), var(--accent-light));
 }
 
+.btn--danger {
+  background: rgba(239,68,68,0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239,68,68,0.3);
+}
+.btn--danger:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
 .btn--outline {
   background: transparent;
   color: var(--text);
@@ -1790,8 +1800,8 @@ body main {
 }
 
 .footer__logo-img {
-  width: 240px;
-  height: 240px;
+  width: 200px;
+  height: auto;
   object-fit: contain;
   display: block;
 }

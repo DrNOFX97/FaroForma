@@ -1,6 +1,6 @@
 # Relatório de Desenvolvimento: FaroForma
 **Estado do Projeto:** Produção
-**Data de Emissão:** 17 de Março de 2026
+**Data de Emissão:** 19 de Março de 2026
 
 ---
 
@@ -8,15 +8,15 @@
 
 | Métrica | Valor |
 | :--- | :--- |
-| **Total de Horas Estimadas** | ~67 Horas |
-| **Total de Commits** | 86 |
-| **Sessões de Trabalho** | 15 sessões distintas |
-| **Período de Atividade** | 7 dias (11–17 Mar 2026) |
-| **Tempo de commit medido** | ~25h de atividade directa |
+| **Total de Horas Estimadas** | ~80 Horas |
+| **Total de Commits** | 99 |
+| **Sessões de Trabalho** | 18 sessões distintas |
+| **Período de Atividade** | 9 dias (11–19 Mar 2026) |
+| **Tempo de commit medido** | ~30h de atividade directa |
 | **Linguagem Principal** | TypeScript (Frontend & Backend) |
 | **Infraestrutura** | Firebase (Functions Gen2, Auth, Firestore, Hosting) |
 
-> **Nota metodológica:** O tempo de 25h é medido pelos timestamps dos commits (períodos contínuos de commit < 2h = mesma sessão). As 65h totais incluem planeamento, debugging interactivo, análise de dados, testes manuais e comunicação — trabalho real que não gera commits.
+> **Nota metodológica:** O tempo de 30h é medido pelos timestamps dos commits (períodos contínuos de commit < 2h = mesma sessão). As 80h totais incluem planeamento, debugging interactivo, análise de dados, testes manuais e comunicação — trabalho real que não gera commits.
 
 ---
 
@@ -63,6 +63,22 @@
 - Skeletons de loading; dirty-flag no CMS com confirmação non-blocking
 - Rate limiting adicionado ao endpoint `track-visit`
 
+### Bloco E — Turmas, UX Admin e Estabilização (13h)
+- **Secção Turmas pública:** nova secção no frontend com tabela de turmas por sala, consumindo dados do Firestore `agenda/`
+- **Admin Turmas:** modal de edição de slot de turma acessível por clique na linha da tabela
+- **Crash crítico corrigido** (React error #31): campo `diasExtra` no Firestore com objecto aninhado `{pt:{pt:"",en:""},en:""}` causava renderização de objecto como filho React — função `t()` em `Courses.tsx` refactorizada com guarda `typeof val !== 'string'`
+- **Regras Firestore:** `config/siteMeta` passou de `allow read: if false` para `allow read: if true`; corrige erro "Missing or insufficient permissions" ao carregar metadados dinâmicos do site
+- **Emails admin:** 3 emails registados em `config/admins` no Firestore (henrasgo@, custodio.guerreiro@, f.nuno.ss@) — sem redeploy necessário
+- **TableView refactorizado:** coluna "Ações" removida; fluxo de edição/eliminação unificado via `DetailModal` em todas as tabelas (Alunos, Contactos, Formadores)
+- **Prop `columnWidths`** adicionada a `TableView` para controlo granular de larguras de coluna
+- **Checkboxes:** correcção de `text-overflow: ellipsis` em coluna de 3% que mostrava "..." junto ao checkbox — resolvido com `textOverflow: 'clip', overflow: 'visible'`
+- **Cabeçalhos de tabela:** "NomeCompleto" → "Nome" (Alunos), "Tel" → "Telemóvel" (Formadores)
+- **Sidebar admin reordenada:** "Editor de Páginas" movido para grupo "Configurações" (após "SEO & Definições")
+- **Log de auditoria legível:** campo `entry.ts` corrigido para `entry.timestamp`; `entry.email` para `entry.userEmail`; mapa de labels expandido com variantes uppercase (DELETE_ROW, UPDATE_AGENDA, etc.); tempo relativo (agora / há Xm / há Xh)
+- **TurmasView:** filtragem de valores legados — `horario` e `dias` validados contra conjuntos `PERIOD_SLOTS` e `WEEKDAYS`
+- **Cards de cursos:** dimensões reduzidas no frontend público (padding, gap, border-radius, font-size)
+- **Tipografia:** migração de Figtree → Cabinet Grotesk (títulos) + Satoshi (corpo) via Fontshare CDN
+
 ---
 
 ## 3. Resumo por Dia
@@ -75,15 +91,30 @@
 | Qui 14 Mar | 9 | Cursos dinâmicos, agenda multi-sala, cleanup, segurança |
 | Sex 15 Mar | 9 | Modularização admin, CMS, acessibilidade, email dinâmico |
 | Sáb 16 Mar | 29 | Dashboard visual, analytics, CMS avançado, auditoria, 8 bug fixes |
-| Dom 17 Mar | 5 | Audit log, bulk delete, paginação, email status; auto-tradução Gemini; audit log estruturado |
-| **Total** | **86** | |
+| Dom 17 Mar | 18 | Audit log, bulk delete, paginação; auto-tradução Gemini; Turmas admin/público; tipografia; click-to-edit tables |
+| Seg 18 Mar | — | Sessão de debugging e estabilização (sem commits) |
+| Ter 19 Mar | — | Fix React error #31; regras Firestore; emails admin; refinamentos UX admin; tipografia final |
+| **Total** | **99** | |
 
 ---
 
 ## 4. Log Completo de Commits (Git)
 
 ```
-2026-03-17  feat(backend): auto-translate PT→EN via Gemini 1.5 Flash + structured audit log
+2026-03-17  style: switch to Cabinet Grotesk (heading) + Satoshi (body) via Fontshare
+2026-03-17  style: switch fonts to Figtree (heading + body)
+2026-03-17  feat(turmas): click row to open slot edit modal
+2026-03-17  feat: add Turmas section (admin + public) and fix Courses display
+2026-03-17  fix: resolve no-use-before-define error in Courses component
+2026-03-17  feat: display course name in registration modal
+2026-03-17  chore: revert hardcoded PLA course highlights
+2026-03-17  feat: update PLA course highlights and improve analytics with unique visitor tracking
+2026-03-17  feat: implement unread status tracking for dashboard cards and refactor course editor
+2026-03-17  feat(admin): click row to open detail modal in all tables
+2026-03-17  fix(admin): format phone/NIF/experience (strip .0) and birth date in detail modal
+2026-03-17  fix(admin): detail modal shows correct fields per record type
+2026-03-17  fix: resolution of build and TypeScript errors for deployment
+2026-03-17  feat: auto-translation with Gemini AI, admin audit logs, and course editor redesign
 2026-03-17  feat(admin): audit log, bulk delete, pagination, email status tracking
 2026-03-17  fix: resolve UX bugs 5-8
 2026-03-17  fix: resolve 4 audit bugs
@@ -164,4 +195,4 @@
 ---
 
 *Documento gerado com base em análise de logs de desenvolvimento (git log --format="%ai|%s").*
-*Tempo de commit medido: ~25h activas. Total estimado incluindo planeamento, debug e testes: ~67h.*
+*Tempo de commit medido: ~30h activas. Total estimado incluindo planeamento, debug e testes: ~80h.*

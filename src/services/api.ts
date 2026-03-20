@@ -62,6 +62,22 @@ export const apiService = {
   },
 
   // Admin
+  async getNotifState(): Promise<{ lastViewedAt: string | null; lastSeen: Record<string, number> }> {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/admin/notif-state`, { headers });
+    if (!res.ok) return { lastViewedAt: null, lastSeen: {} };
+    return res.json();
+  },
+
+  async saveNotifState(payload: { lastViewedAt?: string; lastSeen?: Record<string, number> }) {
+    const headers = await getAuthHeaders();
+    fetch(`${API_BASE}/admin/notif-state`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    }).catch(() => {}); // fire-and-forget, non-blocking
+  },
+
   async getAnalytics() {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/analytics`, { headers });
