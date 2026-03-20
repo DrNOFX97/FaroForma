@@ -39,13 +39,15 @@ export default function Footer() {
           {/* Services */}
           <div>
             <p className="footer__col-title">{language === 'pt' ? 'Serviços' : 'Services'}</p>
-            <div className="footer__links">
+            <ul className="footer__links footer__links--bulleted">
               {SERVICE_LINKS_LIST.map(s => (
-                <button key={s.pt} className="footer__link" onClick={() => scrollTo('#servicos')}>
-                  {s[language]}
-                </button>
+                <li key={s.pt}>
+                  <button className="footer__link" onClick={() => scrollTo('#servicos')}>
+                    {s[language]}
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
 
           {/* Contact */}
@@ -74,7 +76,7 @@ export default function Footer() {
             </div>
             <div className="footer__contact-item">
               <Mail size={14} />
-              <a href="mailto:faroforma@gmail.com" style={{ color: 'inherit' }}>faroforma@gmail.com</a>
+              <a href="mailto:info@faroforma.pt" style={{ color: 'inherit' }}>info@faroforma.pt</a>
             </div>
           </div>
         </div>

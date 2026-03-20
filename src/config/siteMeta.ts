@@ -6,7 +6,7 @@ export const DEFAULT_SITE_META = {
   description:
     'FaroForma oferece formações personalizadas, apoio administrativo e explicações desde o secundário até à universidade.',
   keywords: 'formação, Faro, explicações, administração, aluguer salas',
-  contactEmail: 'faroforma@gmail.com',
+  contactEmail: 'info@faroforma.pt',
 };
 
 export async function getSiteMeta() {

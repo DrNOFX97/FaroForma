@@ -27,8 +27,8 @@ export const CONTACT_CARDS: ContactCard[] = [
   {
     icon: <Mail size={18} />,
     label: 'Email',
-    value: 'faroforma@gmail.com',
+    value: 'info@faroforma.pt',
     isLink: true,
-    href: 'mailto:faroforma@gmail.com',
+    href: 'mailto:info@faroforma.pt',
   },
 ];

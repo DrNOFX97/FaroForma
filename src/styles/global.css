@@ -1829,11 +1829,31 @@ body main {
   gap: 0.6rem;
 }
 
+.footer__links--bulleted {
+  display: block;
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin: 0;
+}
+
+.footer__links--bulleted li {
+  margin-bottom: 0.6rem;
+  color: var(--text-muted); /* this colors the bullet */
+}
+
+.footer__links--bulleted li:last-child {
+  margin-bottom: 0;
+}
+
 .footer__link {
   font-size: 0.9rem;
   color: var(--text-muted);
   cursor: pointer;
   transition: color 0.2s;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 .footer__link:hover {

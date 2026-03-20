@@ -41,7 +41,7 @@ export const COURSE_INFO = {
   ],
   contact: {
     phones: PHONE_NUMBERS,
-    email: 'faroforma@gmail.com',
+    email: 'info@faroforma.pt',
     website: 'www.faroforma.pt',
   },
 };
