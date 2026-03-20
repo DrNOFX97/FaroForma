@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { signInWithPopup, signOut } from 'firebase/auth';
+import { signInWithPopup, signOut, GoogleAuthProvider } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Mail, Phone, Calendar, Hash,
@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { apiService } from '../services/api';
-import { auth, googleProvider } from '../config/firebase';
+import { auth } from '../config/firebase';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
@@ -170,11 +170,40 @@ export default function FormadoresInscricao({ onNavigateHome }: Props) {
 
   const fillWithGoogle = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/user.birthday.read');
+      provider.addScope('https://www.googleapis.com/auth/user.phonenumbers.read');
+
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const accessToken = credential?.accessToken;
+
+      let phone = result.user.phoneNumber ?? '';
+      let birthday = '';
+
+      if (accessToken) {
+        try {
+          const resp = await fetch(
+            'https://people.googleapis.com/v1/people/me?personFields=birthdays,phoneNumbers',
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          const person = await resp.json();
+          const b = person.birthdays?.[0]?.date;
+          if (b?.year && b?.month && b?.day) {
+            birthday = `${b.year}-${String(b.month).padStart(2, '0')}-${String(b.day).padStart(2, '0')}`;
+          }
+          if (!phone && person.phoneNumbers?.[0]?.value) {
+            phone = person.phoneNumbers[0].value;
+          }
+        } catch { /* ignore — non-critical */ }
+      }
+
       setData(prev => ({
         ...prev,
         nome: result.user.displayName ?? prev.nome,
         email: result.user.email ?? prev.email,
+        ...(phone ? { telefone: phone } : {}),
+        ...(birthday ? { dataNascimento: birthday } : {}),
       }));
       await signOut(auth);
     } catch (err: any) {
