@@ -30,9 +30,9 @@ export default function Footer() {
               <img src={logo} alt="FaroForma" className="footer__logo-img" />
             </div>
             <p className="footer__brand-text">
-              {language === 'pt' 
-                ? 'Formações personalizadas, apoio administrativo e explicações em Faro. Qualidade e experiência ao seu serviço desde 2009.'
-                : 'Customised training, administrative support and tutoring in Faro. Quality and experience at your service since 2009.'}
+              {language === 'pt'
+                ? 'Formações personalizadas, apoio administrativo e explicações em Faro. Qualidade e experiência ao seu serviço.'
+                : 'Customised training, administrative support and tutoring in Faro. Quality and experience at your service.'}
             </p>
           </div>
 
