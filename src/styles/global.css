@@ -2000,6 +2000,9 @@ body main {
     grid-template-columns: 1fr;
   }
 
+  .contact__grid > *:first-child { order: 2; }
+  .contact__grid > *:last-child  { order: 1; }
+
   .footer__grid {
     grid-template-columns: 1fr 1fr;
   }
