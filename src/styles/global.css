@@ -167,19 +167,19 @@ select {
 }
 
 #cursos {
-  padding-bottom: 0;
+  padding-bottom: 1rem;
 }
 
 #servicos {
-  padding-top: 0;
+  padding-top: 1rem;
 }
 
 #explicacoes {
-  padding-bottom: 0;
+  padding-bottom: 1rem;
 }
 
 #contactos {
-  padding-top: 0;
+  padding-top: 1rem;
 }
 
 main {
