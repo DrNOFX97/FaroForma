@@ -4,7 +4,7 @@ import {
   Award, Pencil, X, Save, Search,
   Clock, MessageCircle, Users, Target,
   Check, Plus, Trash2, Layers, Monitor, Info,
-  ChevronUp, ChevronDown, Download
+  ChevronUp, ChevronDown, Download, Languages
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiService } from '../../services/api';
@@ -79,6 +79,7 @@ export function CoursesView() {
   const [loading, setLoading] = useState(true);
   const [editingCourse, setEditingCourse] = useState<any | null>(null);
   const [search, setSearch] = useState('');
+  const [translating, setTranslating] = useState(false);
 
   useEffect(() => {
     fetchCourses();
@@ -104,6 +105,19 @@ export function CoursesView() {
       fetchCourses();
     } catch (err) {
       toast.error('Erro ao guardar curso');
+    }
+  };
+
+  const handleRetranslate = async () => {
+    setTranslating(true);
+    try {
+      const { updated } = await apiService.retranslateCourses();
+      toast.success(`${updated} curso(s) traduzidos!`);
+      fetchCourses();
+    } catch {
+      toast.error('Erro ao traduzir cursos.');
+    } finally {
+      setTranslating(false);
     }
   };
 
@@ -174,6 +188,9 @@ export function CoursesView() {
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className="btn btn--outline" onClick={() => setEditingCourse(SEED_COURSE)} title="Pré-preenche o editor com o curso que está hardcoded no site">
             <Download size={16} /> Importar do site
+          </button>
+          <button className="btn btn--outline" onClick={handleRetranslate} disabled={translating} title="Traduz todos os cursos para inglês via Gemini">
+            {translating ? <><span className="spinner" style={{ width: 14, height: 14 }} /> A traduzir...</> : <><Languages size={16} /> Traduzir EN</>}
           </button>
           <button className="btn btn--primary" onClick={() => setEditingCourse(INITIAL_NEW_COURSE)}>
             <Plus size={18} /> Novo Curso

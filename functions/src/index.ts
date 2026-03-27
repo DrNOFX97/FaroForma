@@ -738,6 +738,23 @@ app.get('/api/admin/courses', isAdmin, async (req: Request, res: Response) => {
   }
 });
 
+app.post('/api/admin/courses/retranslate', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const snapshot = await admin.firestore().collection('courses').get();
+    const results: string[] = [];
+    for (const doc of snapshot.docs) {
+      const { id: _id, ...raw } = doc.data() as Record<string, unknown>;
+      void _id;
+      const translated = await autoTranslate(raw);
+      await doc.ref.set(translated);
+      results.push(doc.id);
+    }
+    res.json({ ok: true, updated: results.length });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao traduzir cursos' });
+  }
+});
+
 app.post('/api/admin/courses', isAdmin, async (req: Request, res: Response) => {
   const { id, ...raw } = req.body;
   try {

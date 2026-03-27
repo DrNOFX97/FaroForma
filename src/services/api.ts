@@ -221,6 +221,13 @@ export const apiService = {
     return res.json();
   },
 
+  async retranslateCourses(): Promise<{ ok: boolean; updated: number }> {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/admin/courses/retranslate`, { method: 'POST', headers });
+    if (!res.ok) throw new Error('Erro ao traduzir cursos');
+    return res.json();
+  },
+
   async deleteCourse(id: string): Promise<{ ok: boolean }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/courses/${id}`, {
