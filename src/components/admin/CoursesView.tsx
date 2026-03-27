@@ -4,10 +4,11 @@ import {
   Award, Pencil, X, Save, Search,
   Clock, MessageCircle, Users, Target,
   Check, Plus, Trash2, Layers, Monitor, Info,
-  ChevronUp, ChevronDown
+  ChevronUp, ChevronDown, Download
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiService } from '../../services/api';
+import { COURSE_INFO as DEFAULT_COURSE_INFO } from '../../data/courses';
 
 const PERIODS = [
   { id: 'manha', pt: 'Manhã', en: 'Morning', slots: ['09:00 – 12:00', '09:00 – 13:00', '10:00 – 13:00'] },
@@ -46,6 +47,31 @@ const INITIAL_NEW_COURSE = {
   description: { pt: '', en: '' },
   highlights: DEFAULT_HIGHLIGHTS,
   schedule: []
+};
+
+const PERIOD_TO_ID: Record<string, string> = {
+  'Manhã': 'manha', 'Morning': 'manha',
+  'Tarde': 'tarde', 'Afternoon': 'tarde',
+  'Noite': 'noite', 'Evening': 'noite',
+  'Sábado': 'sabado', 'Saturday': 'sabado', 'Sábado Intensivo': 'sabado', 'Intensive Saturday': 'sabado',
+};
+
+const SEED_COURSE = {
+  title: DEFAULT_COURSE_INFO.title,
+  subtitle: DEFAULT_COURSE_INFO.subtitle,
+  status: DEFAULT_COURSE_INFO.status,
+  description: DEFAULT_COURSE_INFO.description,
+  highlights: DEFAULT_COURSE_INFO.highlights.map(h => ({
+    icon: h.icon === 'Bullseye' ? 'Target' : h.icon,
+    text: h.text,
+  })),
+  schedule: DEFAULT_COURSE_INFO.schedule.map(s => ({
+    turma: s.turma,
+    periodo: PERIOD_TO_ID[s.período.pt] || 'manha',
+    horario: s.horário.split('/').map((h: string) => h.trim()),
+    dias: [s.dias.pt],
+    diasExtra: { pt: '', en: '' },
+  })),
 };
 
 export function CoursesView() {
@@ -145,9 +171,14 @@ export function CoursesView() {
           <Award size={24} className="text-accent" />
           <h3 style={{ margin: 0 }}>Gestão de Cursos</h3>
         </div>
-        <button className="btn btn--primary" onClick={() => setEditingCourse(INITIAL_NEW_COURSE)}>
-          <Plus size={18} /> Novo Curso
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="btn btn--outline" onClick={() => setEditingCourse(SEED_COURSE)} title="Pré-preenche o editor com o curso que está hardcoded no site">
+            <Download size={16} /> Importar do site
+          </button>
+          <button className="btn btn--primary" onClick={() => setEditingCourse(INITIAL_NEW_COURSE)}>
+            <Plus size={18} /> Novo Curso
+          </button>
+        </div>
       </div>
 
       <div className="admin-table-container glass">
