@@ -294,7 +294,7 @@ export default function Admin() {
           <div className="nav-group-label">Gestão de Dados</div>
           <SidebarItem active={activeTab === 'formadores'} icon={<Users size={20} />} label="Formadores" onClick={() => { setActiveTab('formadores'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
           <SidebarItem active={activeTab === 'alunos'} icon={<GraduationCap size={20} />} label="Alunos" onClick={() => { setActiveTab('alunos'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
-          <SidebarItem active={activeTab === 'contactos'} icon={<MessageSquare size={20} />} label="Contactos" onClick={() => { setActiveTab('contactos'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
+          <SidebarItem active={activeTab === 'contactos'} icon={<MessageSquare size={20} />} label="Mensagens do site" onClick={() => { setActiveTab('contactos'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
 
           <div className="nav-group-label">Conteúdo Site</div>
           <SidebarItem active={activeTab === 'cursos'} icon={<Award size={20} />} label="Cursos" onClick={() => { setActiveTab('cursos'); setMobileMenuOpen(false); }} collapsed={sidebarCollapsed} />
@@ -440,6 +440,7 @@ export default function Admin() {
         {editingGenericRow?.type === 'alunos' && (
           <EditAlunoModal
             row={editingGenericRow}
+            courses={adminCourses}
             onClose={() => setEditingGenericRow(null)}
             onSuccess={() => { setEditingGenericRow(null); fetchData(); }}
           />

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { signInWithPopup, signOut } from 'firebase/auth';
+import { signInWithPopup, signOut, GoogleAuthProvider } from 'firebase/auth';
 import AnimatedSection from '../ui/AnimatedSection';
 import { useLanguage } from '../../context/LanguageContext';
 import { apiService } from '../../services/api';
-import { auth, googleProvider } from '../../config/firebase';
+import { auth } from '../../config/firebase';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
@@ -84,11 +84,33 @@ export default function StudentRegistration() {
 
   const fillWithGoogle = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/user.phonenumbers.read');
+
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const accessToken = credential?.accessToken;
+
+      let phone = result.user.phoneNumber ?? '';
+
+      if (accessToken) {
+        try {
+          const resp = await fetch(
+            'https://people.googleapis.com/v1/people/me?personFields=phoneNumbers',
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          const person = await resp.json();
+          if (!phone && person.phoneNumbers?.[0]?.value) {
+            phone = person.phoneNumbers[0].value;
+          }
+        } catch { /* non-critical */ }
+      }
+
       setForm(f => ({
         ...f,
         fullName: result.user.displayName ?? f.fullName,
         email: result.user.email ?? f.email,
+        ...(phone ? { phone } : {}),
       }));
       await signOut(auth);
     } catch (err: any) {

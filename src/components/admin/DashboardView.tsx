@@ -55,7 +55,7 @@ export function DashboardView({ data, onNavigate, unread }: DashboardViewProps) 
       } catch { /* ignore */ }
     });
     if (prev === 0 && cur === 0) return { label: '—', positive: true };
-    if (prev === 0) return { label: `+${cur} novo${cur > 1 ? 's' : ''}`, positive: true };
+    if (prev === 0) return { label: `+${cur} este mês`, positive: true };
     const pct = Math.round(((cur - prev) / prev) * 100);
     return { label: `${pct >= 0 ? '+' : ''}${pct}%`, positive: pct >= 0 };
   };

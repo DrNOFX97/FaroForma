@@ -56,6 +56,9 @@ const GMAIL_USER = (0, params_1.defineSecret)("GMAIL_USER");
 const GMAIL_APP_PASSWORD = (0, params_1.defineSecret)("GMAIL_APP_PASSWORD");
 const GEMINI_API_KEY = (0, params_1.defineSecret)("GEMINI_API_KEY");
 const N8N_WEBHOOK_URL = (0, params_1.defineSecret)("N8N_WEBHOOK_URL");
+const WA_TOKEN = (0, params_1.defineSecret)("WA_TOKEN");
+const WA_PHONE_NUMBER_ID = (0, params_1.defineSecret)("WA_PHONE_NUMBER_ID");
+const WHATSAPP_PHONE = "351917812379";
 async function notifyN8n(type, data) {
     const url = N8N_WEBHOOK_URL.value();
     if (!url)
@@ -69,6 +72,30 @@ async function notifyN8n(type, data) {
     }
     catch (err) {
         console.warn('[n8n] webhook failed:', err);
+    }
+}
+async function notifyWhatsApp(message) {
+    const token = WA_TOKEN.value();
+    const phoneNumberId = WA_PHONE_NUMBER_ID.value();
+    if (!token || !phoneNumberId)
+        return;
+    try {
+        await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                to: WHATSAPP_PHONE,
+                type: 'text',
+                text: { body: message },
+            }),
+        });
+    }
+    catch (err) {
+        console.warn('[WhatsApp] notification failed:', err);
     }
 }
 const TRANSLATE_MAX_DEPTH = 6;
@@ -409,6 +436,8 @@ app.post('/api/contact', publicLimiter, async (req, res) => {
         row[sheetsSchema_1.C.MENSAGEM] = d.message;
         await appendToSheet('Contactos', row);
         notifyN8n('contacto', d).catch(() => { });
+        const waMsg = `📩 *Nova mensagem — FaroForma*\n👤 ${d.name}\n📧 ${d.email}${d.phone ? `\n📞 ${d.phone}` : ''}${d.subject ? `\n📌 ${d.subject}` : ''}\n\n${d.message}`;
+        notifyWhatsApp(waMsg).catch(() => { });
         await notifyAdmins(`[Contacto] ${d.name} — ${d.subject || 'sem assunto'}`, `<h2>Nova mensagem de contacto</h2>
       <table cellpadding="6" style="border-collapse:collapse">
         <tr><td><strong>Nome</strong></td><td>${escHtml(d.name)}</td></tr>
@@ -641,7 +670,7 @@ app.post('/api/admin/agenda', isAdmin, async (req, res) => {
 });
 app.get('/api/courses', async (req, res) => {
     try {
-        const snapshot = await admin.firestore().collection('courses').get();
+        const snapshot = await admin.firestore().collection('courses').where('published', '==', true).get();
         const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         res.json(courses);
     }
@@ -680,6 +709,24 @@ app.post('/api/admin/courses', isAdmin, async (req, res) => {
     }
     catch (err) {
         res.status(500).json({ error: 'Erro ao guardar curso' });
+    }
+});
+app.patch('/api/admin/courses/:id', isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const allowed = ['published'];
+    const update = {};
+    for (const key of allowed) {
+        if (key in req.body)
+            update[key] = req.body[key];
+    }
+    if (Object.keys(update).length === 0)
+        return res.status(400).json({ error: 'Nenhum campo válido' });
+    try {
+        await admin.firestore().collection('courses').doc(id).update(update);
+        res.json({ ok: true });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Erro ao atualizar curso' });
     }
 });
 app.delete('/api/admin/courses/:id', isAdmin, async (req, res) => {
@@ -835,6 +882,6 @@ app.get('/health', (req, res) => res.send('OK'));
 exports.api = (0, https_1.onRequest)({
     region: "europe-west1",
     memory: "256MiB",
-    secrets: [GOOGLE_SERVICE_ACCOUNT_JSON, SPREADSHEET_ID, GMAIL_USER, GMAIL_APP_PASSWORD, N8N_WEBHOOK_URL, GEMINI_API_KEY]
+    secrets: [GOOGLE_SERVICE_ACCOUNT_JSON, SPREADSHEET_ID, GMAIL_USER, GMAIL_APP_PASSWORD, N8N_WEBHOOK_URL, GEMINI_API_KEY, WA_TOKEN, WA_PHONE_NUMBER_ID]
 }, app);
 //# sourceMappingURL=index.js.map

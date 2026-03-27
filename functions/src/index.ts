@@ -24,6 +24,9 @@ const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const N8N_WEBHOOK_URL = defineSecret("N8N_WEBHOOK_URL");
+const WA_TOKEN = defineSecret("WA_TOKEN");                   // Meta permanent access token
+const WA_PHONE_NUMBER_ID = defineSecret("WA_PHONE_NUMBER_ID"); // Meta WhatsApp Phone Number ID
+const WHATSAPP_PHONE = "351917812379";                       // destination: 91 781 23 79
 
 // ── n8n Webhook ────────────────────────────────────────────────────────────────
 
@@ -38,6 +41,33 @@ async function notifyN8n(type: 'aluno' | 'formador' | 'contacto', data: any) {
     });
   } catch (err) {
     console.warn('[n8n] webhook failed:', err);
+  }
+}
+
+// ── WhatsApp (Meta Cloud API) ─────────────────────────────────────────────────
+// Docs: https://developers.facebook.com/docs/whatsapp/cloud-api/messages/text-messages
+// Secrets needed: WA_TOKEN (permanent token), WA_PHONE_NUMBER_ID (sender phone number ID)
+
+async function notifyWhatsApp(message: string): Promise<void> {
+  const token = WA_TOKEN.value();
+  const phoneNumberId = WA_PHONE_NUMBER_ID.value();
+  if (!token || !phoneNumberId) return; // silently skip if not configured
+  try {
+    await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: WHATSAPP_PHONE,
+        type: 'text',
+        text: { body: message },
+      }),
+    });
+  } catch (err) {
+    console.warn('[WhatsApp] notification failed:', err);
   }
 }
 
@@ -433,6 +463,10 @@ app.post('/api/contact', publicLimiter, async (req: Request, res: Response) => {
     await appendToSheet('Contactos', row);
 
     notifyN8n('contacto', d).catch(() => {});
+
+    const waMsg = `📩 *Nova mensagem — FaroForma*\n👤 ${d.name}\n📧 ${d.email}${d.phone ? `\n📞 ${d.phone}` : ''}${d.subject ? `\n📌 ${d.subject}` : ''}\n\n${d.message}`;
+    notifyWhatsApp(waMsg).catch(() => {});
+
     await notifyAdmins(
       `[Contacto] ${d.name} — ${d.subject || 'sem assunto'}`,
       `<h2>Nova mensagem de contacto</h2>
@@ -676,7 +710,7 @@ app.post('/api/admin/agenda', isAdmin, async (req: Request, res: Response) => {
 
 app.get('/api/courses', async (req: Request, res: Response) => {
   try {
-    const snapshot = await admin.firestore().collection('courses').get();
+    const snapshot = await admin.firestore().collection('courses').where('published', '==', true).get();
     const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     res.json(courses);
   } catch (err: any) {
@@ -713,6 +747,22 @@ app.post('/api/admin/courses', isAdmin, async (req: Request, res: Response) => {
     res.json({ message: 'Curso guardado com sucesso' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao guardar curso' });
+  }
+});
+
+app.patch('/api/admin/courses/:id', isAdmin, async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const allowed = ['published'] as const;
+  const update: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (key in req.body) update[key] = req.body[key];
+  }
+  if (Object.keys(update).length === 0) return res.status(400).json({ error: 'Nenhum campo válido' });
+  try {
+    await admin.firestore().collection('courses').doc(id as string).update(update);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao atualizar curso' });
   }
 });
 
@@ -876,5 +926,5 @@ app.get('/health', (req, res) => res.send('OK'));
 export const api = onRequest({ 
   region: "europe-west1", 
   memory: "256MiB",
-  secrets: [GOOGLE_SERVICE_ACCOUNT_JSON, SPREADSHEET_ID, GMAIL_USER, GMAIL_APP_PASSWORD, N8N_WEBHOOK_URL, GEMINI_API_KEY]
+  secrets: [GOOGLE_SERVICE_ACCOUNT_JSON, SPREADSHEET_ID, GMAIL_USER, GMAIL_APP_PASSWORD, N8N_WEBHOOK_URL, GEMINI_API_KEY, WA_TOKEN, WA_PHONE_NUMBER_ID]
 }, app);

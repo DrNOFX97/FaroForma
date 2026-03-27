@@ -80,6 +80,17 @@ export function CoursesView() {
     }
   };
 
+  const handleTogglePublished = async (course: any) => {
+    const newVal = !course.published;
+    setCourses(prev => prev.map(c => c.id === course.id ? { ...c, published: newVal } : c));
+    try {
+      await apiService.patchCourse(course.id, { published: newVal });
+    } catch {
+      setCourses(prev => prev.map(c => c.id === course.id ? { ...c, published: course.published } : c));
+      toast.error('Erro ao atualizar visibilidade.');
+    }
+  };
+
   const handleDelete = (id: string, title: string) => {
     toast((t) => (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -144,6 +155,7 @@ export function CoursesView() {
                 <th>Título (PT)</th>
                 <th>Estado</th>
                 <th>Ações</th>
+                <th style={{ textAlign: 'center', width: '90px' }}>Publicado</th>
               </tr>
             </thead>
             <tbody>
@@ -162,10 +174,19 @@ export function CoursesView() {
                         <button className="admin-action-btn" onClick={() => handleDelete(course.id, title)} title="Remover" style={{ color: '#ef4444' }}><Trash2 size={16} /></button>
                       </div>
                     </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!course.published}
+                        onChange={() => handleTogglePublished(course)}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent)' }}
+                        title={course.published ? 'Visível no site — clica para retirar' : 'Não publicado — clica para publicar'}
+                      />
+                    </td>
                   </tr>
                 );
               })}
-              {courses.length === 0 && <tr><td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>Nenhum curso registado no Firestore.</td></tr>}
+              {courses.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>Nenhum curso registado no Firestore.</td></tr>}
             </tbody>
           </table>
         </div>

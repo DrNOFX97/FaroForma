@@ -1,5 +1,18 @@
 import { auth, storage } from '../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import type {
+  RawData,
+  Course,
+  SiteConfig,
+  AgendaData,
+  AnalyticsData,
+  AuditLogEntry,
+  ContactSubmission,
+  StudentSubmission,
+  FormadorSubmission,
+} from '../types/api';
+
+export type { RawData } from '../types/api';
 
 const API_BASE = '/api';
 
@@ -11,21 +24,15 @@ async function getAuthHeaders() {
   };
 }
 
-export interface RawData {
-  formadores: any[][];
-  alunos: any[];
-  contactos: any[];
-}
-
 export const apiService = {
   // Public
-  async getCourses() {
+  async getCourses(): Promise<Course[]> {
     const res = await fetch(`${API_BASE}/courses`);
     if (!res.ok) throw new Error('Falha ao obter cursos');
     return res.json();
   },
 
-  async submitStudent(data: any) {
+  async submitStudent(data: StudentSubmission): Promise<{ ok: boolean }> {
     const res = await fetch(`${API_BASE}/student`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -35,7 +42,7 @@ export const apiService = {
     return res.json();
   },
 
-  async submitContact(data: any) {
+  async submitContact(data: ContactSubmission): Promise<{ ok: boolean }> {
     const res = await fetch(`${API_BASE}/contact`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -45,7 +52,7 @@ export const apiService = {
     return res.json();
   },
 
-  async submitFormador(data: any) {
+  async submitFormador(data: FormadorSubmission): Promise<{ ok: boolean }> {
     const res = await fetch(`${API_BASE}/inscricao-formadores`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -55,10 +62,10 @@ export const apiService = {
     return res.json();
   },
 
-  async trackVisit() {
+  async trackVisit(): Promise<void> {
     try {
       await fetch(`${API_BASE}/track-visit`, { method: 'POST' });
-    } catch (e) { /* silent fail */ }
+    } catch { /* silent fail */ }
   },
 
   // Admin
@@ -69,7 +76,7 @@ export const apiService = {
     return res.json();
   },
 
-  async saveNotifState(payload: { lastViewedAt?: string; lastSeen?: Record<string, number> }) {
+  async saveNotifState(payload: { lastViewedAt?: string; lastSeen?: Record<string, number> }): Promise<void> {
     const headers = await getAuthHeaders();
     fetch(`${API_BASE}/admin/notif-state`, {
       method: 'POST',
@@ -78,20 +85,20 @@ export const apiService = {
     }).catch(() => {}); // fire-and-forget, non-blocking
   },
 
-  async getAnalytics() {
+  async getAnalytics(): Promise<AnalyticsData> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/analytics`, { headers });
     if (!res.ok) throw new Error('Erro ao obter analytics');
     return res.json();
   },
 
-  async getCMS(section: string) {
+  async getCMS(section: string): Promise<Record<string, unknown>> {
     const res = await fetch(`${API_BASE}/cms/${section}`);
     if (!res.ok) throw new Error('Erro ao obter conteúdo');
     return res.json();
   },
 
-  async updateCMS(section: string, data: any) {
+  async updateCMS(section: string, data: Record<string, unknown>): Promise<{ ok: boolean }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/cms/${section}`, {
       method: 'POST',
@@ -102,7 +109,7 @@ export const apiService = {
     return res.json();
   },
 
-  async uploadFile(path: string, file: File) {
+  async uploadFile(path: string, file: File): Promise<string> {
     const storageRef = ref(storage, path);
     await uploadBytes(storageRef, file);
     return getDownloadURL(storageRef);
@@ -116,7 +123,7 @@ export const apiService = {
     return res.json();
   },
 
-  async updateFormador(rowIndex: number, values: any[]) {
+  async updateFormador(rowIndex: number, values: unknown[]): Promise<{ ok: boolean }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/update-formador`, {
       method: 'POST',
@@ -127,7 +134,7 @@ export const apiService = {
     return res.json();
   },
 
-  async updateRow(tabName: string, rowIndex: number, values: any[]) {
+  async updateRow(tabName: string, rowIndex: number, values: unknown[]): Promise<{ ok: boolean }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/update-row`, {
       method: 'POST',
@@ -138,7 +145,7 @@ export const apiService = {
     return res.json();
   },
 
-  async deleteRow(tabName: string, rowIndex: number) {
+  async deleteRow(tabName: string, rowIndex: number): Promise<{ ok: boolean }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/delete-row`, {
       method: 'DELETE',
@@ -149,14 +156,14 @@ export const apiService = {
     return res.json();
   },
 
-  async getConfig() {
+  async getConfig(): Promise<SiteConfig> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/config`, { headers });
     if (!res.ok) throw new Error('Erro ao obter configurações');
     return res.json();
   },
 
-  async saveConfig(config: any) {
+  async saveConfig(config: SiteConfig): Promise<{ ok: boolean }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/config`, {
       method: 'POST',
@@ -167,14 +174,14 @@ export const apiService = {
     return res.json();
   },
 
-  async getAgenda(room: string) {
+  async getAgenda(room: string): Promise<AgendaData> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/agenda?room=${room}`, { headers });
     if (!res.ok) throw new Error('Erro ao obter agenda');
     return res.json();
   },
 
-  async saveAgenda(room: string, agenda: any) {
+  async saveAgenda(room: string, agenda: AgendaData): Promise<{ ok: boolean }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/agenda?room=${room}`, {
       method: 'POST',
@@ -185,14 +192,14 @@ export const apiService = {
     return res.json();
   },
 
-  async getAdminCourses() {
+  async getAdminCourses(): Promise<Course[]> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/courses`, { headers });
     if (!res.ok) throw new Error('Erro ao obter cursos');
     return res.json();
   },
 
-  async saveCourse(course: any) {
+  async saveCourse(course: Course): Promise<{ ok: boolean; id?: string }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/courses`, {
       method: 'POST',
@@ -203,7 +210,18 @@ export const apiService = {
     return res.json();
   },
 
-  async deleteCourse(id: string) {
+  async patchCourse(id: string, fields: Partial<Course>): Promise<{ ok: boolean }> {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/admin/courses/${id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(fields)
+    });
+    if (!res.ok) throw new Error('Erro ao atualizar curso');
+    return res.json();
+  },
+
+  async deleteCourse(id: string): Promise<{ ok: boolean }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/courses/${id}`, {
       method: 'DELETE',
@@ -217,11 +235,11 @@ export const apiService = {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/admins`, { headers });
     if (!res.ok) throw new Error('Erro ao obter administradores');
-    const data = await res.json();
+    const data = await res.json() as { emails: string[] };
     return data.emails;
   },
 
-  async saveAdmins(emails: string[]) {
+  async saveAdmins(emails: string[]): Promise<{ ok: boolean }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/admins`, {
       method: 'POST',
@@ -232,14 +250,14 @@ export const apiService = {
     return res.json();
   },
 
-  async getAuditLog() {
+  async getAuditLog(): Promise<AuditLogEntry[]> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/audit-log`, { headers });
     if (!res.ok) throw new Error('Erro ao obter log');
     return res.json();
   },
 
-  async bulkDelete(tabName: string, rowIndices: number[]) {
+  async bulkDelete(tabName: string, rowIndices: number[]): Promise<{ ok: boolean }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/bulk-delete`, {
       method: 'DELETE',
@@ -250,7 +268,7 @@ export const apiService = {
     return res.json();
   },
 
-  async syncHeaders() {
+  async syncHeaders(): Promise<{ ok: boolean }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/admin/sync-headers`, { method: 'POST', headers });
     if (!res.ok) throw new Error('Erro ao sincronizar headers');
