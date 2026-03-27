@@ -223,8 +223,10 @@ function CourseBlock({ course, language, delay, onRegister }: { course: any; lan
     <div className="course-block">
       <AnimatedSection direction="up" delay={delay}>
         <div style={{ marginBottom: '2rem' }}>
-          {title && <h3 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '0.5rem' }}>{title}{subtitle ? <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '1.1rem' }}> — {subtitle}</span> : null}</h3>}
-          {description && <p style={{ color: 'var(--text-muted)', maxWidth: 680 }}>{description} {status && <span className="status-highlight">{status}</span>}</p>}
+          {title && <h3 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '0.25rem' }}>{title}</h3>}
+          {subtitle && <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{subtitle}</p>}
+          {status && <p style={{ marginBottom: '0.5rem' }}><span className="status-highlight">{status}</span></p>}
+          {description && <p style={{ color: 'var(--text-muted)', maxWidth: 680 }}>{description}</p>}
         </div>
       </AnimatedSection>
 
