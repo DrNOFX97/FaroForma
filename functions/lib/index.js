@@ -673,7 +673,8 @@ app.get('/api/courses', async (req, res) => {
         const snapshot = await admin.firestore().collection('courses').get();
         const courses = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(c => c.published !== false);
+            .filter(c => c.published !== false)
+            .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
         res.json(courses);
     }
     catch (err) {
@@ -682,12 +683,14 @@ app.get('/api/courses', async (req, res) => {
 });
 app.get('/api/admin/courses', isAdmin, async (req, res) => {
     try {
-        const snapshot = await admin.firestore().collection('courses').orderBy('title').get();
-        const courses = snapshot.docs.map(doc => {
+        const snapshot = await admin.firestore().collection('courses').get();
+        const courses = snapshot.docs
+            .map(doc => {
             const { id: _id, ...data } = doc.data();
             void _id;
             return { id: doc.id, ...data };
-        });
+        })
+            .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
         res.json(courses);
     }
     catch (err) {
@@ -715,7 +718,7 @@ app.post('/api/admin/courses', isAdmin, async (req, res) => {
 });
 app.patch('/api/admin/courses/:id', isAdmin, async (req, res) => {
     const { id } = req.params;
-    const allowed = ['published'];
+    const allowed = ['published', 'order'];
     const update = {};
     for (const key of allowed) {
         if (key in req.body)

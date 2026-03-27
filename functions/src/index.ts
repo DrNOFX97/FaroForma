@@ -714,7 +714,8 @@ app.get('/api/courses', async (req: Request, res: Response) => {
     // published: undefined or true → visible; published: false → hidden
     const courses = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() as Record<string, unknown> }))
-      .filter(c => (c as any).published !== false);
+      .filter(c => (c as any).published !== false)
+      .sort((a: any, b: any) => (a.order ?? 999) - (b.order ?? 999));
     res.json(courses);
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao obter cursos' });
@@ -723,12 +724,14 @@ app.get('/api/courses', async (req: Request, res: Response) => {
 
 app.get('/api/admin/courses', isAdmin, async (req: Request, res: Response) => {
   try {
-    const snapshot = await admin.firestore().collection('courses').orderBy('title').get();
-    const courses = snapshot.docs.map(doc => {
-      const { id: _id, ...data } = doc.data() as Record<string, unknown>;
-      void _id;
-      return { id: doc.id, ...data };
-    });
+    const snapshot = await admin.firestore().collection('courses').get();
+    const courses = snapshot.docs
+      .map(doc => {
+        const { id: _id, ...data } = doc.data() as Record<string, unknown>;
+        void _id;
+        return { id: doc.id, ...data };
+      })
+      .sort((a: any, b: any) => (a.order ?? 999) - (b.order ?? 999));
     res.json(courses);
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao obter cursos' });
@@ -755,7 +758,7 @@ app.post('/api/admin/courses', isAdmin, async (req: Request, res: Response) => {
 
 app.patch('/api/admin/courses/:id', isAdmin, async (req: Request, res: Response) => {
   const { id } = req.params;
-  const allowed = ['published'] as const;
+  const allowed = ['published', 'order'] as const;
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in req.body) update[key] = req.body[key];

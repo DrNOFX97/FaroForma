@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Award, Pencil, X, Save, Search, 
-  Clock, MessageCircle, Users, Target, 
-  Check, Plus, Trash2, Layers, Monitor, Info
+import {
+  Award, Pencil, X, Save, Search,
+  Clock, MessageCircle, Users, Target,
+  Check, Plus, Trash2, Layers, Monitor, Info,
+  ChevronUp, ChevronDown
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiService } from '../../services/api';
@@ -80,6 +81,24 @@ export function CoursesView() {
     }
   };
 
+  const handleMove = useCallback(async (index: number, dir: -1 | 1) => {
+    const newIndex = index + dir;
+    if (newIndex < 0 || newIndex >= courses.length) return;
+    const reordered = [...courses];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    const withOrder = reordered.map((c, i) => ({ ...c, order: i }));
+    setCourses(withOrder);
+    try {
+      await Promise.all([
+        apiService.patchCourse(withOrder[index].id, { order: withOrder[index].order }),
+        apiService.patchCourse(withOrder[newIndex].id, { order: withOrder[newIndex].order }),
+      ]);
+    } catch {
+      setCourses(courses); // revert
+      toast.error('Erro ao guardar ordem.');
+    }
+  }, [courses]);
+
   const handleTogglePublished = async (course: any) => {
     const newVal = !course.published;
     setCourses(prev => prev.map(c => c.id === course.id ? { ...c, published: newVal } : c));
@@ -152,6 +171,7 @@ export function CoursesView() {
           <table className="admin-table">
             <thead>
               <tr>
+                <th style={{ width: '60px' }}>Ordem</th>
                 <th>Título (PT)</th>
                 <th>Estado</th>
                 <th>Ações</th>
@@ -160,10 +180,29 @@ export function CoursesView() {
             </thead>
             <tbody>
               {filteredCourses.map((course) => {
+                const realIndex = courses.findIndex(c => c.id === course.id);
                 const title = typeof course.title === 'string' ? course.title : (course.title?.pt || 'Sem título');
                 const status = typeof course.status === 'string' ? course.status : (course.status?.pt || '—');
                 return (
                   <tr key={course.id}>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
+                        <button
+                          className="admin-action-btn"
+                          onClick={() => handleMove(realIndex, -1)}
+                          disabled={realIndex === 0}
+                          title="Mover para cima"
+                          style={{ padding: '2px', opacity: realIndex === 0 ? 0.3 : 1 }}
+                        ><ChevronUp size={14} /></button>
+                        <button
+                          className="admin-action-btn"
+                          onClick={() => handleMove(realIndex, 1)}
+                          disabled={realIndex === courses.length - 1}
+                          title="Mover para baixo"
+                          style={{ padding: '2px', opacity: realIndex === courses.length - 1 ? 0.3 : 1 }}
+                        ><ChevronDown size={14} /></button>
+                      </div>
+                    </td>
                     <td style={{ fontWeight: 600 }}>{title}</td>
                     <td>
                       <span className="status-badge">{status}</span>
@@ -180,13 +219,13 @@ export function CoursesView() {
                         checked={course.published !== false}
                         onChange={() => handleTogglePublished(course)}
                         style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent)' }}
-                        title={course.published ? 'Visível no site — clica para retirar' : 'Não publicado — clica para publicar'}
+                        title={course.published !== false ? 'Visível no site — clica para retirar' : 'Não publicado — clica para publicar'}
                       />
                     </td>
                   </tr>
                 );
               })}
-              {courses.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>Nenhum curso registado no Firestore.</td></tr>}
+              {courses.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>Nenhum curso registado no Firestore.</td></tr>}
             </tbody>
           </table>
         </div>

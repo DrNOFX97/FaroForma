@@ -28,6 +28,7 @@ export interface Course {
   highlights: CourseHighlightEntry[];
   schedule: CourseScheduleEntry[];
   published?: boolean;
+  order?: number;
 }
 
 // ── Site config ───────────────────────────────────────────────────────────────
