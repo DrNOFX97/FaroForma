@@ -177,7 +177,7 @@ export function CoursesView() {
                     <td style={{ textAlign: 'center' }}>
                       <input
                         type="checkbox"
-                        checked={!!course.published}
+                        checked={course.published !== false}
                         onChange={() => handleTogglePublished(course)}
                         style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent)' }}
                         title={course.published ? 'Visível no site — clica para retirar' : 'Não publicado — clica para publicar'}

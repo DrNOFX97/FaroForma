@@ -670,8 +670,10 @@ app.post('/api/admin/agenda', isAdmin, async (req, res) => {
 });
 app.get('/api/courses', async (req, res) => {
     try {
-        const snapshot = await admin.firestore().collection('courses').where('published', '==', true).get();
-        const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const snapshot = await admin.firestore().collection('courses').get();
+        const courses = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(c => c.published !== false);
         res.json(courses);
     }
     catch (err) {

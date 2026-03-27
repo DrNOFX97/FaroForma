@@ -710,8 +710,11 @@ app.post('/api/admin/agenda', isAdmin, async (req: Request, res: Response) => {
 
 app.get('/api/courses', async (req: Request, res: Response) => {
   try {
-    const snapshot = await admin.firestore().collection('courses').where('published', '==', true).get();
-    const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const snapshot = await admin.firestore().collection('courses').get();
+    // published: undefined or true → visible; published: false → hidden
+    const courses = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() as Record<string, unknown> }))
+      .filter(c => (c as any).published !== false);
     res.json(courses);
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao obter cursos' });
